@@ -47,6 +47,10 @@ const Index = () => {
   const [practice7, setPractice7] = useState<string[]>(Array(6).fill(""));
   const [attachments7, setAttachments7] = useState<Record<number, File | null>>({});
 
+  // Grade 9 answers
+  const [answers9, setAnswers9] = useState<string[]>(Array(6).fill(""));
+  const [attachments9, setAttachments9] = useState<Record<number, File | null>>({});
+
   // Anticheat
   const cheatLogRef = useRef<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
