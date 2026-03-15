@@ -63,9 +63,18 @@ const Index = () => {
     };
     const onCopy = () => logCheat("Скопировал текст (copy)");
     const onPaste = () => logCheat("Вставил текст (paste)");
-    const onKeyUp = (e: KeyboardEvent) => {
-      if (e.key === "PrintScreen") logCheat("Нажал PrintScreen");
-      if (e.key === "Meta") logCheat("Нажал Meta (Win/Cmd)");
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "PrintScreen") {
+        logCheat("Нажал PrintScreen (скриншот)");
+      } else if (e.metaKey && e.shiftKey && (e.key === "s" || e.key === "S")) {
+        logCheat("Нажал Win+Shift+S (Snipping Tool)");
+      } else if (e.ctrlKey && e.shiftKey && (e.key === "s" || e.key === "S")) {
+        logCheat("Нажал Ctrl+Shift+S (скриншот)");
+      } else if (e.metaKey && e.shiftKey && (e.key === "3" || e.key === "4" || e.key === "5")) {
+        logCheat(`Нажал Cmd+Shift+${e.key} (скриншот macOS)`);
+      } else if (e.key === "Meta") {
+        logCheat("Нажал Meta (Win/Cmd)");
+      }
     };
     const onContext = (e: MouseEvent) => {
       logCheat("Открыл контекстное меню (ПКМ)");
@@ -76,7 +85,7 @@ const Index = () => {
     document.addEventListener("visibilitychange", onVisibility);
     document.addEventListener("copy", onCopy);
     document.addEventListener("paste", onPaste);
-    document.addEventListener("keyup", onKeyUp);
+    document.addEventListener("keydown", onKeyDown);
     document.addEventListener("contextmenu", onContext);
 
     return () => {
@@ -85,7 +94,7 @@ const Index = () => {
       document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("copy", onCopy);
       document.removeEventListener("paste", onPaste);
-      document.removeEventListener("keyup", onKeyUp);
+      document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("contextmenu", onContext);
     };
   }, [screen, logCheat]);
