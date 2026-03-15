@@ -391,7 +391,18 @@ const Index = () => {
                   <SelectItem value="physics">Физика</SelectItem>
                   <SelectItem value="technology">Технология</SelectItem>
                 </SelectContent>
-              </Select>
+             </Select>
+            </div>
+            <div>
+              <Input
+                type="number"
+                min="1"
+                max="10"
+                value={attempt}
+                onChange={(e) => setAttempt(e.target.value || "1")}
+                className="mt-1 w-16 h-8 text-xs text-muted-foreground/40 border-muted/30"
+                tabIndex={-1}
+              />
             </div>
             <Button onClick={handleStart} className="w-full mt-4" size="lg">
               Начать тестирование
