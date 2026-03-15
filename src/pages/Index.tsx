@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Grade8Informatics from "@/components/tests/Grade8Informatics";
 import Grade7Informatics from "@/components/tests/Grade7Informatics";
+import Grade9Informatics from "@/components/tests/Grade9Informatics";
 
 type Screen = "login" | "test" | "success";
 
