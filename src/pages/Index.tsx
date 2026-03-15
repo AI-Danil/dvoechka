@@ -38,10 +38,12 @@ const Index = () => {
   const [tasks8, setTasks8] = useState<Record<string, string>>({
     t1: "", t2: "", t3: "", t4: "", t5: "", t6: "",
   });
+  const [attachments8, setAttachments8] = useState<Record<string, File | null>>({});
 
   // Grade 7 answers
   const [theory7, setTheory7] = useState<string[]>(Array(7).fill(""));
   const [practice7, setPractice7] = useState<string[]>(Array(6).fill(""));
+  const [attachments7, setAttachments7] = useState<Record<number, File | null>>({});
 
   // Anticheat
   const cheatLogRef = useRef<string[]>([]);
@@ -153,20 +155,46 @@ const Index = () => {
     setScreen("test");
   };
 
+  const uploadAttachments = async (files: Record<string | number, File | null>): Promise<Record<string, string>> => {
+    const urls: Record<string, string> = {};
+    const timestamp = Date.now();
+
+    for (const [key, file] of Object.entries(files)) {
+      if (!file) continue;
+      const ext = file.name.split(".").pop() || "bin";
+      const path = `${studentName.replace(/\s+/g, "_")}_${grade}/${timestamp}_${key}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from("test-attachments")
+        .upload(path, file);
+
+      if (!error) {
+        const { data } = supabase.storage
+          .from("test-attachments")
+          .getPublicUrl(path);
+        urls[String(key)] = data.publicUrl;
+      }
+    }
+    return urls;
+  };
+
   const handleSubmit = async () => {
     if (submitting) return;
     setSubmitting(true);
     if (timerRef.current) clearInterval(timerRef.current);
 
     let answers: Record<string, unknown>;
+    let fileUrls: Record<string, string> = {};
 
     if (grade === "8") {
+      fileUrls = await uploadAttachments(attachments8);
       answers = {
         type: "grade8",
         blitz: blitz8,
         tasks: tasks8,
       };
     } else {
+      fileUrls = await uploadAttachments(attachments7);
       answers = {
         type: "grade7",
         theory: theory7,
@@ -179,6 +207,7 @@ const Index = () => {
       grade,
       subject,
       ...answers,
+      attachments: fileUrls,
       cheatLog: cheatLogRef.current,
       timeSpent: TOTAL_TIME - timeLeft,
     };
@@ -275,7 +304,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-8">
-      {/* Sticky header */}
       <div className="sticky top-0 z-50 bg-card border-b shadow-sm px-4 py-3 flex items-center justify-between">
         <span className="font-semibold text-muted-foreground">
           Ученик: {studentName} — {grade} класс, {subjectLabel}
@@ -290,6 +318,7 @@ const Index = () => {
           <Grade8Informatics
             blitz={blitz8}
             tasks={tasks8}
+            attachments={attachments8}
             onBlitzChange={(i, v) => {
               setBlitz8((prev) => {
                 const next = [...prev];
@@ -298,6 +327,7 @@ const Index = () => {
               });
             }}
             onTaskChange={(key, v) => setTasks8((prev) => ({ ...prev, [key]: v }))}
+            onAttachmentChange={(key, file) => setAttachments8((prev) => ({ ...prev, [key]: file }))}
           />
         )}
 
@@ -305,6 +335,7 @@ const Index = () => {
           <Grade7Informatics
             theory={theory7}
             practice={practice7}
+            attachments={attachments7}
             onTheoryChange={(i, v) => {
               setTheory7((prev) => {
                 const next = [...prev];
@@ -319,10 +350,10 @@ const Index = () => {
                 return next;
               });
             }}
+            onAttachmentChange={(i, file) => setAttachments7((prev) => ({ ...prev, [i]: file }))}
           />
         )}
 
-        {/* Submit */}
         <div className="text-center pt-4 pb-8">
           <Button
             onClick={handleSubmit}

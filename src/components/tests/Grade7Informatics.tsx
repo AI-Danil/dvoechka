@@ -2,6 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import FileAttach from "@/components/FileAttach";
 
 const theoryQuestions = [
   "Как называется минимальный участок изображения, для которого независимым образом можно задать цвет?",
@@ -43,19 +44,22 @@ const practiceQuestions = [
 interface Grade7InformaticsProps {
   theory: string[];
   practice: string[];
+  attachments: Record<number, File | null>;
   onTheoryChange: (index: number, value: string) => void;
   onPracticeChange: (index: number, value: string) => void;
+  onAttachmentChange: (index: number, file: File | null) => void;
 }
 
 const Grade7Informatics = ({
   theory,
   practice,
+  attachments,
   onTheoryChange,
   onPracticeChange,
+  onAttachmentChange,
 }: Grade7InformaticsProps) => {
   return (
     <>
-      {/* BLOCK 1: Theory */}
       <section>
         <h2 className="text-xl font-bold mb-4 border-b pb-2 bg-muted/50 px-3 py-2 rounded-t">
           Блок 1: Теоретические вопросы
@@ -76,7 +80,6 @@ const Grade7Informatics = ({
         </div>
       </section>
 
-      {/* BLOCK 2: Practice */}
       <section>
         <h2 className="text-xl font-bold mb-4 border-b pb-2 bg-muted/50 px-3 py-2 rounded-t">
           Блок 2: Расчетные и практические задачи
@@ -92,6 +95,10 @@ const Grade7Informatics = ({
                   onChange={(e) => onPracticeChange(i, e.target.value)}
                   placeholder="Решение и ответ..."
                   className="min-h-[80px]"
+                />
+                <FileAttach
+                  file={attachments[i] ?? null}
+                  onFileChange={(file) => onAttachmentChange(i, file)}
                 />
               </CardContent>
             </Card>
