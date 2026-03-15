@@ -366,6 +366,21 @@ const Index = () => {
           />
         )}
 
+        {grade === "9" && (
+          <Grade9Informatics
+            answers={answers9}
+            attachments={attachments9}
+            onAnswerChange={(i, v) => {
+              setAnswers9((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments9((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
         <div className="text-center pt-4 pb-8">
           <Button
             onClick={handleSubmit}
