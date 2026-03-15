@@ -147,6 +147,16 @@ serve(async (req) => {
       message += `Задача 6: ${tasks.t6 || "(пусто)"}${attachmentMap.t6 ? " 📎" : ""}\n`;
     }
 
+    // Anticheat (в конце сообщения)
+    if (cheatLog && cheatLog.length > 0) {
+      message += `\n🛑 АНТИЧИТ (${cheatLog.length} событий):\n`;
+      (cheatLog as string[]).forEach((entry: string) => {
+        message += `• ${entry}\n`;
+      });
+    } else {
+      message += `\n🛑 АНТИЧИТ: ✅ Чисто\n`;
+    }
+
     // Truncate if needed
     if (message.length > 4000) {
       message = message.substring(0, 4000) + "\n...(обрезано)";
