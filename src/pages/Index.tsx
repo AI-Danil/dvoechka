@@ -234,7 +234,8 @@ const Index = () => {
 
   const handleStart = () => {
     const trimmedName = studentName.trim();
-    if (!RUSSIAN_NAME_REGEX.test(trimmedName)) {
+    const match = RUSSIAN_NAME_REGEX.exec(trimmedName);
+    if (!match) {
       toast({
         title: "Ошибка",
         description: "Введите Имя и Фамилию на русском языке (два слова, без цифр и спецсимволов)",
@@ -256,8 +257,16 @@ const Index = () => {
       return;
     }
 
+    // Parse attempt from optional third word
+    const parsedAttempt = match[1] || "1";
+    const nameParts = trimmedName.split(/\s+/);
+    const pureName = `${nameParts[0]} ${nameParts[1]}`;
+
+    setAttempt(parsedAttempt);
+    setCleanName(pureName);
+
     // Check if already submitted
-    const submittedKey = getSubmittedKey(grade, subject, trimmedName, attempt);
+    const submittedKey = getSubmittedKey(grade, subject, pureName, parsedAttempt);
     if (localStorage.getItem(submittedKey)) {
       toast({
         title: "Повторная сдача",
