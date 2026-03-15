@@ -48,7 +48,7 @@ const Index = () => {
   const [attachments7, setAttachments7] = useState<Record<number, File | null>>({});
 
   // Grade 9 answers
-  const [answers9, setAnswers9] = useState<string[]>(Array(6).fill(""));
+  const [answers9, setAnswers9] = useState<string[]>(Array(11).fill(""));
   const [attachments9, setAttachments9] = useState<Record<number, File | null>>({});
 
   // Anticheat
@@ -168,7 +168,8 @@ const Index = () => {
     for (const [key, file] of Object.entries(files)) {
       if (!file) continue;
       const ext = file.name.split(".").pop() || "bin";
-      const path = `${studentName.replace(/\s+/g, "_")}_${grade}/${timestamp}_${key}.${ext}`;
+      const safeName = `student_${timestamp}`;
+      const path = `${safeName}_${grade}/${key}.${ext}`;
 
       console.log(`Uploading file: ${file.name}, type: ${file.type}, size: ${file.size}, path: ${path}`);
 

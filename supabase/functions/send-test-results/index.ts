@@ -114,19 +114,29 @@ serve(async (req) => {
     } else if (body.type === "grade9") {
       const ans = body.answers as string[];
       const labels = [
-        "1.1 Подпрограммы",
-        "1.2 Рекурсия",
+        "1.1 Архитектура алгоритмов",
+        "1.2 Подпрограммы и их виды",
+        "1.3 Параметры подпрограмм",
+        "1.4 Индексация массивов",
+        "1.5 Алгоритмы сортировки",
+        "1.6 Теория моделирования",
+        "1.7 Основы кибернетики",
         "2.1 Поиск в массиве",
         "2.2 Трассировка",
         "3.1 Графы и пути",
         "4.1 Базы данных (логич. запросы)",
       ];
 
-      message += `\n📝 ОТВЕТЫ:\n`;
-      ans.forEach((a: string, i: number) => {
+      message += `\n📝 БЛОК 1 (Теория):\n`;
+      for (let i = 0; i < 7; i++) {
+        message += `${labels[i]}: ${ans[i] || "(пусто)"}\n\n`;
+      }
+
+      message += `📊 БЛОКИ 2-4 (Практика):\n`;
+      for (let i = 7; i < ans.length; i++) {
         const hasFile = attachmentMap[String(i)];
-        message += `${labels[i]}: ${a || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
-      });
+        message += `${labels[i]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+      }
     } else {
       const blitz = body.blitz as string[];
       const tasks = body.tasks as Record<string, string>;
