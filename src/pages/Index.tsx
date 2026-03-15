@@ -105,7 +105,7 @@ const Index = () => {
   // --- Autosave: persist draft on every answer change ---
   useEffect(() => {
     if (screen !== "test" || !grade || !subject) return;
-    const key = getDraftKey(grade, subject);
+    const key = getDraftKey(grade, subject, attempt);
     let data: Record<string, unknown> = {};
     if (grade === "8") {
       data = { blitz8, tasks8 };
