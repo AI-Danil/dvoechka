@@ -83,7 +83,7 @@ const Index = () => {
   // --- Autosave: restore draft on test start ---
   useEffect(() => {
     if (screen !== "test" || !grade || !subject) return;
-    const key = getDraftKey(grade, subject);
+    const key = getDraftKey(grade, subject, attempt);
     const saved = localStorage.getItem(key);
     if (!saved) return;
     try {
