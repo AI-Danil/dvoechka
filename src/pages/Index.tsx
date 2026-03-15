@@ -52,6 +52,7 @@ const Index = () => {
   const [studentName, setStudentName] = useState("");
   const [grade, setGrade] = useState("");
   const [subject, setSubject] = useState("");
+  const [attempt, setAttempt] = useState("1");
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
