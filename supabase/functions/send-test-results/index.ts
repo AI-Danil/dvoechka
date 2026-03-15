@@ -82,16 +82,6 @@ serve(async (req) => {
     message += `📚 ${grade} класс, ${subject === "informatics" ? "Информатика" : subject}\n`;
     message += `⏱ Осталось: ${String(timeLeftMin).padStart(2, "0")}:${String(timeLeftSec).padStart(2, "0")}\n\n`;
 
-    // Anticheat
-    if (cheatLog && cheatLog.length > 0) {
-      message += `🛑 АНТИЧИТ (${cheatLog.length} событий):\n`;
-      (cheatLog as string[]).forEach((entry: string) => {
-        message += `• ${entry}\n`;
-      });
-    } else {
-      message += `🛑 АНТИЧИТ: ✅ Чисто\n`;
-    }
-
     const attachmentMap = (attachments || {}) as Record<string, string>;
     const attachmentKeys = Object.keys(attachmentMap);
     console.log("Attachments received:", JSON.stringify(attachmentMap));
