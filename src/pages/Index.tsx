@@ -85,7 +85,7 @@ const Index = () => {
     document.addEventListener("visibilitychange", onVisibility);
     document.addEventListener("copy", onCopy);
     document.addEventListener("paste", onPaste);
-    document.addEventListener("keyup", onKeyUp);
+    document.addEventListener("keydown", onKeyDown);
     document.addEventListener("contextmenu", onContext);
 
     return () => {
