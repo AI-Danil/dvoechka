@@ -48,7 +48,7 @@ const Index = () => {
   const [attachments7, setAttachments7] = useState<Record<number, File | null>>({});
 
   // Grade 9 answers
-  const [answers9, setAnswers9] = useState<string[]>(Array(6).fill(""));
+  const [answers9, setAnswers9] = useState<string[]>(Array(11).fill(""));
   const [attachments9, setAttachments9] = useState<Record<number, File | null>>({});
 
   // Anticheat
