@@ -256,7 +256,7 @@ const Index = () => {
     }
 
     // Check if already submitted
-    const submittedKey = getSubmittedKey(grade, subject, trimmedName);
+    const submittedKey = getSubmittedKey(grade, subject, trimmedName, attempt);
     if (localStorage.getItem(submittedKey)) {
       toast({
         title: "Повторная сдача",
