@@ -438,7 +438,7 @@ const Index = () => {
       <div className="sticky top-0 z-50 bg-card border-b shadow-sm px-4 py-3">
         <div className="flex items-center justify-between">
           <span className="font-semibold text-muted-foreground">
-            Ученик: {studentName} — {grade} класс, {subjectLabel}
+            Ученик: {cleanName} — {grade} класс, {subjectLabel}
           </span>
           <span className={`font-mono text-lg font-bold ${timeLeft < 300 ? "text-destructive" : "text-foreground"}`}>
             Осталось: {formatTime(timeLeft)}
