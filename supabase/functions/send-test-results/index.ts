@@ -109,6 +109,22 @@ serve(async (req) => {
         const hasFile = attachmentMap[String(i)];
         message += `${i + 8}. ${a || "(пусто)"}${hasFile ? " 📎" : ""}\n`;
       });
+    } else if (body.type === "grade9") {
+      const ans = body.answers as string[];
+      const labels = [
+        "1.1 Подпрограммы",
+        "1.2 Рекурсия",
+        "2.1 Поиск в массиве",
+        "2.2 Трассировка",
+        "3.1 Графы и пути",
+        "4.1 Базы данных (логич. запросы)",
+      ];
+
+      message += `\n📝 ОТВЕТЫ:\n`;
+      ans.forEach((a: string, i: number) => {
+        const hasFile = attachmentMap[String(i)];
+        message += `${labels[i]}: ${a || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+      });
     } else {
       const blitz = body.blitz as string[];
       const tasks = body.tasks as Record<string, string>;

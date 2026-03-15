@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Grade8Informatics from "@/components/tests/Grade8Informatics";
 import Grade7Informatics from "@/components/tests/Grade7Informatics";
+import Grade9Informatics from "@/components/tests/Grade9Informatics";
 
 type Screen = "login" | "test" | "success";
 
@@ -22,6 +23,7 @@ const TOTAL_TIME = 40 * 60;
 const AVAILABLE_TESTS: Record<string, string[]> = {
   "7": ["informatics"],
   "8": ["informatics"],
+  "9": ["informatics"],
 };
 
 const Index = () => {
@@ -44,6 +46,10 @@ const Index = () => {
   const [theory7, setTheory7] = useState<string[]>(Array(7).fill(""));
   const [practice7, setPractice7] = useState<string[]>(Array(6).fill(""));
   const [attachments7, setAttachments7] = useState<Record<number, File | null>>({});
+
+  // Grade 9 answers
+  const [answers9, setAnswers9] = useState<string[]>(Array(6).fill(""));
+  const [attachments9, setAttachments9] = useState<Record<number, File | null>>({});
 
   // Anticheat
   const cheatLogRef = useRef<string[]>([]);
@@ -192,6 +198,12 @@ const Index = () => {
         type: "grade8",
         blitz: blitz8,
         tasks: tasks8,
+      };
+    } else if (grade === "9") {
+      fileUrls = await uploadAttachments(attachments9);
+      answers = {
+        type: "grade9",
+        answers: answers9,
       };
     } else {
       fileUrls = await uploadAttachments(attachments7);
@@ -351,6 +363,21 @@ const Index = () => {
               });
             }}
             onAttachmentChange={(i, file) => setAttachments7((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "9" && (
+          <Grade9Informatics
+            answers={answers9}
+            attachments={attachments9}
+            onAnswerChange={(i, v) => {
+              setAnswers9((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments9((prev) => ({ ...prev, [i]: file }))}
           />
         )}
 
