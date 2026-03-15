@@ -336,9 +336,9 @@ const Index = () => {
     }
 
     // Mark as submitted & clear draft
-    const submittedKey = getSubmittedKey(grade, subject, studentName.trim());
+    const submittedKey = getSubmittedKey(grade, subject, studentName.trim(), attempt);
     localStorage.setItem(submittedKey, "1");
-    localStorage.removeItem(getDraftKey(grade, subject));
+    localStorage.removeItem(getDraftKey(grade, subject, attempt));
 
     setScreen("success");
     setSubmitting(false);
