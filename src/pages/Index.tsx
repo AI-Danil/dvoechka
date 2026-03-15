@@ -23,6 +23,7 @@ const TOTAL_TIME = 40 * 60;
 const AVAILABLE_TESTS: Record<string, string[]> = {
   "7": ["informatics"],
   "8": ["informatics"],
+  "9": ["informatics"],
 };
 
 const Index = () => {
