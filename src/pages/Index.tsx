@@ -170,15 +170,24 @@ const Index = () => {
       const ext = file.name.split(".").pop() || "bin";
       const path = `${studentName.replace(/\s+/g, "_")}_${grade}/${timestamp}_${key}.${ext}`;
 
+      console.log(`Uploading file: ${file.name}, type: ${file.type}, size: ${file.size}, path: ${path}`);
+
       const { error } = await supabase.storage
         .from("test-attachments")
-        .upload(path, file);
+        .upload(path, file, {
+          contentType: file.type,
+          upsert: true,
+        });
 
-      if (!error) {
+      if (error) {
+        console.error(`Upload failed for ${key}:`, error);
+        toast({ title: "Ошибка загрузки", description: `Не удалось загрузить файл "${file.name}": ${error.message}`, variant: "destructive" });
+      } else {
         const { data } = supabase.storage
           .from("test-attachments")
           .getPublicUrl(path);
         urls[String(key)] = data.publicUrl;
+        console.log(`Upload success for ${key}: ${data.publicUrl}`);
       }
     }
     return urls;

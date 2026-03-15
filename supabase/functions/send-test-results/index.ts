@@ -94,6 +94,8 @@ serve(async (req) => {
 
     const attachmentMap = (attachments || {}) as Record<string, string>;
     const attachmentKeys = Object.keys(attachmentMap);
+    console.log("Attachments received:", JSON.stringify(attachmentMap));
+    console.log("Attachment keys:", attachmentKeys);
 
     if (body.type === "grade7") {
       const theory = body.theory as string[];
