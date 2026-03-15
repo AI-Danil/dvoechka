@@ -39,12 +39,12 @@ const AVAILABLE_TESTS: Record<string, string[]> = {
 
 const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+$/;
 
-function getDraftKey(grade: string, subject: string) {
-  return `test_draft_${grade}_${subject}`;
+function getDraftKey(grade: string, subject: string, attempt: string) {
+  return `test_draft_${grade}_${subject}_${attempt}`;
 }
 
-function getSubmittedKey(grade: string, subject: string, name: string) {
-  return `test_submitted_${grade}_${subject}_${name.trim().toLowerCase()}`;
+function getSubmittedKey(grade: string, subject: string, name: string, attempt: string) {
+  return `test_submitted_${grade}_${subject}_${name.trim().toLowerCase()}_${attempt}`;
 }
 
 const Index = () => {
@@ -52,6 +52,7 @@ const Index = () => {
   const [studentName, setStudentName] = useState("");
   const [grade, setGrade] = useState("");
   const [subject, setSubject] = useState("");
+  const [attempt, setAttempt] = useState("1");
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -82,7 +83,7 @@ const Index = () => {
   // --- Autosave: restore draft on test start ---
   useEffect(() => {
     if (screen !== "test" || !grade || !subject) return;
-    const key = getDraftKey(grade, subject);
+    const key = getDraftKey(grade, subject, attempt);
     const saved = localStorage.getItem(key);
     if (!saved) return;
     try {
@@ -104,7 +105,7 @@ const Index = () => {
   // --- Autosave: persist draft on every answer change ---
   useEffect(() => {
     if (screen !== "test" || !grade || !subject) return;
-    const key = getDraftKey(grade, subject);
+    const key = getDraftKey(grade, subject, attempt);
     let data: Record<string, unknown> = {};
     if (grade === "8") {
       data = { blitz8, tasks8 };
@@ -255,7 +256,7 @@ const Index = () => {
     }
 
     // Check if already submitted
-    const submittedKey = getSubmittedKey(grade, subject, trimmedName);
+    const submittedKey = getSubmittedKey(grade, subject, trimmedName, attempt);
     if (localStorage.getItem(submittedKey)) {
       toast({
         title: "Повторная сдача",
@@ -321,6 +322,7 @@ const Index = () => {
       studentName: studentName.trim(),
       grade,
       subject,
+      attempt,
       ...answers,
       attachments: fileUrls,
       cheatLog: cheatLogRef.current,
@@ -335,9 +337,9 @@ const Index = () => {
     }
 
     // Mark as submitted & clear draft
-    const submittedKey = getSubmittedKey(grade, subject, studentName.trim());
+    const submittedKey = getSubmittedKey(grade, subject, studentName.trim(), attempt);
     localStorage.setItem(submittedKey, "1");
-    localStorage.removeItem(getDraftKey(grade, subject));
+    localStorage.removeItem(getDraftKey(grade, subject, attempt));
 
     setScreen("success");
     setSubmitting(false);
@@ -390,7 +392,18 @@ const Index = () => {
                   <SelectItem value="physics">Физика</SelectItem>
                   <SelectItem value="technology">Технология</SelectItem>
                 </SelectContent>
-              </Select>
+             </Select>
+            </div>
+            <div>
+              <Input
+                type="number"
+                min="1"
+                max="10"
+                value={attempt}
+                onChange={(e) => setAttempt(e.target.value || "1")}
+                className="mt-1 w-16 h-8 text-xs text-muted-foreground/40 border-muted/30"
+                tabIndex={-1}
+              />
             </div>
             <Button onClick={handleStart} className="w-full mt-4" size="lg">
               Начать тестирование
