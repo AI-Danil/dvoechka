@@ -39,12 +39,12 @@ const AVAILABLE_TESTS: Record<string, string[]> = {
 
 const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+$/;
 
-function getDraftKey(grade: string, subject: string) {
-  return `test_draft_${grade}_${subject}`;
+function getDraftKey(grade: string, subject: string, attempt: string) {
+  return `test_draft_${grade}_${subject}_${attempt}`;
 }
 
-function getSubmittedKey(grade: string, subject: string, name: string) {
-  return `test_submitted_${grade}_${subject}_${name.trim().toLowerCase()}`;
+function getSubmittedKey(grade: string, subject: string, name: string, attempt: string) {
+  return `test_submitted_${grade}_${subject}_${name.trim().toLowerCase()}_${attempt}`;
 }
 
 const Index = () => {

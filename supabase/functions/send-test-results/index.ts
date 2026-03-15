@@ -71,7 +71,7 @@ serve(async (req) => {
     if (!CHAT_ID) throw new Error("TELEGRAM_CHAT_ID is not configured");
 
     const body = await req.json();
-    const { studentName, grade, subject, cheatLog, timeSpent, attachments } = body;
+    const { studentName, grade, subject, cheatLog, timeSpent, attachments, attempt } = body;
 
     const minutes = Math.floor(timeSpent / 60);
     const seconds = timeSpent % 60;
@@ -80,6 +80,9 @@ serve(async (req) => {
 
     let message = `🚀 ОТВЕТ: ${studentName}\n`;
     message += `📚 ${grade} класс, ${subject === "informatics" ? "Информатика" : subject}\n`;
+    if (attempt && String(attempt) !== "1") {
+      message += `🔄 Попытка: ${attempt}\n`;
+    }
     message += `⏱ Осталось: ${String(timeLeftMin).padStart(2, "0")}:${String(timeLeftSec).padStart(2, "0")}\n\n`;
 
     const attachmentMap = (attachments || {}) as Record<string, string>;
