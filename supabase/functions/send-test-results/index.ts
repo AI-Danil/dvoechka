@@ -82,16 +82,6 @@ serve(async (req) => {
     message += `📚 ${grade} класс, ${subject === "informatics" ? "Информатика" : subject}\n`;
     message += `⏱ Осталось: ${String(timeLeftMin).padStart(2, "0")}:${String(timeLeftSec).padStart(2, "0")}\n\n`;
 
-    // Anticheat
-    if (cheatLog && cheatLog.length > 0) {
-      message += `🛑 АНТИЧИТ (${cheatLog.length} событий):\n`;
-      (cheatLog as string[]).forEach((entry: string) => {
-        message += `• ${entry}\n`;
-      });
-    } else {
-      message += `🛑 АНТИЧИТ: ✅ Чисто\n`;
-    }
-
     const attachmentMap = (attachments || {}) as Record<string, string>;
     const attachmentKeys = Object.keys(attachmentMap);
     console.log("Attachments received:", JSON.stringify(attachmentMap));
@@ -155,6 +145,16 @@ serve(async (req) => {
       message += `Задача 4: ${tasks.t4 || "(пусто)"}${attachmentMap.t4 ? " 📎" : ""}\n`;
       message += `Задача 5: ${tasks.t5 || "(пусто)"}${attachmentMap.t5 ? " 📎" : ""}\n`;
       message += `Задача 6: ${tasks.t6 || "(пусто)"}${attachmentMap.t6 ? " 📎" : ""}\n`;
+    }
+
+    // Anticheat (в конце сообщения)
+    if (cheatLog && cheatLog.length > 0) {
+      message += `\n🛑 АНТИЧИТ (${cheatLog.length} событий):\n`;
+      (cheatLog as string[]).forEach((entry: string) => {
+        message += `• ${entry}\n`;
+      });
+    } else {
+      message += `\n🛑 АНТИЧИТ: ✅ Чисто\n`;
     }
 
     // Truncate if needed

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import Grade8Informatics from "@/components/tests/Grade8Informatics";
@@ -26,6 +37,16 @@ const AVAILABLE_TESTS: Record<string, string[]> = {
   "9": ["informatics"],
 };
 
+const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+$/;
+
+function getDraftKey(grade: string, subject: string) {
+  return `test_draft_${grade}_${subject}`;
+}
+
+function getSubmittedKey(grade: string, subject: string, name: string) {
+  return `test_submitted_${grade}_${subject}_${name.trim().toLowerCase()}`;
+}
+
 const Index = () => {
   const [screen, setScreen] = useState<Screen>("login");
   const [studentName, setStudentName] = useState("");
@@ -33,6 +54,8 @@ const Index = () => {
   const [subject, setSubject] = useState("");
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
   const [submitting, setSubmitting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [warned5min, setWarned5min] = useState(false);
   const { toast } = useToast();
 
   // Grade 8 answers
@@ -55,6 +78,61 @@ const Index = () => {
   const cheatLogRef = useRef<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const testActiveRef = useRef(false);
+
+  // --- Autosave: restore draft on test start ---
+  useEffect(() => {
+    if (screen !== "test" || !grade || !subject) return;
+    const key = getDraftKey(grade, subject);
+    const saved = localStorage.getItem(key);
+    if (!saved) return;
+    try {
+      const draft = JSON.parse(saved);
+      if (grade === "8") {
+        if (draft.blitz8) setBlitz8(draft.blitz8);
+        if (draft.tasks8) setTasks8(draft.tasks8);
+      } else if (grade === "9") {
+        if (draft.answers9) setAnswers9(draft.answers9);
+      } else if (grade === "7") {
+        if (draft.theory7) setTheory7(draft.theory7);
+        if (draft.practice7) setPractice7(draft.practice7);
+      }
+    } catch {
+      // ignore corrupt data
+    }
+  }, [screen, grade, subject]);
+
+  // --- Autosave: persist draft on every answer change ---
+  useEffect(() => {
+    if (screen !== "test" || !grade || !subject) return;
+    const key = getDraftKey(grade, subject);
+    let data: Record<string, unknown> = {};
+    if (grade === "8") {
+      data = { blitz8, tasks8 };
+    } else if (grade === "9") {
+      data = { answers9 };
+    } else if (grade === "7") {
+      data = { theory7, practice7 };
+    }
+    localStorage.setItem(key, JSON.stringify(data));
+  }, [screen, grade, subject, blitz8, tasks8, answers9, theory7, practice7]);
+
+  // --- Progress calculation ---
+  const { answered, total } = useMemo(() => {
+    if (grade === "8") {
+      const blitzFilled = blitz8.filter(Boolean).length;
+      const tasksFilled = Object.values(tasks8).filter(Boolean).length;
+      return { answered: blitzFilled + tasksFilled, total: 7 + 6 };
+    } else if (grade === "9") {
+      return { answered: answers9.filter(Boolean).length, total: 11 };
+    } else if (grade === "7") {
+      const tFilled = theory7.filter(Boolean).length;
+      const pFilled = practice7.filter(Boolean).length;
+      return { answered: tFilled + pFilled, total: 7 + 6 };
+    }
+    return { answered: 0, total: 1 };
+  }, [grade, blitz8, tasks8, answers9, theory7, practice7]);
+
+  const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
   const getTime = () => {
     const now = new Date();
@@ -134,6 +212,18 @@ const Index = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
+  // 5-minute warning
+  useEffect(() => {
+    if (screen === "test" && timeLeft === 300 && !warned5min) {
+      setWarned5min(true);
+      toast({
+        title: "⚠️ Осталось 5 минут!",
+        description: "Скоро тест будет автоматически завершён. Проверьте свои ответы.",
+        variant: "destructive",
+      });
+    }
+  }, [timeLeft, screen, warned5min, toast]);
+
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -141,8 +231,13 @@ const Index = () => {
   };
 
   const handleStart = () => {
-    if (studentName.trim().length < 3) {
-      toast({ title: "Ошибка", description: "Введите корректное имя (минимум 3 символа)", variant: "destructive" });
+    const trimmedName = studentName.trim();
+    if (!RUSSIAN_NAME_REGEX.test(trimmedName)) {
+      toast({
+        title: "Ошибка",
+        description: "Введите Имя и Фамилию на русском языке (два слова, без цифр и спецсимволов)",
+        variant: "destructive",
+      });
       return;
     }
     if (!grade) {
@@ -158,6 +253,18 @@ const Index = () => {
       toast({ title: "Тест недоступен", description: `Тест для ${grade} класса по этому предмету пока не добавлен.`, variant: "destructive" });
       return;
     }
+
+    // Check if already submitted
+    const submittedKey = getSubmittedKey(grade, subject, trimmedName);
+    if (localStorage.getItem(submittedKey)) {
+      toast({
+        title: "Повторная сдача",
+        description: "Вы уже прошли этот тест. Повторная сдача невозможна.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setScreen("test");
   };
 
@@ -170,8 +277,6 @@ const Index = () => {
       const ext = file.name.split(".").pop() || "bin";
       const safeName = `student_${timestamp}`;
       const path = `${safeName}_${grade}/${key}.${ext}`;
-
-      console.log(`Uploading file: ${file.name}, type: ${file.type}, size: ${file.size}, path: ${path}`);
 
       const { error } = await supabase.storage
         .from("test-attachments")
@@ -188,7 +293,6 @@ const Index = () => {
           .from("test-attachments")
           .getPublicUrl(path);
         urls[String(key)] = data.publicUrl;
-        console.log(`Upload success for ${key}: ${data.publicUrl}`);
       }
     }
     return urls;
@@ -204,28 +308,17 @@ const Index = () => {
 
     if (grade === "8") {
       fileUrls = await uploadAttachments(attachments8);
-      answers = {
-        type: "grade8",
-        blitz: blitz8,
-        tasks: tasks8,
-      };
+      answers = { type: "grade8", blitz: blitz8, tasks: tasks8 };
     } else if (grade === "9") {
       fileUrls = await uploadAttachments(attachments9);
-      answers = {
-        type: "grade9",
-        answers: answers9,
-      };
+      answers = { type: "grade9", answers: answers9 };
     } else {
       fileUrls = await uploadAttachments(attachments7);
-      answers = {
-        type: "grade7",
-        theory: theory7,
-        practice: practice7,
-      };
+      answers = { type: "grade7", theory: theory7, practice: practice7 };
     }
 
     const payload = {
-      studentName,
+      studentName: studentName.trim(),
       grade,
       subject,
       ...answers,
@@ -235,13 +328,16 @@ const Index = () => {
     };
 
     try {
-      const { error } = await supabase.functions.invoke("send-test-results", {
-        body: payload,
-      });
+      const { error } = await supabase.functions.invoke("send-test-results", { body: payload });
       if (error) throw error;
     } catch (e) {
       console.error("Failed to send results:", e);
     }
+
+    // Mark as submitted & clear draft
+    const submittedKey = getSubmittedKey(grade, subject, studentName.trim());
+    localStorage.setItem(submittedKey, "1");
+    localStorage.removeItem(getDraftKey(grade, subject));
 
     setScreen("success");
     setSubmitting(false);
@@ -268,6 +364,7 @@ const Index = () => {
                 onChange={(e) => setStudentName(e.target.value)}
                 className="mt-1"
               />
+              <p className="text-xs text-muted-foreground mt-1">Два слова на русском, без цифр и символов</p>
             </div>
             <div>
               <Label>Класс:</Label>
@@ -326,13 +423,22 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-8">
-      <div className="sticky top-0 z-50 bg-card border-b shadow-sm px-4 py-3 flex items-center justify-between">
-        <span className="font-semibold text-muted-foreground">
-          Ученик: {studentName} — {grade} класс, {subjectLabel}
-        </span>
-        <span className={`font-mono text-lg font-bold ${timeLeft < 300 ? "text-destructive" : "text-foreground"}`}>
-          Осталось: {formatTime(timeLeft)}
-        </span>
+      <div className="sticky top-0 z-50 bg-card border-b shadow-sm px-4 py-3">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold text-muted-foreground">
+            Ученик: {studentName} — {grade} класс, {subjectLabel}
+          </span>
+          <span className={`font-mono text-lg font-bold ${timeLeft < 300 ? "text-destructive" : "text-foreground"}`}>
+            Осталось: {formatTime(timeLeft)}
+          </span>
+        </div>
+        <div className="mt-2 flex items-center gap-3">
+          <Progress value={progressPercent} className="flex-1 h-2" />
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {answered}/{total} ({progressPercent}%)
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">💾 Ответы сохраняются автоматически</p>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 mt-6 space-y-8">
@@ -393,7 +499,7 @@ const Index = () => {
 
         <div className="text-center pt-4 pb-8">
           <Button
-            onClick={handleSubmit}
+            onClick={() => setConfirmOpen(true)}
             disabled={submitting}
             size="lg"
             className="bg-accent text-accent-foreground hover:bg-accent/90 px-10 py-6 text-lg"
@@ -402,6 +508,22 @@ const Index = () => {
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Вы уверены?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. После отправки вернуться к тесту будет невозможно.
+              Заполнено {answered} из {total} вопросов.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSubmit}>Отправить</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
