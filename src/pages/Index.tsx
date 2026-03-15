@@ -329,7 +329,7 @@ const Index = () => {
     }
 
     const payload = {
-      studentName: studentName.trim(),
+      studentName: cleanName,
       grade,
       subject,
       attempt,
