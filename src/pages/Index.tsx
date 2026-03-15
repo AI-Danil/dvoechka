@@ -37,7 +37,7 @@ const AVAILABLE_TESTS: Record<string, string[]> = {
   "9": ["informatics"],
 };
 
-const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+$/;
+const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+(?:\s+(\d+))?$/;
 
 function getDraftKey(grade: string, subject: string, attempt: string) {
   return `test_draft_${grade}_${subject}_${attempt}`;
@@ -53,6 +53,7 @@ const Index = () => {
   const [grade, setGrade] = useState("");
   const [subject, setSubject] = useState("");
   const [attempt, setAttempt] = useState("1");
+  const [cleanName, setCleanName] = useState("");
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -233,7 +234,8 @@ const Index = () => {
 
   const handleStart = () => {
     const trimmedName = studentName.trim();
-    if (!RUSSIAN_NAME_REGEX.test(trimmedName)) {
+    const match = RUSSIAN_NAME_REGEX.exec(trimmedName);
+    if (!match) {
       toast({
         title: "Ошибка",
         description: "Введите Имя и Фамилию на русском языке (два слова, без цифр и спецсимволов)",
@@ -255,8 +257,16 @@ const Index = () => {
       return;
     }
 
+    // Parse attempt from optional third word
+    const parsedAttempt = match[1] || "1";
+    const nameParts = trimmedName.split(/\s+/);
+    const pureName = `${nameParts[0]} ${nameParts[1]}`;
+
+    setAttempt(parsedAttempt);
+    setCleanName(pureName);
+
     // Check if already submitted
-    const submittedKey = getSubmittedKey(grade, subject, trimmedName, attempt);
+    const submittedKey = getSubmittedKey(grade, subject, pureName, parsedAttempt);
     if (localStorage.getItem(submittedKey)) {
       toast({
         title: "Повторная сдача",
@@ -319,7 +329,7 @@ const Index = () => {
     }
 
     const payload = {
-      studentName: studentName.trim(),
+      studentName: cleanName,
       grade,
       subject,
       attempt,
@@ -337,7 +347,7 @@ const Index = () => {
     }
 
     // Mark as submitted & clear draft
-    const submittedKey = getSubmittedKey(grade, subject, studentName.trim(), attempt);
+    const submittedKey = getSubmittedKey(grade, subject, cleanName, attempt);
     localStorage.setItem(submittedKey, "1");
     localStorage.removeItem(getDraftKey(grade, subject, attempt));
 
@@ -394,17 +404,6 @@ const Index = () => {
                 </SelectContent>
              </Select>
             </div>
-            <div>
-              <Input
-                type="number"
-                min="1"
-                max="10"
-                value={attempt}
-                onChange={(e) => setAttempt(e.target.value || "1")}
-                className="mt-1 w-16 h-8 text-xs text-muted-foreground/40 border-muted/30"
-                tabIndex={-1}
-              />
-            </div>
             <Button onClick={handleStart} className="w-full mt-4" size="lg">
               Начать тестирование
             </Button>
@@ -439,7 +438,7 @@ const Index = () => {
       <div className="sticky top-0 z-50 bg-card border-b shadow-sm px-4 py-3">
         <div className="flex items-center justify-between">
           <span className="font-semibold text-muted-foreground">
-            Ученик: {studentName} — {grade} класс, {subjectLabel}
+            Ученик: {cleanName} — {grade} класс, {subjectLabel}
           </span>
           <span className={`font-mono text-lg font-bold ${timeLeft < 300 ? "text-destructive" : "text-foreground"}`}>
             Осталось: {formatTime(timeLeft)}
