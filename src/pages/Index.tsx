@@ -322,6 +322,7 @@ const Index = () => {
       studentName: studentName.trim(),
       grade,
       subject,
+      attempt,
       ...answers,
       attachments: fileUrls,
       cheatLog: cheatLogRef.current,
