@@ -94,7 +94,7 @@ const Index = () => {
       document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("copy", onCopy);
       document.removeEventListener("paste", onPaste);
-      document.removeEventListener("keyup", onKeyUp);
+      document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("contextmenu", onContext);
     };
   }, [screen, logCheat]);
