@@ -199,6 +199,12 @@ const Index = () => {
         blitz: blitz8,
         tasks: tasks8,
       };
+    } else if (grade === "9") {
+      fileUrls = await uploadAttachments(attachments9);
+      answers = {
+        type: "grade9",
+        answers: answers9,
+      };
     } else {
       fileUrls = await uploadAttachments(attachments7);
       answers = {
