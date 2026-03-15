@@ -37,7 +37,7 @@ const AVAILABLE_TESTS: Record<string, string[]> = {
   "9": ["informatics"],
 };
 
-const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+$/;
+const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+(?:\s+(\d+))?$/;
 
 function getDraftKey(grade: string, subject: string, attempt: string) {
   return `test_draft_${grade}_${subject}_${attempt}`;
