@@ -2,6 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import FileAttach from "@/components/FileAttach";
 
 const blitzQuestions = [
   "Чему равно значение выражения НЕ (НЕ (5 > 3))?",
@@ -13,18 +14,24 @@ const blitzQuestions = [
   "Что окажется в переменной x после: x = 10; x = x + 5; x = 2?",
 ];
 
+const taskKeys = ["t1", "t2", "t3", "t4", "t5", "t6"] as const;
+
 interface Grade8InformaticsProps {
   blitz: string[];
   tasks: Record<string, string>;
+  attachments: Record<string, File | null>;
   onBlitzChange: (index: number, value: string) => void;
   onTaskChange: (key: string, value: string) => void;
+  onAttachmentChange: (key: string, file: File | null) => void;
 }
 
 const Grade8Informatics = ({
   blitz,
   tasks,
+  attachments,
   onBlitzChange,
   onTaskChange,
+  onAttachmentChange,
 }: Grade8InformaticsProps) => {
   return (
     <>
@@ -59,12 +66,8 @@ const Grade8Informatics = ({
                 под каждый пиксель строго 9 бит памяти, хотя фактически может отображать только 300
                 различных цветов. Какой объём памяти (в байтах) займёт один снимок экрана? Покажите решение.
               </p>
-              <Textarea
-                value={tasks.t1}
-                onChange={(e) => onTaskChange("t1", e.target.value)}
-                placeholder="Ваше решение..."
-                className="min-h-[100px]"
-              />
+              <Textarea value={tasks.t1} onChange={(e) => onTaskChange("t1", e.target.value)} placeholder="Ваше решение..." className="min-h-[100px]" />
+              <FileAttach file={attachments.t1 ?? null} onFileChange={(f) => onAttachmentChange("t1", f)} />
             </CardContent>
           </Card>
           <Card>
@@ -74,11 +77,8 @@ const Grade8Informatics = ({
                 Робот идёт вперёд, если выполняется условие: (Датчик А видит стену ИЛИ НЕ Датчик Б
                 видит яму). При скольких комбинациях состояний датчиков (из 4 возможных) робот никуда не пойдёт?
               </p>
-              <Input
-                value={tasks.t2}
-                onChange={(e) => onTaskChange("t2", e.target.value)}
-                placeholder="Ответ и обоснование"
-              />
+              <Input value={tasks.t2} onChange={(e) => onTaskChange("t2", e.target.value)} placeholder="Ответ и обоснование" />
+              <FileAttach file={attachments.t2 ?? null} onFileChange={(f) => onAttachmentChange("t2", f)} />
             </CardContent>
           </Card>
           <Card>
@@ -88,11 +88,8 @@ const Grade8Informatics = ({
                 Дан алгоритм: S = 13; i = 1; Пока S &lt; 50: {"{"} S = S + (i * 2); i = i + 3; {"}"}.
                 Чему будет равно значение S после завершения цикла?
               </p>
-              <Input
-                value={tasks.t3}
-                onChange={(e) => onTaskChange("t3", e.target.value)}
-                placeholder="Ответ:"
-              />
+              <Input value={tasks.t3} onChange={(e) => onTaskChange("t3", e.target.value)} placeholder="Ответ:" />
+              <FileAttach file={attachments.t3 ?? null} onFileChange={(f) => onAttachmentChange("t3", f)} />
             </CardContent>
           </Card>
         </div>
@@ -111,12 +108,8 @@ const Grade8Informatics = ({
                 не разделилось поровну (остаток), уходит в пользу казны. Напишите код, который выводит:
                 «Каждый герой получил: [сумма]. В казну ушло: [налог + остаток]».
               </p>
-              <Textarea
-                value={tasks.t4}
-                onChange={(e) => onTaskChange("t4", e.target.value)}
-                placeholder="Код на Python..."
-                className="min-h-[120px] font-mono text-sm"
-              />
+              <Textarea value={tasks.t4} onChange={(e) => onTaskChange("t4", e.target.value)} placeholder="Код на Python..." className="min-h-[120px] font-mono text-sm" />
+              <FileAttach file={attachments.t4 ?? null} onFileChange={(f) => onAttachmentChange("t4", f)} />
             </CardContent>
           </Card>
           <Card>
@@ -128,12 +121,8 @@ const Grade8Informatics = ({
                 строго одной строкой через print() с параметром sep="---": Рецепт: Руда: [значение] ---
                 Мана: [значение] --- Уголь: [значение].
               </p>
-              <Textarea
-                value={tasks.t5}
-                onChange={(e) => onTaskChange("t5", e.target.value)}
-                placeholder="Код на Python..."
-                className="min-h-[120px] font-mono text-sm"
-              />
+              <Textarea value={tasks.t5} onChange={(e) => onTaskChange("t5", e.target.value)} placeholder="Код на Python..." className="min-h-[120px] font-mono text-sm" />
+              <FileAttach file={attachments.t5 ?? null} onFileChange={(f) => onAttachmentChange("t5", f)} />
             </CardContent>
           </Card>
           <Card>
@@ -146,12 +135,8 @@ count = input("Героев: ")
 total = price * count
 print("Итого: " + total)`}
               </pre>
-              <Textarea
-                value={tasks.t6}
-                onChange={(e) => onTaskChange("t6", e.target.value)}
-                placeholder="Исправленный код..."
-                className="min-h-[120px] font-mono text-sm"
-              />
+              <Textarea value={tasks.t6} onChange={(e) => onTaskChange("t6", e.target.value)} placeholder="Исправленный код..." className="min-h-[120px] font-mono text-sm" />
+              <FileAttach file={attachments.t6 ?? null} onFileChange={(f) => onAttachmentChange("t6", f)} />
             </CardContent>
           </Card>
         </div>
