@@ -194,8 +194,7 @@ const Index = () => {
     };
   }, [screen, logCheat]);
 
-  // Keep handleSubmitRef in sync
-  handleSubmitRef.current = handleSubmit;
+  // Timer
 
   // Timer
   useEffect(() => {
