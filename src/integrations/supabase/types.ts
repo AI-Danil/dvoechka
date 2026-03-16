@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      test_results: {
+        Row: {
+          answers: Json
+          attachments: Json | null
+          attempt: number | null
+          cheat_log: Json | null
+          created_at: string | null
+          grade: number
+          id: string
+          student_name: string
+          subject: string
+          test_type: string | null
+          time_spent: number | null
+        }
+        Insert: {
+          answers: Json
+          attachments?: Json | null
+          attempt?: number | null
+          cheat_log?: Json | null
+          created_at?: string | null
+          grade: number
+          id?: string
+          student_name: string
+          subject: string
+          test_type?: string | null
+          time_spent?: number | null
+        }
+        Update: {
+          answers?: Json
+          attachments?: Json | null
+          attempt?: number | null
+          cheat_log?: Json | null
+          created_at?: string | null
+          grade?: number
+          id?: string
+          student_name?: string
+          subject?: string
+          test_type?: string | null
+          time_spent?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
