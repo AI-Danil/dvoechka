@@ -565,7 +565,7 @@ const Index = () => {
           />
         )}
 
-        {grade === "9" && (
+        {grade === "9" && subject === "informatics" && (
           <Grade9Informatics
             answers={answers9}
             attachments={attachments9}
@@ -577,6 +577,21 @@ const Index = () => {
               });
             }}
             onAttachmentChange={(i, file) => setAttachments9((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "9" && subject === "physics" && (
+          <Grade9Physics
+            answers={answers9phys}
+            attachments={attachments9phys}
+            onAnswerChange={(i, v) => {
+              setAnswers9phys((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments9phys((prev) => ({ ...prev, [i]: file }))}
           />
         )}
 
