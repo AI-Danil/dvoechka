@@ -144,6 +144,8 @@ const Index = () => {
         if (draft.tasks8) setTasks8(draft.tasks8);
       } else if (grade === "9" && subject === "physics") {
         if (draft.answers9phys) setAnswers9phys(draft.answers9phys);
+      } else if (grade === "9" && subject === "technology") {
+        if (draft.answers9tech) setAnswers9tech(draft.answers9tech);
       } else if (grade === "9") {
         if (draft.answers9) setAnswers9(draft.answers9);
       } else if (grade === "7") {
