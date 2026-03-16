@@ -169,6 +169,8 @@ const Index = () => {
       const blitzFilled = blitz8.filter(Boolean).length;
       const tasksFilled = Object.values(tasks8).filter(Boolean).length;
       return { answered: blitzFilled + tasksFilled, total: 7 + 6 };
+    } else if (grade === "9" && subject === "physics") {
+      return { answered: answers9phys.filter(Boolean).length, total: 14 };
     } else if (grade === "9") {
       return { answered: answers9.filter(Boolean).length, total: 11 };
     } else if (grade === "7") {
