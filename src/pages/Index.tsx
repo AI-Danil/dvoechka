@@ -403,6 +403,9 @@ const Index = () => {
     } else if (g === "9" && s === "physics") {
       fileUrls = await uploadAttachments(attachments9physRef.current);
       answers = { type: "grade9physics", answers: answers9physRef.current };
+    } else if (g === "9" && s === "technology") {
+      fileUrls = await uploadAttachments(attachments9techRef.current);
+      answers = { type: "grade9technology", answers: answers9techRef.current };
     } else if (g === "9") {
       fileUrls = await uploadAttachments(attachments9Ref.current);
       answers = { type: "grade9", answers: answers9Ref.current };
