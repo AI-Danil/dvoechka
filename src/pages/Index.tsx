@@ -613,6 +613,21 @@ const Index = () => {
           />
         )}
 
+        {grade === "9" && subject === "technology" && (
+          <Grade9Technology
+            answers={answers9tech}
+            attachments={attachments9tech}
+            onAnswerChange={(i, v) => {
+              setAnswers9tech((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments9tech((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
         <div className="text-center pt-4 pb-8">
           <Button
             onClick={() => setConfirmOpen(true)}
