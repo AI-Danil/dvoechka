@@ -27,6 +27,7 @@ import Grade8Informatics from "@/components/tests/Grade8Informatics";
 import Grade7Informatics from "@/components/tests/Grade7Informatics";
 import Grade9Informatics from "@/components/tests/Grade9Informatics";
 import Grade9Physics from "@/components/tests/Grade9Physics";
+import Grade9Technology from "@/components/tests/Grade9Technology";
 
 type Screen = "login" | "test" | "success";
 
@@ -35,7 +36,7 @@ const TOTAL_TIME = 40 * 60;
 const AVAILABLE_TESTS: Record<string, string[]> = {
   "7": ["informatics"],
   "8": ["informatics"],
-  "9": ["informatics", "physics"],
+  "9": ["informatics", "physics", "technology"],
 };
 
 const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+(?:\s+(\d+))?$/;
