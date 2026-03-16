@@ -184,6 +184,8 @@ const Index = () => {
       return { answered: blitzFilled + tasksFilled, total: 7 + 6 };
     } else if (grade === "9" && subject === "physics") {
       return { answered: answers9phys.filter(Boolean).length, total: 14 };
+    } else if (grade === "9" && subject === "technology") {
+      return { answered: answers9tech.filter(Boolean).length, total: 11 };
     } else if (grade === "9") {
       return { answered: answers9.filter(Boolean).length, total: 11 };
     } else if (grade === "7") {
