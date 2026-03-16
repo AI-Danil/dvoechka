@@ -153,13 +153,15 @@ const Index = () => {
     let data: Record<string, unknown> = {};
     if (grade === "8") {
       data = { blitz8, tasks8 };
+    } else if (grade === "9" && subject === "physics") {
+      data = { answers9phys };
     } else if (grade === "9") {
       data = { answers9 };
     } else if (grade === "7") {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, blitz8, tasks8, answers9, theory7, practice7]);
+  }, [screen, grade, subject, blitz8, tasks8, answers9, answers9phys, theory7, practice7]);
 
   // --- Progress calculation ---
   const { answered, total } = useMemo(() => {
