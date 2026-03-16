@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import Grade8Informatics from "@/components/tests/Grade8Informatics";
 import Grade7Informatics from "@/components/tests/Grade7Informatics";
 import Grade9Informatics from "@/components/tests/Grade9Informatics";
+import Grade9Physics from "@/components/tests/Grade9Physics";
 
 type Screen = "login" | "test" | "success";
 
