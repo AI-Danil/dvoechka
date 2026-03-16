@@ -357,6 +357,9 @@ const Index = () => {
     setSubmitting(false);
   };
 
+  // Keep handleSubmitRef in sync with latest handleSubmit
+  handleSubmitRef.current = handleSubmit;
+
   // LOGIN SCREEN
   if (screen === "login") {
     return (
