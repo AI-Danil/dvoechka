@@ -119,7 +119,7 @@ serve(async (req) => {
     const timeLeftSec = (40 * 60 - timeSpent) % 60;
 
     let message = `🚀 ОТВЕТ: ${studentName}\n`;
-    message += `📚 ${grade} класс, ${subject === "informatics" ? "Информатика" : subject}\n`;
+    message += `📚 ${grade} класс, ${subject === "informatics" ? "Информатика" : subject === "physics" ? "Физика" : subject === "technology" ? "Технология" : subject}\n`;
     if (attempt && String(attempt) !== "1") {
       message += `🔄 Попытка: ${attempt}\n`;
     }
