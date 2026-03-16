@@ -74,6 +74,45 @@ serve(async (req) => {
     const body = await req.json();
     const { studentName, grade, subject, cheatLog, timeSpent, attachments, attempt } = body;
 
+    // Save to database BEFORE sending to Telegram
+    try {
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+
+      const answersData: Record<string, unknown> = { type: body.type };
+      if (body.type === "grade7") {
+        answersData.theory = body.theory;
+        answersData.practice = body.practice;
+      } else if (body.type === "grade9") {
+        answersData.answers = body.answers;
+      } else {
+        answersData.blitz = body.blitz;
+        answersData.tasks = body.tasks;
+      }
+
+      const { error: dbError } = await supabaseAdmin.from("test_results").insert({
+        student_name: studentName,
+        grade: Number(grade),
+        subject,
+        attempt: Number(attempt) || 1,
+        test_type: body.type,
+        answers: answersData,
+        attachments: attachments || {},
+        cheat_log: cheatLog || [],
+        time_spent: timeSpent,
+      });
+
+      if (dbError) {
+        console.error("Failed to save to DB:", dbError);
+      } else {
+        console.log("Results saved to DB successfully");
+      }
+    } catch (dbErr) {
+      console.error("DB save error:", dbErr);
+    }
+
     const minutes = Math.floor(timeSpent / 60);
     const seconds = timeSpent % 60;
     const timeLeftMin = Math.floor((40 * 60 - timeSpent) / 60);
