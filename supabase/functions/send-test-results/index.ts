@@ -85,7 +85,7 @@ serve(async (req) => {
       if (body.type === "grade7") {
         answersData.theory = body.theory;
         answersData.practice = body.practice;
-      } else if (body.type === "grade9") {
+      } else if (body.type === "grade9" || body.type === "grade9physics" || body.type === "grade9technology") {
         answersData.answers = body.answers;
       } else {
         answersData.blitz = body.blitz;
