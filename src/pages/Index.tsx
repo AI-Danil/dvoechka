@@ -76,11 +76,42 @@ const Index = () => {
   const [answers9, setAnswers9] = useState<string[]>(Array(11).fill(""));
   const [attachments9, setAttachments9] = useState<Record<number, File | null>>({});
 
+  // Live refs for all data (so auto-submit always reads latest values)
+  const blitz8Ref = useRef(blitz8);
+  const tasks8Ref = useRef(tasks8);
+  const attachments8Ref = useRef(attachments8);
+  const theory7Ref = useRef(theory7);
+  const practice7Ref = useRef(practice7);
+  const attachments7Ref = useRef(attachments7);
+  const answers9Ref = useRef(answers9);
+  const attachments9Ref = useRef(attachments9);
+  const gradeRef = useRef(grade);
+  const subjectRef = useRef(subject);
+  const attemptRef = useRef(attempt);
+  const cleanNameRef = useRef(cleanName);
+  const timeLeftRef = useRef(timeLeft);
+
+  // Keep refs in sync
+  useEffect(() => { blitz8Ref.current = blitz8; }, [blitz8]);
+  useEffect(() => { tasks8Ref.current = tasks8; }, [tasks8]);
+  useEffect(() => { attachments8Ref.current = attachments8; }, [attachments8]);
+  useEffect(() => { theory7Ref.current = theory7; }, [theory7]);
+  useEffect(() => { practice7Ref.current = practice7; }, [practice7]);
+  useEffect(() => { attachments7Ref.current = attachments7; }, [attachments7]);
+  useEffect(() => { answers9Ref.current = answers9; }, [answers9]);
+  useEffect(() => { attachments9Ref.current = attachments9; }, [attachments9]);
+  useEffect(() => { gradeRef.current = grade; }, [grade]);
+  useEffect(() => { subjectRef.current = subject; }, [subject]);
+  useEffect(() => { attemptRef.current = attempt; }, [attempt]);
+  useEffect(() => { cleanNameRef.current = cleanName; }, [cleanName]);
+  useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
+
   // Anticheat
   const cheatLogRef = useRef<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const handleSubmitRef = useRef<() => Promise<void>>();
+  const submittingRef = useRef(false);
   const testActiveRef = useRef(false);
+  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
 
   // --- Autosave: restore draft on test start ---
   useEffect(() => {
@@ -194,9 +225,7 @@ const Index = () => {
     };
   }, [screen, logCheat]);
 
-  // Timer
-
-  // Timer
+  // Timer — only counts down, no side effects
   useEffect(() => {
     if (screen !== "test") return;
 
@@ -204,7 +233,6 @@ const Index = () => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
-          handleSubmitRef.current?.();
           return 0;
         }
         return prev - 1;
@@ -215,6 +243,19 @@ const Index = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [screen]);
+
+  // Auto-submit when time runs out (reads from refs, not stale closures)
+  useEffect(() => {
+    if (screen === "test" && timeLeft === 0 && !autoSubmitTriggered) {
+      setAutoSubmitTriggered(true);
+      // Use a micro-delay to ensure all state→ref syncs have flushed
+      setTimeout(() => {
+        if (!submittingRef.current) {
+          doSubmit();
+        }
+      }, 50);
+    }
+  }, [timeLeft, screen, autoSubmitTriggered]);
 
   // 5-minute warning
   useEffect(() => {
@@ -311,34 +352,41 @@ const Index = () => {
     return urls;
   };
 
-  const handleSubmit = async () => {
-    if (submitting) return;
+  // Core submit function that reads from refs (always has latest data)
+  const doSubmit = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     if (timerRef.current) clearInterval(timerRef.current);
+
+    const g = gradeRef.current;
+    const s = subjectRef.current;
+    const a = attemptRef.current;
+    const name = cleanNameRef.current;
 
     let answers: Record<string, unknown>;
     let fileUrls: Record<string, string> = {};
 
-    if (grade === "8") {
-      fileUrls = await uploadAttachments(attachments8);
-      answers = { type: "grade8", blitz: blitz8, tasks: tasks8 };
-    } else if (grade === "9") {
-      fileUrls = await uploadAttachments(attachments9);
-      answers = { type: "grade9", answers: answers9 };
+    if (g === "8") {
+      fileUrls = await uploadAttachments(attachments8Ref.current);
+      answers = { type: "grade8", blitz: blitz8Ref.current, tasks: tasks8Ref.current };
+    } else if (g === "9") {
+      fileUrls = await uploadAttachments(attachments9Ref.current);
+      answers = { type: "grade9", answers: answers9Ref.current };
     } else {
-      fileUrls = await uploadAttachments(attachments7);
-      answers = { type: "grade7", theory: theory7, practice: practice7 };
+      fileUrls = await uploadAttachments(attachments7Ref.current);
+      answers = { type: "grade7", theory: theory7Ref.current, practice: practice7Ref.current };
     }
 
     const payload = {
-      studentName: cleanName,
-      grade,
-      subject,
-      attempt,
+      studentName: name,
+      grade: g,
+      subject: s,
+      attempt: a,
       ...answers,
       attachments: fileUrls,
       cheatLog: cheatLogRef.current,
-      timeSpent: TOTAL_TIME - timeLeft,
+      timeSpent: TOTAL_TIME - timeLeftRef.current,
     };
 
     try {
@@ -349,16 +397,16 @@ const Index = () => {
     }
 
     // Mark as submitted & clear draft
-    const submittedKey = getSubmittedKey(grade, subject, cleanName, attempt);
+    const submittedKey = getSubmittedKey(g, s, name, a);
     localStorage.setItem(submittedKey, "1");
-    localStorage.removeItem(getDraftKey(grade, subject, attempt));
+    localStorage.removeItem(getDraftKey(g, s, a));
 
     setScreen("success");
     setSubmitting(false);
+    submittingRef.current = false;
   };
 
-  // Keep handleSubmitRef in sync with latest handleSubmit
-  handleSubmitRef.current = handleSubmit;
+  const handleSubmit = () => doSubmit();
 
   // LOGIN SCREEN
   if (screen === "login") {
