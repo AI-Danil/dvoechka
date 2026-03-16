@@ -76,11 +76,42 @@ const Index = () => {
   const [answers9, setAnswers9] = useState<string[]>(Array(11).fill(""));
   const [attachments9, setAttachments9] = useState<Record<number, File | null>>({});
 
+  // Live refs for all data (so auto-submit always reads latest values)
+  const blitz8Ref = useRef(blitz8);
+  const tasks8Ref = useRef(tasks8);
+  const attachments8Ref = useRef(attachments8);
+  const theory7Ref = useRef(theory7);
+  const practice7Ref = useRef(practice7);
+  const attachments7Ref = useRef(attachments7);
+  const answers9Ref = useRef(answers9);
+  const attachments9Ref = useRef(attachments9);
+  const gradeRef = useRef(grade);
+  const subjectRef = useRef(subject);
+  const attemptRef = useRef(attempt);
+  const cleanNameRef = useRef(cleanName);
+  const timeLeftRef = useRef(timeLeft);
+
+  // Keep refs in sync
+  useEffect(() => { blitz8Ref.current = blitz8; }, [blitz8]);
+  useEffect(() => { tasks8Ref.current = tasks8; }, [tasks8]);
+  useEffect(() => { attachments8Ref.current = attachments8; }, [attachments8]);
+  useEffect(() => { theory7Ref.current = theory7; }, [theory7]);
+  useEffect(() => { practice7Ref.current = practice7; }, [practice7]);
+  useEffect(() => { attachments7Ref.current = attachments7; }, [attachments7]);
+  useEffect(() => { answers9Ref.current = answers9; }, [answers9]);
+  useEffect(() => { attachments9Ref.current = attachments9; }, [attachments9]);
+  useEffect(() => { gradeRef.current = grade; }, [grade]);
+  useEffect(() => { subjectRef.current = subject; }, [subject]);
+  useEffect(() => { attemptRef.current = attempt; }, [attempt]);
+  useEffect(() => { cleanNameRef.current = cleanName; }, [cleanName]);
+  useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
+
   // Anticheat
   const cheatLogRef = useRef<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const handleSubmitRef = useRef<() => Promise<void>>();
+  const submittingRef = useRef(false);
   const testActiveRef = useRef(false);
+  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
 
   // --- Autosave: restore draft on test start ---
   useEffect(() => {
