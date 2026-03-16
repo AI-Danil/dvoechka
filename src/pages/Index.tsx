@@ -35,7 +35,7 @@ const TOTAL_TIME = 40 * 60;
 const AVAILABLE_TESTS: Record<string, string[]> = {
   "7": ["informatics"],
   "8": ["informatics"],
-  "9": ["informatics"],
+  "9": ["informatics", "physics"],
 };
 
 const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+(?:\s+(\d+))?$/;
