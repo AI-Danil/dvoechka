@@ -79,6 +79,7 @@ const Index = () => {
   // Anticheat
   const cheatLogRef = useRef<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const handleSubmitRef = useRef<() => Promise<void>>();
   const testActiveRef = useRef(false);
 
   // --- Autosave: restore draft on test start ---
@@ -194,6 +195,8 @@ const Index = () => {
   }, [screen, logCheat]);
 
   // Timer
+
+  // Timer
   useEffect(() => {
     if (screen !== "test") return;
 
@@ -201,7 +204,7 @@ const Index = () => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
-          handleSubmit();
+          handleSubmitRef.current?.();
           return 0;
         }
         return prev - 1;
@@ -211,7 +214,6 @@ const Index = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
   // 5-minute warning
@@ -354,6 +356,9 @@ const Index = () => {
     setScreen("success");
     setSubmitting(false);
   };
+
+  // Keep handleSubmitRef in sync with latest handleSubmit
+  handleSubmitRef.current = handleSubmit;
 
   // LOGIN SCREEN
   if (screen === "login") {
