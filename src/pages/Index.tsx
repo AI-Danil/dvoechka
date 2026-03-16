@@ -79,6 +79,7 @@ const Index = () => {
   // Anticheat
   const cheatLogRef = useRef<string[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const handleSubmitRef = useRef<() => Promise<void>>();
   const testActiveRef = useRef(false);
 
   // --- Autosave: restore draft on test start ---
