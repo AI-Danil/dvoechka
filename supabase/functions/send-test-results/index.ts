@@ -150,23 +150,39 @@ serve(async (req) => {
       message += `Задача 6: ${tasks.t6 || "(пусто)"}${attachmentMap.t6 ? " 📎" : ""}\n`;
     }
 
-    // Anticheat (в конце сообщения)
+    // Split into chunks of ~4000 chars by lines
+    function splitMessage(text: string, limit = 4000): string[] {
+      const lines = text.split("\n");
+      const chunks: string[] = [];
+      let current = "";
+      for (const line of lines) {
+        if (current.length + line.length + 1 > limit && current.length > 0) {
+          chunks.push(current);
+          current = "";
+        }
+        current += (current ? "\n" : "") + line;
+      }
+      if (current) chunks.push(current);
+      return chunks;
+    }
+
+    // Send main message (split if needed)
+    const mainChunks = splitMessage(message);
+    for (const chunk of mainChunks) {
+      await sendTelegramText(chunk, LOVABLE_API_KEY, TELEGRAM_API_KEY, CHAT_ID);
+    }
+
+    // Send anticheat as separate message
     if (cheatLog && cheatLog.length > 0) {
-      message += `\n🛑 АНТИЧИТ (${cheatLog.length} событий):\n`;
+      let cheatMessage = `🛑 АНТИЧИТ — ${studentName} (${cheatLog.length} событий):\n`;
       (cheatLog as string[]).forEach((entry: string) => {
-        message += `• ${entry}\n`;
+        cheatMessage += `• ${entry}\n`;
       });
-    } else {
-      message += `\n🛑 АНТИЧИТ: ✅ Чисто\n`;
+      const cheatChunks = splitMessage(cheatMessage);
+      for (const chunk of cheatChunks) {
+        await sendTelegramText(chunk, LOVABLE_API_KEY, TELEGRAM_API_KEY, CHAT_ID);
+      }
     }
-
-    // Truncate if needed
-    if (message.length > 4000) {
-      message = message.substring(0, 4000) + "\n...(обрезано)";
-    }
-
-    // Send main text message via gateway
-    await sendTelegramText(message, LOVABLE_API_KEY, TELEGRAM_API_KEY, CHAT_ID);
 
     // Send attachments
     for (const [key, url] of Object.entries(attachmentMap)) {
