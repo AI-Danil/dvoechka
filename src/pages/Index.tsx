@@ -225,9 +225,7 @@ const Index = () => {
     };
   }, [screen, logCheat]);
 
-  // Timer
-
-  // Timer
+  // Timer — only counts down, no side effects
   useEffect(() => {
     if (screen !== "test") return;
 
@@ -235,7 +233,6 @@ const Index = () => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
-          handleSubmitRef.current?.();
           return 0;
         }
         return prev - 1;
@@ -246,6 +243,19 @@ const Index = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [screen]);
+
+  // Auto-submit when time runs out (reads from refs, not stale closures)
+  useEffect(() => {
+    if (screen === "test" && timeLeft === 0 && !autoSubmitTriggered) {
+      setAutoSubmitTriggered(true);
+      // Use a micro-delay to ensure all state→ref syncs have flushed
+      setTimeout(() => {
+        if (!submittingRef.current) {
+          doSubmit();
+        }
+      }, 50);
+    }
+  }, [timeLeft, screen, autoSubmitTriggered]);
 
   // 5-minute warning
   useEffect(() => {
