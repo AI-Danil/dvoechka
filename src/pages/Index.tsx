@@ -194,6 +194,9 @@ const Index = () => {
     };
   }, [screen, logCheat]);
 
+  // Keep handleSubmitRef in sync
+  handleSubmitRef.current = handleSubmit;
+
   // Timer
   useEffect(() => {
     if (screen !== "test") return;
@@ -202,7 +205,7 @@ const Index = () => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerRef.current!);
-          handleSubmit();
+          handleSubmitRef.current?.();
           return 0;
         }
         return prev - 1;
@@ -212,7 +215,6 @@ const Index = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
   // 5-minute warning
