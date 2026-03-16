@@ -174,7 +174,7 @@ const Index = () => {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, blitz8, tasks8, answers9, answers9phys, theory7, practice7]);
+  }, [screen, grade, subject, blitz8, tasks8, answers9, answers9phys, answers9tech, theory7, practice7]);
 
   // --- Progress calculation ---
   const { answered, total } = useMemo(() => {
