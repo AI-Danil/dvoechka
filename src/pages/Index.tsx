@@ -116,6 +116,8 @@ const Index = () => {
   useEffect(() => { attachments9Ref.current = attachments9; }, [attachments9]);
   useEffect(() => { answers9physRef.current = answers9phys; }, [answers9phys]);
   useEffect(() => { attachments9physRef.current = attachments9phys; }, [attachments9phys]);
+  useEffect(() => { answers9techRef.current = answers9tech; }, [answers9tech]);
+  useEffect(() => { attachments9techRef.current = attachments9tech; }, [attachments9tech]);
   useEffect(() => { gradeRef.current = grade; }, [grade]);
   useEffect(() => { subjectRef.current = subject; }, [subject]);
   useEffect(() => { attemptRef.current = attempt; }, [attempt]);
