@@ -90,6 +90,8 @@ const Index = () => {
   const attachments7Ref = useRef(attachments7);
   const answers9Ref = useRef(answers9);
   const attachments9Ref = useRef(attachments9);
+  const answers9physRef = useRef(answers9phys);
+  const attachments9physRef = useRef(attachments9phys);
   const gradeRef = useRef(grade);
   const subjectRef = useRef(subject);
   const attemptRef = useRef(attempt);
