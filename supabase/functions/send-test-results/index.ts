@@ -170,6 +170,43 @@ serve(async (req) => {
         const hasFile = attachmentMap[String(i)];
         message += `${labels[i]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
       }
+    } else if (body.type === "grade9technology") {
+      const ans = body.answers as string[];
+      const labels = [
+        "1.1 Свойства моделей",
+        "1.2 Интеллектуальная собственность",
+        "1.3 ТРИЗ — Метод фокальных объектов",
+        "2.1 Лазерная обработка",
+        "2.2 Нанотехнологии",
+        "3.1 Бионика",
+        "3.2 Генная инженерия",
+        "4.1 3D-печать",
+        "4.2 Стереолитография",
+        "5.1 Этика биотехнологий",
+        "5.2 Робототехника и рынок труда",
+      ];
+
+      message += `\n📝 БЛОК 1 (Моделирование и ТРИЗ):\n`;
+      for (let i = 0; i < 3; i++) {
+        message += `${labels[i]}: ${ans[i] || "(пусто)"}\n\n`;
+      }
+      message += `🔬 БЛОК 2 (Высокие технологии):\n`;
+      for (let i = 3; i < 5; i++) {
+        message += `${labels[i]}: ${ans[i] || "(пусто)"}\n\n`;
+      }
+      message += `🧬 БЛОК 3 (Биотехнологии и Бионика):\n`;
+      for (let i = 5; i < 7; i++) {
+        message += `${labels[i]}: ${ans[i] || "(пусто)"}\n\n`;
+      }
+      message += `🖨 БЛОК 4 (Аддитивные технологии):\n`;
+      for (let i = 7; i < 9; i++) {
+        message += `${labels[i]}: ${ans[i] || "(пусто)"}\n\n`;
+      }
+      message += `💡 БЛОК 5 (Предвидение и этика):\n`;
+      for (let i = 9; i < ans.length; i++) {
+        const hasFile = attachmentMap[String(i)];
+        message += `${labels[i]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+      }
     } else {
       const blitz = body.blitz as string[];
       const tasks = body.tasks as Record<string, string>;
