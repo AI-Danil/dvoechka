@@ -179,7 +179,7 @@ const Index = () => {
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, blitz8, tasks8, answers9, theory7, practice7]);
+  }, [grade, subject, blitz8, tasks8, answers9, answers9phys, theory7, practice7]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
