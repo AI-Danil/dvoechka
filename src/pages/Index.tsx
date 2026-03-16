@@ -166,6 +166,8 @@ const Index = () => {
       data = { blitz8, tasks8 };
     } else if (grade === "9" && subject === "physics") {
       data = { answers9phys };
+    } else if (grade === "9" && subject === "technology") {
+      data = { answers9tech };
     } else if (grade === "9") {
       data = { answers9 };
     } else if (grade === "7") {
