@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import Grade8Informatics from "@/components/tests/Grade8Informatics";
 import Grade7Informatics from "@/components/tests/Grade7Informatics";
 import Grade9Informatics from "@/components/tests/Grade9Informatics";
+import Grade9Physics from "@/components/tests/Grade9Physics";
 
 type Screen = "login" | "test" | "success";
 
@@ -34,7 +35,7 @@ const TOTAL_TIME = 40 * 60;
 const AVAILABLE_TESTS: Record<string, string[]> = {
   "7": ["informatics"],
   "8": ["informatics"],
-  "9": ["informatics"],
+  "9": ["informatics", "physics"],
 };
 
 const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+(?:\s+(\d+))?$/;
@@ -76,6 +77,10 @@ const Index = () => {
   const [answers9, setAnswers9] = useState<string[]>(Array(11).fill(""));
   const [attachments9, setAttachments9] = useState<Record<number, File | null>>({});
 
+  // Grade 9 physics answers
+  const [answers9phys, setAnswers9phys] = useState<string[]>(Array(14).fill(""));
+  const [attachments9phys, setAttachments9phys] = useState<Record<number, File | null>>({});
+
   // Live refs for all data (so auto-submit always reads latest values)
   const blitz8Ref = useRef(blitz8);
   const tasks8Ref = useRef(tasks8);
@@ -85,6 +90,8 @@ const Index = () => {
   const attachments7Ref = useRef(attachments7);
   const answers9Ref = useRef(answers9);
   const attachments9Ref = useRef(attachments9);
+  const answers9physRef = useRef(answers9phys);
+  const attachments9physRef = useRef(attachments9phys);
   const gradeRef = useRef(grade);
   const subjectRef = useRef(subject);
   const attemptRef = useRef(attempt);
@@ -100,6 +107,8 @@ const Index = () => {
   useEffect(() => { attachments7Ref.current = attachments7; }, [attachments7]);
   useEffect(() => { answers9Ref.current = answers9; }, [answers9]);
   useEffect(() => { attachments9Ref.current = attachments9; }, [attachments9]);
+  useEffect(() => { answers9physRef.current = answers9phys; }, [answers9phys]);
+  useEffect(() => { attachments9physRef.current = attachments9phys; }, [attachments9phys]);
   useEffect(() => { gradeRef.current = grade; }, [grade]);
   useEffect(() => { subjectRef.current = subject; }, [subject]);
   useEffect(() => { attemptRef.current = attempt; }, [attempt]);
@@ -124,6 +133,8 @@ const Index = () => {
       if (grade === "8") {
         if (draft.blitz8) setBlitz8(draft.blitz8);
         if (draft.tasks8) setTasks8(draft.tasks8);
+      } else if (grade === "9" && subject === "physics") {
+        if (draft.answers9phys) setAnswers9phys(draft.answers9phys);
       } else if (grade === "9") {
         if (draft.answers9) setAnswers9(draft.answers9);
       } else if (grade === "7") {
@@ -142,13 +153,15 @@ const Index = () => {
     let data: Record<string, unknown> = {};
     if (grade === "8") {
       data = { blitz8, tasks8 };
+    } else if (grade === "9" && subject === "physics") {
+      data = { answers9phys };
     } else if (grade === "9") {
       data = { answers9 };
     } else if (grade === "7") {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, blitz8, tasks8, answers9, theory7, practice7]);
+  }, [screen, grade, subject, blitz8, tasks8, answers9, answers9phys, theory7, practice7]);
 
   // --- Progress calculation ---
   const { answered, total } = useMemo(() => {
@@ -156,6 +169,8 @@ const Index = () => {
       const blitzFilled = blitz8.filter(Boolean).length;
       const tasksFilled = Object.values(tasks8).filter(Boolean).length;
       return { answered: blitzFilled + tasksFilled, total: 7 + 6 };
+    } else if (grade === "9" && subject === "physics") {
+      return { answered: answers9phys.filter(Boolean).length, total: 14 };
     } else if (grade === "9") {
       return { answered: answers9.filter(Boolean).length, total: 11 };
     } else if (grade === "7") {
@@ -164,7 +179,7 @@ const Index = () => {
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, blitz8, tasks8, answers9, theory7, practice7]);
+  }, [grade, subject, blitz8, tasks8, answers9, answers9phys, theory7, practice7]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
@@ -370,6 +385,9 @@ const Index = () => {
     if (g === "8") {
       fileUrls = await uploadAttachments(attachments8Ref.current);
       answers = { type: "grade8", blitz: blitz8Ref.current, tasks: tasks8Ref.current };
+    } else if (g === "9" && s === "physics") {
+      fileUrls = await uploadAttachments(attachments9physRef.current);
+      answers = { type: "grade9physics", answers: answers9physRef.current };
     } else if (g === "9") {
       fileUrls = await uploadAttachments(attachments9Ref.current);
       answers = { type: "grade9", answers: answers9Ref.current };
@@ -547,7 +565,7 @@ const Index = () => {
           />
         )}
 
-        {grade === "9" && (
+        {grade === "9" && subject === "informatics" && (
           <Grade9Informatics
             answers={answers9}
             attachments={attachments9}
@@ -559,6 +577,21 @@ const Index = () => {
               });
             }}
             onAttachmentChange={(i, file) => setAttachments9((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "9" && subject === "physics" && (
+          <Grade9Physics
+            answers={answers9phys}
+            attachments={attachments9phys}
+            onAnswerChange={(i, v) => {
+              setAnswers9phys((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments9phys((prev) => ({ ...prev, [i]: file }))}
           />
         )}
 
