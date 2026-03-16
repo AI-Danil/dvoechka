@@ -133,6 +133,8 @@ const Index = () => {
       if (grade === "8") {
         if (draft.blitz8) setBlitz8(draft.blitz8);
         if (draft.tasks8) setTasks8(draft.tasks8);
+      } else if (grade === "9" && subject === "physics") {
+        if (draft.answers9phys) setAnswers9phys(draft.answers9phys);
       } else if (grade === "9") {
         if (draft.answers9) setAnswers9(draft.answers9);
       } else if (grade === "7") {
