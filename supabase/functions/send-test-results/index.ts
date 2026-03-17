@@ -207,6 +207,40 @@ serve(async (req) => {
         const hasFile = attachmentMap[String(i)];
         message += `${labels[i]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
       }
+    } else if (body.type === "grade9physics") {
+      const ans = body.answers as string[];
+      const theoryLabels = [
+        "1.1 Законы Ньютона",
+        "1.2 Закон сохранения энергии",
+        "1.3 Момент силы",
+        "1.4 Механические волны",
+        "1.5 Звук и ультразвук",
+        "1.6 Преломление света",
+        "1.7 Электромагнитные волны",
+      ];
+      const practiceLabels = [
+        "2.1 Кинематика",
+        "2.2 Статика",
+        "2.3 Импульс",
+        "2.4 ЗСЭ (расчёт)",
+        "2.5 Звук (расчёт)",
+        "2.6 Линзы",
+      ];
+
+      message += `\n📝 БЛОК 1 (Теория):\n`;
+      for (let i = 0; i < 7; i++) {
+        message += `${theoryLabels[i]}: ${ans[i] || "(пусто)"}\n\n`;
+      }
+
+      message += `📊 БЛОК 2 (Расчётные задачи):\n`;
+      for (let i = 7; i < 13; i++) {
+        const hasFile = attachmentMap[String(i)];
+        message += `${practiceLabels[i - 7]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+      }
+
+      message += `🔍 БЛОК 3 (Качественная задача):\n`;
+      const hasFile14 = attachmentMap["13"];
+      message += `3.1 Преломление: ${ans[13] || "(пусто)"}${hasFile14 ? " 📎" : ""}\n\n`;
     } else {
       const blitz = body.blitz as string[];
       const tasks = body.tasks as Record<string, string>;
