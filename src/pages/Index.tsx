@@ -205,13 +205,17 @@ const Index = () => {
       return { answered: answers9tech.filter(Boolean).length, total: 11 };
     } else if (grade === "9") {
       return { answered: answers9.filter(Boolean).length, total: 11 };
+    } else if (grade === "7" && subject === "technology") {
+      const tFilled = theory7tech.filter(Boolean).length;
+      const pFilled = practice7tech.filter(Boolean).length;
+      return { answered: tFilled + pFilled, total: 7 + 6 };
     } else if (grade === "7") {
       const tFilled = theory7.filter(Boolean).length;
       const pFilled = practice7.filter(Boolean).length;
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, subject, blitz8, tasks8, answers9, answers9phys, answers9tech, theory7, practice7]);
+  }, [grade, subject, blitz8, tasks8, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
