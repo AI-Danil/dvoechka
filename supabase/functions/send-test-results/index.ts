@@ -82,7 +82,7 @@ serve(async (req) => {
       );
 
       const answersData: Record<string, unknown> = { type: body.type };
-      if (body.type === "grade7") {
+      if (body.type === "grade7" || body.type === "grade7technology") {
         answersData.theory = body.theory;
         answersData.practice = body.practice;
       } else if (body.type === "grade9" || body.type === "grade9physics" || body.type === "grade9technology") {
