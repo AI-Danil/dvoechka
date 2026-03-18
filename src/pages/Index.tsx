@@ -561,7 +561,7 @@ const Index = () => {
             </div>
             <div>
               <Label>Класс:</Label>
-              <Select value={grade} onValueChange={setGrade}>
+              <Select value={grade} onValueChange={(v) => { setGrade(v); setSubject(""); }}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Выберите класс" />
                 </SelectTrigger>
