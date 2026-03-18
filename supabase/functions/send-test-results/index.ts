@@ -82,7 +82,7 @@ serve(async (req) => {
       );
 
       const answersData: Record<string, unknown> = { type: body.type };
-      if (body.type === "grade7") {
+      if (body.type === "grade7" || body.type === "grade7technology") {
         answersData.theory = body.theory;
         answersData.practice = body.practice;
       } else if (body.type === "grade9" || body.type === "grade9physics" || body.type === "grade9technology") {
@@ -143,6 +143,37 @@ serve(async (req) => {
       practice.forEach((a: string, i: number) => {
         const hasFile = attachmentMap[String(i)];
         message += `${i + 8}. ${a || "(пусто)"}${hasFile ? " 📎" : ""}\n`;
+      });
+    } else if (body.type === "grade7technology") {
+      const theory = body.theory as string[];
+      const practice = body.practice as string[];
+      const theoryLabels = [
+        "Комплекс базовых программ (ОС)",
+        "Непечатаемый символ Enter",
+        "ОЗУ vs HDD при отключении",
+        "Числовой адрес в сети (IP)",
+        "Символ разделения папок Windows",
+        "Редактирование текста",
+        "Наименьшая единица информации (бит)",
+      ];
+      const practiceLabels = [
+        "8. Объем текста КОИ-8",
+        "9. Палитра 128x128",
+        "10. Скорость скачивания",
+        "11. Файловая система",
+        "12. Маски файлов",
+        "13. Ctrl+X / Ctrl+V",
+      ];
+
+      message += `\n📝 БЛОК 1 (Теория):\n`;
+      theory.forEach((a: string, i: number) => {
+        message += `${i + 1}. ${theoryLabels[i]}: ${a || "(пусто)"}\n`;
+      });
+
+      message += `\n📊 БЛОК 2 (Задачи):\n`;
+      practice.forEach((a: string, i: number) => {
+        const hasFile = attachmentMap[String(i)];
+        message += `${practiceLabels[i]}: ${a || "(пусто)"}${hasFile ? " 📎" : ""}\n`;
       });
     } else if (body.type === "grade9") {
       const ans = body.answers as string[];

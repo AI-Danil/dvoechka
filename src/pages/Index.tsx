@@ -28,13 +28,14 @@ import Grade7Informatics from "@/components/tests/Grade7Informatics";
 import Grade9Informatics from "@/components/tests/Grade9Informatics";
 import Grade9Physics from "@/components/tests/Grade9Physics";
 import Grade9Technology from "@/components/tests/Grade9Technology";
+import Grade7Technology from "@/components/tests/Grade7Technology";
 
 type Screen = "login" | "test" | "success";
 
 const TOTAL_TIME = 40 * 60;
 
 const AVAILABLE_TESTS: Record<string, string[]> = {
-  "7": ["informatics"],
+  "7": ["informatics", "technology"],
   "8": ["informatics"],
   "9": ["informatics", "physics", "technology"],
 };
@@ -86,6 +87,11 @@ const Index = () => {
   const [answers9tech, setAnswers9tech] = useState<string[]>(Array(11).fill(""));
   const [attachments9tech, setAttachments9tech] = useState<Record<number, File | null>>({});
 
+  // Grade 7 technology answers
+  const [theory7tech, setTheory7tech] = useState<string[]>(Array(7).fill(""));
+  const [practice7tech, setPractice7tech] = useState<string[]>(Array(6).fill(""));
+  const [attachments7tech, setAttachments7tech] = useState<Record<number, File | null>>({});
+
   // Live refs for all data (so auto-submit always reads latest values)
   const blitz8Ref = useRef(blitz8);
   const tasks8Ref = useRef(tasks8);
@@ -99,6 +105,9 @@ const Index = () => {
   const attachments9physRef = useRef(attachments9phys);
   const answers9techRef = useRef(answers9tech);
   const attachments9techRef = useRef(attachments9tech);
+  const theory7techRef = useRef(theory7tech);
+  const practice7techRef = useRef(practice7tech);
+  const attachments7techRef = useRef(attachments7tech);
   const gradeRef = useRef(grade);
   const subjectRef = useRef(subject);
   const attemptRef = useRef(attempt);
@@ -118,6 +127,9 @@ const Index = () => {
   useEffect(() => { attachments9physRef.current = attachments9phys; }, [attachments9phys]);
   useEffect(() => { answers9techRef.current = answers9tech; }, [answers9tech]);
   useEffect(() => { attachments9techRef.current = attachments9tech; }, [attachments9tech]);
+  useEffect(() => { theory7techRef.current = theory7tech; }, [theory7tech]);
+  useEffect(() => { practice7techRef.current = practice7tech; }, [practice7tech]);
+  useEffect(() => { attachments7techRef.current = attachments7tech; }, [attachments7tech]);
   useEffect(() => { gradeRef.current = grade; }, [grade]);
   useEffect(() => { subjectRef.current = subject; }, [subject]);
   useEffect(() => { attemptRef.current = attempt; }, [attempt]);
@@ -148,6 +160,9 @@ const Index = () => {
         if (draft.answers9tech) setAnswers9tech(draft.answers9tech);
       } else if (grade === "9") {
         if (draft.answers9) setAnswers9(draft.answers9);
+      } else if (grade === "7" && subject === "technology") {
+        if (draft.theory7tech) setTheory7tech(draft.theory7tech);
+        if (draft.practice7tech) setPractice7tech(draft.practice7tech);
       } else if (grade === "7") {
         if (draft.theory7) setTheory7(draft.theory7);
         if (draft.practice7) setPractice7(draft.practice7);
@@ -170,11 +185,13 @@ const Index = () => {
       data = { answers9tech };
     } else if (grade === "9") {
       data = { answers9 };
+    } else if (grade === "7" && subject === "technology") {
+      data = { theory7tech, practice7tech };
     } else if (grade === "7") {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, blitz8, tasks8, answers9, answers9phys, answers9tech, theory7, practice7]);
+  }, [screen, grade, subject, blitz8, tasks8, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   // --- Progress calculation ---
   const { answered, total } = useMemo(() => {
@@ -188,13 +205,17 @@ const Index = () => {
       return { answered: answers9tech.filter(Boolean).length, total: 11 };
     } else if (grade === "9") {
       return { answered: answers9.filter(Boolean).length, total: 11 };
+    } else if (grade === "7" && subject === "technology") {
+      const tFilled = theory7tech.filter(Boolean).length;
+      const pFilled = practice7tech.filter(Boolean).length;
+      return { answered: tFilled + pFilled, total: 7 + 6 };
     } else if (grade === "7") {
       const tFilled = theory7.filter(Boolean).length;
       const pFilled = practice7.filter(Boolean).length;
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, subject, blitz8, tasks8, answers9, answers9phys, answers9tech, theory7, practice7]);
+  }, [grade, subject, blitz8, tasks8, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
@@ -209,6 +230,22 @@ const Index = () => {
     }
   }, []);
 
+  // Anti-copy notification helper
+  const notifyCopyAttempt = useCallback(async (event: string) => {
+    try {
+      await supabase.functions.invoke("notify-copy-attempt", {
+        body: {
+          studentName: cleanNameRef.current,
+          grade: gradeRef.current,
+          subject: subjectRef.current,
+          event,
+        },
+      });
+    } catch (e) {
+      console.error("Failed to notify copy attempt:", e);
+    }
+  }, []);
+
   // Anticheat listeners
   useEffect(() => {
     if (screen !== "test") return;
@@ -218,9 +255,44 @@ const Index = () => {
     const onVisibility = () => {
       if (document.hidden) logCheat("Свернул вкладку/браузер (visibilitychange)");
     };
-    const onCopy = () => logCheat("Скопировал текст (copy)");
+    const onCopy = (e: Event) => {
+      e.preventDefault();
+      logCheat("Попытка копирования (copy) — ЗАБЛОКИРОВАНО");
+      notifyCopyAttempt("Копирование текста (Ctrl+C / ПКМ → Копировать)");
+      toast({ title: "⛔ Копирование запрещено", description: "Попытка копирования зафиксирована и отправлена преподавателю.", variant: "destructive" });
+    };
+    const onCut = (e: Event) => {
+      e.preventDefault();
+      logCheat("Попытка вырезания (cut) — ЗАБЛОКИРОВАНО");
+      notifyCopyAttempt("Вырезание текста (Ctrl+X)");
+      toast({ title: "⛔ Вырезание запрещено", description: "Попытка зафиксирована.", variant: "destructive" });
+    };
     const onPaste = () => logCheat("Вставил текст (paste)");
     const onKeyDown = (e: KeyboardEvent) => {
+      // Block copy shortcuts
+      if ((e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "C" || e.key === "с" || e.key === "С")) {
+        e.preventDefault();
+        logCheat("Попытка Ctrl+C — ЗАБЛОКИРОВАНО");
+        notifyCopyAttempt("Комбинация клавиш Ctrl+C");
+        toast({ title: "⛔ Копирование запрещено", description: "Попытка зафиксирована.", variant: "destructive" });
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A" || e.key === "ф" || e.key === "Ф")) {
+        e.preventDefault();
+        logCheat("Попытка Ctrl+A — ЗАБЛОКИРОВАНО");
+        notifyCopyAttempt("Комбинация клавиш Ctrl+A (выделить всё)");
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "u" || e.key === "U" || e.key === "г" || e.key === "Г")) {
+        e.preventDefault();
+        logCheat("Попытка Ctrl+U — ЗАБЛОКИРОВАНО");
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S" || e.key === "ы" || e.key === "Ы") && !e.shiftKey) {
+        e.preventDefault();
+        logCheat("Попытка Ctrl+S — ЗАБЛОКИРОВАНО");
+        return;
+      }
       if (e.key === "PrintScreen") {
         logCheat("Нажал PrintScreen (скриншот)");
       } else if (e.metaKey && e.shiftKey && (e.key === "s" || e.key === "S")) {
@@ -233,27 +305,38 @@ const Index = () => {
         logCheat("Нажал Meta (Win/Cmd)");
       }
     };
-    const onContext = () => {
-      logCheat("Открыл контекстное меню (ПКМ)");
+    const onContext = (e: Event) => {
+      e.preventDefault();
+      logCheat("Открыл контекстное меню (ПКМ) — ЗАБЛОКИРОВАНО");
+    };
+    const onSelectStart = (e: Event) => {
+      // Allow selection in input/textarea only
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+      e.preventDefault();
     };
 
     window.addEventListener("blur", onBlur);
     document.addEventListener("visibilitychange", onVisibility);
     document.addEventListener("copy", onCopy);
+    document.addEventListener("cut", onCut);
     document.addEventListener("paste", onPaste);
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("contextmenu", onContext);
+    document.addEventListener("selectstart", onSelectStart);
 
     return () => {
       testActiveRef.current = false;
       window.removeEventListener("blur", onBlur);
       document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("copy", onCopy);
+      document.removeEventListener("cut", onCut);
       document.removeEventListener("paste", onPaste);
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("contextmenu", onContext);
+      document.removeEventListener("selectstart", onSelectStart);
     };
-  }, [screen, logCheat]);
+  }, [screen, logCheat, notifyCopyAttempt, toast]);
 
   // Timer — only counts down, no side effects
   useEffect(() => {
@@ -409,6 +492,9 @@ const Index = () => {
     } else if (g === "9") {
       fileUrls = await uploadAttachments(attachments9Ref.current);
       answers = { type: "grade9", answers: answers9Ref.current };
+    } else if (g === "7" && s === "technology") {
+      fileUrls = await uploadAttachments(attachments7techRef.current);
+      answers = { type: "grade7technology", theory: theory7techRef.current, practice: practice7techRef.current };
     } else {
       fileUrls = await uploadAttachments(attachments7Ref.current);
       answers = { type: "grade7", theory: theory7Ref.current, practice: practice7Ref.current };
@@ -560,7 +646,30 @@ const Index = () => {
           />
         )}
 
-        {grade === "7" && (
+        {grade === "7" && subject === "technology" && (
+          <Grade7Technology
+            theory={theory7tech}
+            practice={practice7tech}
+            attachments={attachments7tech}
+            onTheoryChange={(i, v) => {
+              setTheory7tech((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onPracticeChange={(i, v) => {
+              setPractice7tech((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments7tech((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "7" && subject === "informatics" && (
           <Grade7Informatics
             theory={theory7}
             practice={practice7}
