@@ -646,7 +646,30 @@ const Index = () => {
           />
         )}
 
-        {grade === "7" && (
+        {grade === "7" && subject === "technology" && (
+          <Grade7Technology
+            theory={theory7tech}
+            practice={practice7tech}
+            attachments={attachments7tech}
+            onTheoryChange={(i, v) => {
+              setTheory7tech((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onPracticeChange={(i, v) => {
+              setPractice7tech((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments7tech((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "7" && subject === "informatics" && (
           <Grade7Informatics
             theory={theory7}
             practice={practice7}
