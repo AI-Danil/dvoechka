@@ -230,6 +230,22 @@ const Index = () => {
     }
   }, []);
 
+  // Anti-copy notification helper
+  const notifyCopyAttempt = useCallback(async (event: string) => {
+    try {
+      await supabase.functions.invoke("notify-copy-attempt", {
+        body: {
+          studentName: cleanNameRef.current,
+          grade: gradeRef.current,
+          subject: subjectRef.current,
+          event,
+        },
+      });
+    } catch (e) {
+      console.error("Failed to notify copy attempt:", e);
+    }
+  }, []);
+
   // Anticheat listeners
   useEffect(() => {
     if (screen !== "test") return;
@@ -239,9 +255,44 @@ const Index = () => {
     const onVisibility = () => {
       if (document.hidden) logCheat("Свернул вкладку/браузер (visibilitychange)");
     };
-    const onCopy = () => logCheat("Скопировал текст (copy)");
+    const onCopy = (e: Event) => {
+      e.preventDefault();
+      logCheat("Попытка копирования (copy) — ЗАБЛОКИРОВАНО");
+      notifyCopyAttempt("Копирование текста (Ctrl+C / ПКМ → Копировать)");
+      toast({ title: "⛔ Копирование запрещено", description: "Попытка копирования зафиксирована и отправлена преподавателю.", variant: "destructive" });
+    };
+    const onCut = (e: Event) => {
+      e.preventDefault();
+      logCheat("Попытка вырезания (cut) — ЗАБЛОКИРОВАНО");
+      notifyCopyAttempt("Вырезание текста (Ctrl+X)");
+      toast({ title: "⛔ Вырезание запрещено", description: "Попытка зафиксирована.", variant: "destructive" });
+    };
     const onPaste = () => logCheat("Вставил текст (paste)");
     const onKeyDown = (e: KeyboardEvent) => {
+      // Block copy shortcuts
+      if ((e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "C" || e.key === "с" || e.key === "С")) {
+        e.preventDefault();
+        logCheat("Попытка Ctrl+C — ЗАБЛОКИРОВАНО");
+        notifyCopyAttempt("Комбинация клавиш Ctrl+C");
+        toast({ title: "⛔ Копирование запрещено", description: "Попытка зафиксирована.", variant: "destructive" });
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A" || e.key === "ф" || e.key === "Ф")) {
+        e.preventDefault();
+        logCheat("Попытка Ctrl+A — ЗАБЛОКИРОВАНО");
+        notifyCopyAttempt("Комбинация клавиш Ctrl+A (выделить всё)");
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "u" || e.key === "U" || e.key === "г" || e.key === "Г")) {
+        e.preventDefault();
+        logCheat("Попытка Ctrl+U — ЗАБЛОКИРОВАНО");
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S" || e.key === "ы" || e.key === "Ы") && !e.shiftKey) {
+        e.preventDefault();
+        logCheat("Попытка Ctrl+S — ЗАБЛОКИРОВАНО");
+        return;
+      }
       if (e.key === "PrintScreen") {
         logCheat("Нажал PrintScreen (скриншот)");
       } else if (e.metaKey && e.shiftKey && (e.key === "s" || e.key === "S")) {
@@ -254,27 +305,38 @@ const Index = () => {
         logCheat("Нажал Meta (Win/Cmd)");
       }
     };
-    const onContext = () => {
-      logCheat("Открыл контекстное меню (ПКМ)");
+    const onContext = (e: Event) => {
+      e.preventDefault();
+      logCheat("Открыл контекстное меню (ПКМ) — ЗАБЛОКИРОВАНО");
+    };
+    const onSelectStart = (e: Event) => {
+      // Allow selection in input/textarea only
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+      e.preventDefault();
     };
 
     window.addEventListener("blur", onBlur);
     document.addEventListener("visibilitychange", onVisibility);
     document.addEventListener("copy", onCopy);
+    document.addEventListener("cut", onCut);
     document.addEventListener("paste", onPaste);
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("contextmenu", onContext);
+    document.addEventListener("selectstart", onSelectStart);
 
     return () => {
       testActiveRef.current = false;
       window.removeEventListener("blur", onBlur);
       document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("copy", onCopy);
+      document.removeEventListener("cut", onCut);
       document.removeEventListener("paste", onPaste);
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("contextmenu", onContext);
+      document.removeEventListener("selectstart", onSelectStart);
     };
-  }, [screen, logCheat]);
+  }, [screen, logCheat, notifyCopyAttempt, toast]);
 
   // Timer — only counts down, no side effects
   useEffect(() => {
