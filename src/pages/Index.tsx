@@ -28,6 +28,7 @@ import Grade7Informatics from "@/components/tests/Grade7Informatics";
 import Grade9Informatics from "@/components/tests/Grade9Informatics";
 import Grade9Physics from "@/components/tests/Grade9Physics";
 import Grade9Technology from "@/components/tests/Grade9Technology";
+import Grade7Technology from "@/components/tests/Grade7Technology";
 
 type Screen = "login" | "test" | "success";
 
