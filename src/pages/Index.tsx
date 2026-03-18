@@ -40,6 +40,12 @@ const AVAILABLE_TESTS: Record<string, string[]> = {
   "9": ["informatics", "physics", "technology"],
 };
 
+const SUBJECT_LABELS: Record<string, string> = {
+  informatics: "Информатика",
+  physics: "Физика",
+  technology: "Технология",
+};
+
 const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+(?:\s+(\d+))?$/;
 
 function getDraftKey(grade: string, subject: string, attempt: string) {
