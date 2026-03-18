@@ -1,36 +1,52 @@
 
 
-## План: Пересылка сохранённых результатов физики в Telegram
+## План: Тест по технологии для 7 класса + защита от копирования
 
-### Ситуация
-В базе данных сохранены 8 результатов теста по физике (grade9physics). Они не дошли до Telegram из-за бага, который уже исправлен.
+### 1. Новый компонент `src/components/tests/Grade7Technology.tsx`
 
-### Подход
-Создать одноразовую edge-функцию `resend-results`, которая:
-1. Читает все записи `test_type = 'grade9physics'` из `test_results`
-2. Для каждой записи вызывает существующую функцию `send-test-results` с правильным payload
-3. Возвращает отчёт: сколько отправлено, какие ошибки
+По паттерну `Grade7Informatics.tsx`:
+- **Блок 1 (7 теоретических, Input)**: ОС, Enter, ОЗУ, IP, разделитель папок, редактирование, бит
+- **Блок 2 (6 задач, Textarea + FileAttach)**: объем статьи КОИ-8, палитра 128x128, скорость скачивания, файловая система, маска файлов, Ctrl+X/Ctrl+V
 
-### Реализация
-- **Новый файл**: `supabase/functions/resend-results/index.ts`
-- Функция использует `supabase.from('test_results').select('*').eq('test_type', 'grade9physics')`
-- Для каждой записи формирует body в формате, который ожидает `send-test-results`:
-  - `studentName`, `grade`, `subject`, `type: "grade9physics"`, `answers`, `attachments`, `cheatLog`, `timeSpent`, `attempt`
-- Вызывает `send-test-results` через внутренний fetch
-- После успешной пересылки функцию можно удалить
+Props идентичны Grade7Informatics: `theory`, `practice`, `attachments`, callbacks.
 
-### Альтернатива (проще)
-Вместо отдельной функции — я могу вызвать существующую `send-test-results` напрямую через `curl_edge_functions` для каждой из 8 записей прямо сейчас, без создания нового кода. Это быстрее и не засоряет проект.
+### 2. Обновить `src/pages/Index.tsx`
 
-**Рекомендую второй вариант** — просто вызвать функцию 8 раз с данными из БД.
+- `AVAILABLE_TESTS["7"]` → `["informatics", "technology"]`
+- Новые state: `theory7tech` (Array(7)), `practice7tech` (Array(6)), `attachments7tech`
+- Refs + sync effects по существующему паттерну
+- Autosave restore/persist: ветка `grade === "7" && subject === "technology"`
+- Progress: ветка для 7+technology, total=13
+- doSubmit: `g === "7" && s === "technology"` → `type: "grade7technology"`, theory + practice
+- Render: `grade === "7" && subject === "technology"` → `<Grade7Technology />`
+- Существующий `grade === "7"` рендер уточнить до `grade === "7" && subject === "informatics"`
 
-### Студенты для пересылки (8 человек)
-1. Рычкова Юлия
-2. Данил Минкин
-3. анжэла урсеитова
-4. Махлаева Антонина
-5. Вероника Рыженкова
-6. Полещук Алиса
-7. Ульяна Сурина
-8. Дима Балунов
+### 3. Edge-функция `supabase/functions/send-test-results/index.ts`
+
+- В блоке сохранения в БД: добавить `body.type === "grade7technology"` → `answersData.theory + practice`
+- Новая ветка форматирования `else if (body.type === "grade7technology")`:
+  - Теория (1-7): подписи вопросов
+  - Задачи (8-13): подписи + `📎` для вложений
+
+### 4. Защита от копирования текста вопросов + уведомление в Telegram
+
+- В компонентах тестов: CSS `user-select: none` на текст вопросов (Label, p)
+- В `Index.tsx` (античит-секция): добавить обработчики:
+  - `copy`, `cut` → `e.preventDefault()` + лог + toast предупреждение + вызов edge-функции
+  - `contextmenu` → `e.preventDefault()`
+  - `keydown`: блокировать Ctrl+C, Ctrl+A, Ctrl+U, Ctrl+S
+  - `selectstart` → `e.preventDefault()` на контейнере вопросов
+- Новая edge-функция `supabase/functions/notify-copy-attempt/index.ts`:
+  - Принимает `studentName`, `grade`, `subject`, `event`
+  - Мгновенно отправляет в Telegram: "🚨 ПОПЫТКА КОПИРОВАНИЯ — [ФИО], [класс], [предмет], [событие], [время]"
+  - Использует тот же Telegram connector
+
+### Файлы
+
+| Действие | Файл |
+|----------|------|
+| Создать | `src/components/tests/Grade7Technology.tsx` |
+| Создать | `supabase/functions/notify-copy-attempt/index.ts` |
+| Изменить | `src/pages/Index.tsx` (state, refs, autosave, progress, submit, render, антикопирование) |
+| Изменить | `supabase/functions/send-test-results/index.ts` (grade7technology ветка) |
 
