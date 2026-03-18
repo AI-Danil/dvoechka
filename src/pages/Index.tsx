@@ -40,6 +40,12 @@ const AVAILABLE_TESTS: Record<string, string[]> = {
   "9": ["informatics", "physics", "technology"],
 };
 
+const SUBJECT_LABELS: Record<string, string> = {
+  informatics: "Информатика",
+  physics: "Физика",
+  technology: "Технология",
+};
+
 const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+(?:\s+(\d+))?$/;
 
 function getDraftKey(grade: string, subject: string, attempt: string) {
@@ -555,7 +561,7 @@ const Index = () => {
             </div>
             <div>
               <Label>Класс:</Label>
-              <Select value={grade} onValueChange={setGrade}>
+              <Select value={grade} onValueChange={(v) => { setGrade(v); setSubject(""); }}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Выберите класс" />
                 </SelectTrigger>
@@ -568,16 +574,16 @@ const Index = () => {
             </div>
             <div>
               <Label>Предмет:</Label>
-              <Select value={subject} onValueChange={setSubject}>
+              <Select value={subject} onValueChange={setSubject} disabled={!grade}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Выберите предмет" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="informatics">Информатика</SelectItem>
-                  <SelectItem value="physics">Физика</SelectItem>
-                  <SelectItem value="technology">Технология</SelectItem>
+                  {(AVAILABLE_TESTS[grade] || []).map((s) => (
+                    <SelectItem key={s} value={s}>{SUBJECT_LABELS[s]}</SelectItem>
+                  ))}
                 </SelectContent>
-             </Select>
+              </Select>
             </div>
             <Button onClick={handleStart} className="w-full mt-4" size="lg">
               Начать тестирование
