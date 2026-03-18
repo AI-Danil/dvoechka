@@ -35,7 +35,7 @@ type Screen = "login" | "test" | "success";
 const TOTAL_TIME = 40 * 60;
 
 const AVAILABLE_TESTS: Record<string, string[]> = {
-  "7": ["informatics"],
+  "7": ["informatics", "technology"],
   "8": ["informatics"],
   "9": ["informatics", "physics", "technology"],
 };
