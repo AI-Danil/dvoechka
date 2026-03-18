@@ -160,6 +160,9 @@ const Index = () => {
         if (draft.answers9tech) setAnswers9tech(draft.answers9tech);
       } else if (grade === "9") {
         if (draft.answers9) setAnswers9(draft.answers9);
+      } else if (grade === "7" && subject === "technology") {
+        if (draft.theory7tech) setTheory7tech(draft.theory7tech);
+        if (draft.practice7tech) setPractice7tech(draft.practice7tech);
       } else if (grade === "7") {
         if (draft.theory7) setTheory7(draft.theory7);
         if (draft.practice7) setPractice7(draft.practice7);
