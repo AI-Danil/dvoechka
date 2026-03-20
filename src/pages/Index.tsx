@@ -143,6 +143,8 @@ const Index = () => {
   useEffect(() => { theory7techRef.current = theory7tech; }, [theory7tech]);
   useEffect(() => { practice7techRef.current = practice7tech; }, [practice7tech]);
   useEffect(() => { attachments7techRef.current = attachments7tech; }, [attachments7tech]);
+  useEffect(() => { answers8physRef.current = answers8phys; }, [answers8phys]);
+  useEffect(() => { attachments8physRef.current = attachments8phys; }, [attachments8phys]);
   useEffect(() => { gradeRef.current = grade; }, [grade]);
   useEffect(() => { subjectRef.current = subject; }, [subject]);
   useEffect(() => { attemptRef.current = attempt; }, [attempt]);
