@@ -119,6 +119,8 @@ const Index = () => {
   const theory7techRef = useRef(theory7tech);
   const practice7techRef = useRef(practice7tech);
   const attachments7techRef = useRef(attachments7tech);
+  const answers8physRef = useRef(answers8phys);
+  const attachments8physRef = useRef(attachments8phys);
   const gradeRef = useRef(grade);
   const subjectRef = useRef(subject);
   const attemptRef = useRef(attempt);
