@@ -30,13 +30,14 @@ import Grade9Physics from "@/components/tests/Grade9Physics";
 import Grade9Technology from "@/components/tests/Grade9Technology";
 import Grade7Technology from "@/components/tests/Grade7Technology";
 import Grade8Physics from "@/components/tests/Grade8Physics";
+import Grade7Physics from "@/components/tests/Grade7Physics";
 
 type Screen = "login" | "test" | "success";
 
 const TOTAL_TIME = 40 * 60;
 
 const AVAILABLE_TESTS: Record<string, string[]> = {
-  "7": ["informatics", "technology"],
+  "7": ["informatics", "technology", "physics"],
   "8": ["informatics", "physics"],
   "9": ["informatics", "physics", "technology"],
 };
@@ -103,6 +104,10 @@ const Index = () => {
   const [answers8phys, setAnswers8phys] = useState<string[]>(Array(13).fill(""));
   const [attachments8phys, setAttachments8phys] = useState<Record<number, File | null>>({});
 
+  // Grade 7 physics answers
+  const [answers7phys, setAnswers7phys] = useState<string[]>(Array(10).fill(""));
+  const [attachments7phys, setAttachments7phys] = useState<Record<number, File | null>>({});
+
   // Live refs for all data (so auto-submit always reads latest values)
   const blitz8Ref = useRef(blitz8);
   const tasks8Ref = useRef(tasks8);
@@ -121,6 +126,8 @@ const Index = () => {
   const attachments7techRef = useRef(attachments7tech);
   const answers8physRef = useRef(answers8phys);
   const attachments8physRef = useRef(attachments8phys);
+  const answers7physRef = useRef(answers7phys);
+  const attachments7physRef = useRef(attachments7phys);
   const gradeRef = useRef(grade);
   const subjectRef = useRef(subject);
   const attemptRef = useRef(attempt);
@@ -145,6 +152,8 @@ const Index = () => {
   useEffect(() => { attachments7techRef.current = attachments7tech; }, [attachments7tech]);
   useEffect(() => { answers8physRef.current = answers8phys; }, [answers8phys]);
   useEffect(() => { attachments8physRef.current = attachments8phys; }, [attachments8phys]);
+  useEffect(() => { answers7physRef.current = answers7phys; }, [answers7phys]);
+  useEffect(() => { attachments7physRef.current = attachments7phys; }, [attachments7phys]);
   useEffect(() => { gradeRef.current = grade; }, [grade]);
   useEffect(() => { subjectRef.current = subject; }, [subject]);
   useEffect(() => { attemptRef.current = attempt; }, [attempt]);
@@ -177,6 +186,8 @@ const Index = () => {
         if (draft.answers9tech) setAnswers9tech(draft.answers9tech);
       } else if (grade === "9") {
         if (draft.answers9) setAnswers9(draft.answers9);
+      } else if (grade === "7" && subject === "physics") {
+        if (draft.answers7phys) setAnswers7phys(draft.answers7phys);
       } else if (grade === "7" && subject === "technology") {
         if (draft.theory7tech) setTheory7tech(draft.theory7tech);
         if (draft.practice7tech) setPractice7tech(draft.practice7tech);
@@ -204,13 +215,15 @@ const Index = () => {
       data = { answers9tech };
     } else if (grade === "9") {
       data = { answers9 };
+    } else if (grade === "7" && subject === "physics") {
+      data = { answers7phys };
     } else if (grade === "7" && subject === "technology") {
       data = { theory7tech, practice7tech };
     } else if (grade === "7") {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, blitz8, tasks8, answers8phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [screen, grade, subject, blitz8, tasks8, answers8phys, answers7phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   // --- Progress calculation ---
   const { answered, total } = useMemo(() => {
@@ -226,6 +239,8 @@ const Index = () => {
       return { answered: answers9tech.filter(Boolean).length, total: 11 };
     } else if (grade === "9") {
       return { answered: answers9.filter(Boolean).length, total: 11 };
+    } else if (grade === "7" && subject === "physics") {
+      return { answered: answers7phys.filter(Boolean).length, total: 10 };
     } else if (grade === "7" && subject === "technology") {
       const tFilled = theory7tech.filter(Boolean).length;
       const pFilled = practice7tech.filter(Boolean).length;
@@ -236,7 +251,7 @@ const Index = () => {
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, subject, blitz8, tasks8, answers8phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [grade, subject, blitz8, tasks8, answers8phys, answers7phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
@@ -516,6 +531,9 @@ const Index = () => {
     } else if (g === "9") {
       fileUrls = await uploadAttachments(attachments9Ref.current);
       answers = { type: "grade9", answers: answers9Ref.current };
+    } else if (g === "7" && s === "physics") {
+      fileUrls = await uploadAttachments(attachments7physRef.current);
+      answers = { type: "grade7physics", answers: answers7physRef.current };
     } else if (g === "7" && s === "technology") {
       fileUrls = await uploadAttachments(attachments7techRef.current);
       answers = { type: "grade7technology", theory: theory7techRef.current, practice: practice7techRef.current };
@@ -705,6 +723,21 @@ const Index = () => {
               });
             }}
             onAttachmentChange={(i, file) => setAttachments7tech((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "7" && subject === "physics" && (
+          <Grade7Physics
+            answers={answers7phys}
+            attachments={attachments7phys}
+            onAnswerChange={(i, v) => {
+              setAnswers7phys((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments7phys((prev) => ({ ...prev, [i]: file }))}
           />
         )}
 

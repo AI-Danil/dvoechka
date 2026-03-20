@@ -85,7 +85,7 @@ serve(async (req) => {
       if (body.type === "grade7" || body.type === "grade7technology") {
         answersData.theory = body.theory;
         answersData.practice = body.practice;
-      } else if (body.type === "grade9" || body.type === "grade9physics" || body.type === "grade9technology" || body.type === "grade8physics") {
+      } else if (body.type === "grade9" || body.type === "grade9physics" || body.type === "grade9technology" || body.type === "grade8physics" || body.type === "grade7physics") {
         answersData.answers = body.answers;
       } else {
         answersData.blitz = body.blitz;
@@ -237,6 +237,34 @@ serve(async (req) => {
       for (let i = 9; i < ans.length; i++) {
         const hasFile = attachmentMap[String(i)];
         message += `${labels[i]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+      }
+    } else if (body.type === "grade7physics") {
+      const ans = body.answers as string[];
+      const part1Labels = [
+        "1. Мраморная колонна (ошибка)",
+        "2. Банка+вода+бумага (атм. давление)",
+        "3. Архимедова сила (почему вверх)",
+        "4. Яйцо варёное vs сырое (Паскаль)",
+      ];
+      const part2Labels = [
+        "5. Автомобиль на льду",
+        "6. Гидравлический пресс",
+        "7. Кубик в аквариуме",
+        "8. Шприц (атм. давление)",
+        "9. Льдина (подводная часть)",
+        "⭐ 10. U-образная трубка",
+      ];
+
+      message += `\n📝 ЧАСТЬ 1 (Качественные задачи):\n`;
+      for (let i = 0; i < 4; i++) {
+        const hasFile = attachmentMap[String(i)];
+        message += `${part1Labels[i]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+      }
+
+      message += `📊 ЧАСТЬ 2 (Расчётные задачи):\n`;
+      for (let i = 4; i < 10; i++) {
+        const hasFile = attachmentMap[String(i)];
+        message += `${part2Labels[i - 4]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
       }
     } else if (body.type === "grade8physics") {
       const ans = body.answers as string[];
