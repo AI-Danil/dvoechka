@@ -531,6 +531,9 @@ const Index = () => {
     } else if (g === "9") {
       fileUrls = await uploadAttachments(attachments9Ref.current);
       answers = { type: "grade9", answers: answers9Ref.current };
+    } else if (g === "7" && s === "physics") {
+      fileUrls = await uploadAttachments(attachments7physRef.current);
+      answers = { type: "grade7physics", answers: answers7physRef.current };
     } else if (g === "7" && s === "technology") {
       fileUrls = await uploadAttachments(attachments7techRef.current);
       answers = { type: "grade7technology", theory: theory7techRef.current, practice: practice7techRef.current };
