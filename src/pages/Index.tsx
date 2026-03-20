@@ -194,8 +194,10 @@ const Index = () => {
     if (screen !== "test" || !grade || !subject) return;
     const key = getDraftKey(grade, subject, attempt);
     let data: Record<string, unknown> = {};
-    if (grade === "8") {
+    if (grade === "8" && subject === "informatics") {
       data = { blitz8, tasks8 };
+    } else if (grade === "8" && subject === "physics") {
+      data = { answers8phys };
     } else if (grade === "9" && subject === "physics") {
       data = { answers9phys };
     } else if (grade === "9" && subject === "technology") {
