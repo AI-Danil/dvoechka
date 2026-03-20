@@ -166,9 +166,11 @@ const Index = () => {
     if (!saved) return;
     try {
       const draft = JSON.parse(saved);
-      if (grade === "8") {
+      if (grade === "8" && subject === "informatics") {
         if (draft.blitz8) setBlitz8(draft.blitz8);
         if (draft.tasks8) setTasks8(draft.tasks8);
+      } else if (grade === "8" && subject === "physics") {
+        if (draft.answers8phys) setAnswers8phys(draft.answers8phys);
       } else if (grade === "9" && subject === "physics") {
         if (draft.answers9phys) setAnswers9phys(draft.answers9phys);
       } else if (grade === "9" && subject === "technology") {
