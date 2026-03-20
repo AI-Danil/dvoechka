@@ -653,7 +653,7 @@ const Index = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 mt-6 space-y-8">
-        {grade === "8" && (
+        {grade === "8" && subject === "informatics" && (
           <Grade8Informatics
             blitz={blitz8}
             tasks={tasks8}
