@@ -501,9 +501,12 @@ const Index = () => {
     let answers: Record<string, unknown>;
     let fileUrls: Record<string, string> = {};
 
-    if (g === "8") {
+    if (g === "8" && s === "informatics") {
       fileUrls = await uploadAttachments(attachments8Ref.current);
       answers = { type: "grade8", blitz: blitz8Ref.current, tasks: tasks8Ref.current };
+    } else if (g === "8" && s === "physics") {
+      fileUrls = await uploadAttachments(attachments8physRef.current);
+      answers = { type: "grade8physics", answers: answers8physRef.current };
     } else if (g === "9" && s === "physics") {
       fileUrls = await uploadAttachments(attachments9physRef.current);
       answers = { type: "grade9physics", answers: answers9physRef.current };
