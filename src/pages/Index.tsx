@@ -215,13 +215,15 @@ const Index = () => {
       data = { answers9tech };
     } else if (grade === "9") {
       data = { answers9 };
+    } else if (grade === "7" && subject === "physics") {
+      data = { answers7phys };
     } else if (grade === "7" && subject === "technology") {
       data = { theory7tech, practice7tech };
     } else if (grade === "7") {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, blitz8, tasks8, answers8phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [screen, grade, subject, blitz8, tasks8, answers8phys, answers7phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   // --- Progress calculation ---
   const { answered, total } = useMemo(() => {
