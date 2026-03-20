@@ -29,6 +29,7 @@ import Grade9Informatics from "@/components/tests/Grade9Informatics";
 import Grade9Physics from "@/components/tests/Grade9Physics";
 import Grade9Technology from "@/components/tests/Grade9Technology";
 import Grade7Technology from "@/components/tests/Grade7Technology";
+import Grade8Physics from "@/components/tests/Grade8Physics";
 
 type Screen = "login" | "test" | "success";
 
@@ -36,7 +37,7 @@ const TOTAL_TIME = 40 * 60;
 
 const AVAILABLE_TESTS: Record<string, string[]> = {
   "7": ["informatics", "technology"],
-  "8": ["informatics"],
+  "8": ["informatics", "physics"],
   "9": ["informatics", "physics", "technology"],
 };
 
