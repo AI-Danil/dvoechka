@@ -210,7 +210,7 @@ const Index = () => {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, blitz8, tasks8, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [screen, grade, subject, blitz8, tasks8, answers8phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   // --- Progress calculation ---
   const { answered, total } = useMemo(() => {
