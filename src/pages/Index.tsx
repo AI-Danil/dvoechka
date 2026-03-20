@@ -29,6 +29,7 @@ import Grade9Informatics from "@/components/tests/Grade9Informatics";
 import Grade9Physics from "@/components/tests/Grade9Physics";
 import Grade9Technology from "@/components/tests/Grade9Technology";
 import Grade7Technology from "@/components/tests/Grade7Technology";
+import Grade8Physics from "@/components/tests/Grade8Physics";
 
 type Screen = "login" | "test" | "success";
 
@@ -36,7 +37,7 @@ const TOTAL_TIME = 40 * 60;
 
 const AVAILABLE_TESTS: Record<string, string[]> = {
   "7": ["informatics", "technology"],
-  "8": ["informatics"],
+  "8": ["informatics", "physics"],
   "9": ["informatics", "physics", "technology"],
 };
 
@@ -98,6 +99,10 @@ const Index = () => {
   const [practice7tech, setPractice7tech] = useState<string[]>(Array(6).fill(""));
   const [attachments7tech, setAttachments7tech] = useState<Record<number, File | null>>({});
 
+  // Grade 8 physics answers
+  const [answers8phys, setAnswers8phys] = useState<string[]>(Array(13).fill(""));
+  const [attachments8phys, setAttachments8phys] = useState<Record<number, File | null>>({});
+
   // Live refs for all data (so auto-submit always reads latest values)
   const blitz8Ref = useRef(blitz8);
   const tasks8Ref = useRef(tasks8);
@@ -114,6 +119,8 @@ const Index = () => {
   const theory7techRef = useRef(theory7tech);
   const practice7techRef = useRef(practice7tech);
   const attachments7techRef = useRef(attachments7tech);
+  const answers8physRef = useRef(answers8phys);
+  const attachments8physRef = useRef(attachments8phys);
   const gradeRef = useRef(grade);
   const subjectRef = useRef(subject);
   const attemptRef = useRef(attempt);
@@ -136,6 +143,8 @@ const Index = () => {
   useEffect(() => { theory7techRef.current = theory7tech; }, [theory7tech]);
   useEffect(() => { practice7techRef.current = practice7tech; }, [practice7tech]);
   useEffect(() => { attachments7techRef.current = attachments7tech; }, [attachments7tech]);
+  useEffect(() => { answers8physRef.current = answers8phys; }, [answers8phys]);
+  useEffect(() => { attachments8physRef.current = attachments8phys; }, [attachments8phys]);
   useEffect(() => { gradeRef.current = grade; }, [grade]);
   useEffect(() => { subjectRef.current = subject; }, [subject]);
   useEffect(() => { attemptRef.current = attempt; }, [attempt]);
@@ -157,9 +166,11 @@ const Index = () => {
     if (!saved) return;
     try {
       const draft = JSON.parse(saved);
-      if (grade === "8") {
+      if (grade === "8" && subject === "informatics") {
         if (draft.blitz8) setBlitz8(draft.blitz8);
         if (draft.tasks8) setTasks8(draft.tasks8);
+      } else if (grade === "8" && subject === "physics") {
+        if (draft.answers8phys) setAnswers8phys(draft.answers8phys);
       } else if (grade === "9" && subject === "physics") {
         if (draft.answers9phys) setAnswers9phys(draft.answers9phys);
       } else if (grade === "9" && subject === "technology") {
@@ -183,8 +194,10 @@ const Index = () => {
     if (screen !== "test" || !grade || !subject) return;
     const key = getDraftKey(grade, subject, attempt);
     let data: Record<string, unknown> = {};
-    if (grade === "8") {
+    if (grade === "8" && subject === "informatics") {
       data = { blitz8, tasks8 };
+    } else if (grade === "8" && subject === "physics") {
+      data = { answers8phys };
     } else if (grade === "9" && subject === "physics") {
       data = { answers9phys };
     } else if (grade === "9" && subject === "technology") {
@@ -197,14 +210,16 @@ const Index = () => {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, blitz8, tasks8, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [screen, grade, subject, blitz8, tasks8, answers8phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   // --- Progress calculation ---
   const { answered, total } = useMemo(() => {
-    if (grade === "8") {
+    if (grade === "8" && subject === "informatics") {
       const blitzFilled = blitz8.filter(Boolean).length;
       const tasksFilled = Object.values(tasks8).filter(Boolean).length;
       return { answered: blitzFilled + tasksFilled, total: 7 + 6 };
+    } else if (grade === "8" && subject === "physics") {
+      return { answered: answers8phys.filter(Boolean).length, total: 13 };
     } else if (grade === "9" && subject === "physics") {
       return { answered: answers9phys.filter(Boolean).length, total: 14 };
     } else if (grade === "9" && subject === "technology") {
@@ -221,7 +236,7 @@ const Index = () => {
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, subject, blitz8, tasks8, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [grade, subject, blitz8, tasks8, answers8phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
@@ -486,9 +501,12 @@ const Index = () => {
     let answers: Record<string, unknown>;
     let fileUrls: Record<string, string> = {};
 
-    if (g === "8") {
+    if (g === "8" && s === "informatics") {
       fileUrls = await uploadAttachments(attachments8Ref.current);
       answers = { type: "grade8", blitz: blitz8Ref.current, tasks: tasks8Ref.current };
+    } else if (g === "8" && s === "physics") {
+      fileUrls = await uploadAttachments(attachments8physRef.current);
+      answers = { type: "grade8physics", answers: answers8physRef.current };
     } else if (g === "9" && s === "physics") {
       fileUrls = await uploadAttachments(attachments9physRef.current);
       answers = { type: "grade9physics", answers: answers9physRef.current };
@@ -635,7 +653,7 @@ const Index = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 mt-6 space-y-8">
-        {grade === "8" && (
+        {grade === "8" && subject === "informatics" && (
           <Grade8Informatics
             blitz={blitz8}
             tasks={tasks8}
@@ -649,6 +667,21 @@ const Index = () => {
             }}
             onTaskChange={(key, v) => setTasks8((prev) => ({ ...prev, [key]: v }))}
             onAttachmentChange={(key, file) => setAttachments8((prev) => ({ ...prev, [key]: file }))}
+          />
+        )}
+
+        {grade === "8" && subject === "physics" && (
+          <Grade8Physics
+            answers={answers8phys}
+            attachments={attachments8phys}
+            onAnswerChange={(i, v) => {
+              setAnswers8phys((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments8phys((prev) => ({ ...prev, [i]: file }))}
           />
         )}
 
