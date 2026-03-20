@@ -670,6 +670,21 @@ const Index = () => {
           />
         )}
 
+        {grade === "8" && subject === "physics" && (
+          <Grade8Physics
+            answers={answers8phys}
+            attachments={attachments8phys}
+            onAnswerChange={(i, v) => {
+              setAnswers8phys((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments8phys((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
         {grade === "7" && subject === "technology" && (
           <Grade7Technology
             theory={theory7tech}

@@ -238,6 +238,36 @@ serve(async (req) => {
         const hasFile = attachmentMap[String(i)];
         message += `${labels[i]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
       }
+    } else if (body.type === "grade8physics") {
+      const ans = body.answers as string[];
+      const theoryLabels = [
+        "1.1 Электрический ток",
+        "1.2 Сила тока",
+        "1.3 Закон Ома",
+        "1.4 Сопротивление проводника",
+        "1.5 Последовательное соединение",
+        "1.6 Закон Джоуля-Ленца",
+        "1.7 Короткое замыкание",
+      ];
+      const practiceLabels = [
+        "2.1 Ошибка ученика (R≠U/I)",
+        "2.2 Последоват. соединение",
+        "2.3 Два алюм. провода",
+        "2.4 Медная проволока (жгут)",
+        "2.5 Заряженные шарики",
+        "2.6 ⭐ Смешанное соединение",
+      ];
+
+      message += `\n📝 ЧАСТЬ 1 (Теория):\n`;
+      for (let i = 0; i < 7; i++) {
+        message += `${theoryLabels[i]}: ${ans[i] || "(пусто)"}\n\n`;
+      }
+
+      message += `📊 ЧАСТЬ 2 (Задачи):\n`;
+      for (let i = 7; i < 13; i++) {
+        const hasFile = attachmentMap[String(i)];
+        message += `${practiceLabels[i - 7]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+      }
     } else if (body.type === "grade9physics") {
       const ans = body.answers as string[];
       const theoryLabels = [
