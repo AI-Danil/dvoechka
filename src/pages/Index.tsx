@@ -99,6 +99,10 @@ const Index = () => {
   const [practice7tech, setPractice7tech] = useState<string[]>(Array(6).fill(""));
   const [attachments7tech, setAttachments7tech] = useState<Record<number, File | null>>({});
 
+  // Grade 8 physics answers
+  const [answers8phys, setAnswers8phys] = useState<string[]>(Array(13).fill(""));
+  const [attachments8phys, setAttachments8phys] = useState<Record<number, File | null>>({});
+
   // Live refs for all data (so auto-submit always reads latest values)
   const blitz8Ref = useRef(blitz8);
   const tasks8Ref = useRef(tasks8);
