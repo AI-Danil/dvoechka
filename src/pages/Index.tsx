@@ -26,9 +26,12 @@ import Grade7Technology from "@/components/tests/Grade7Technology";
 import Grade8Physics from "@/components/tests/Grade8Physics";
 import Grade8PhysicsPower from "@/components/tests/Grade8PhysicsPower";
 import Grade7Physics from "@/components/tests/Grade7Physics";
+import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
+import Quiz, { QuizIntro, type QuizResults } from "@/components/Quiz";
 
 type Screen = "login" | "test" | "success";
 type LoginStep = "grade" | "subject" | "name" | "test-pick";
+type QuizPhase = "intro" | "running" | "done";
 
 const TOTAL_TIME = 40 * 60;
 
@@ -64,10 +67,19 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
   },
   "9": {
     informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
-    physics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    physics: [
+      { id: "default", title: "Контрольная №1. Механика, волны, оптика" },
+      { id: "atom", title: "Контрольная №2. Атом и атомное ядро (с квизом)" },
+    ],
     technology: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
   },
 };
+
+const TESTS_WITH_QUIZ: Record<string, true> = {
+  "9_physics_atom": true,
+};
+
+const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;
 
 const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+(?:\s+(\d+))?$/;
 
@@ -135,6 +147,15 @@ const Index = () => {
   const [answers7phys, setAnswers7phys] = useState<string[]>(Array(10).fill(""));
   const [attachments7phys, setAttachments7phys] = useState<Record<number, File | null>>({});
 
+  // Grade 9 physics ATOM answers (6 tasks)
+  const [answers9physAtom, setAnswers9physAtom] = useState<string[]>(Array(6).fill(""));
+  const [attachments9physAtom, setAttachments9physAtom] = useState<Record<number, File | null>>({});
+
+  // Quiz state
+  const [quizPhase, setQuizPhase] = useState<QuizPhase | null>(null);
+  const [quizResults, setQuizResults] = useState<QuizResults | null>(null);
+  const quizResultsRef = useRef<QuizResults | null>(null);
+
   // Live refs
   const blitz8Ref = useRef(blitz8);
   const tasks8Ref = useRef(tasks8);
@@ -157,6 +178,8 @@ const Index = () => {
   const attachments8physPowerRef = useRef(attachments8physPower);
   const answers7physRef = useRef(answers7phys);
   const attachments7physRef = useRef(attachments7phys);
+  const answers9physAtomRef = useRef(answers9physAtom);
+  const attachments9physAtomRef = useRef(attachments9physAtom);
   const gradeRef = useRef(grade);
   const subjectRef = useRef(subject);
   const testIdRef = useRef(testId);
@@ -185,6 +208,9 @@ const Index = () => {
   useEffect(() => { attachments8physPowerRef.current = attachments8physPower; }, [attachments8physPower]);
   useEffect(() => { answers7physRef.current = answers7phys; }, [answers7phys]);
   useEffect(() => { attachments7physRef.current = attachments7phys; }, [attachments7phys]);
+  useEffect(() => { answers9physAtomRef.current = answers9physAtom; }, [answers9physAtom]);
+  useEffect(() => { attachments9physAtomRef.current = attachments9physAtom; }, [attachments9physAtom]);
+  useEffect(() => { quizResultsRef.current = quizResults; }, [quizResults]);
   useEffect(() => { gradeRef.current = grade; }, [grade]);
   useEffect(() => { subjectRef.current = subject; }, [subject]);
   useEffect(() => { testIdRef.current = testId; }, [testId]);
@@ -214,6 +240,8 @@ const Index = () => {
         if (draft.answers8physPower) setAnswers8physPower(draft.answers8physPower);
       } else if (grade === "8" && subject === "physics") {
         if (draft.answers8phys) setAnswers8phys(draft.answers8phys);
+      } else if (grade === "9" && subject === "physics" && testId === "atom") {
+        if (draft.answers9physAtom) setAnswers9physAtom(draft.answers9physAtom);
       } else if (grade === "9" && subject === "physics") {
         if (draft.answers9phys) setAnswers9phys(draft.answers9phys);
       } else if (grade === "9" && subject === "technology") {
@@ -245,6 +273,8 @@ const Index = () => {
       data = { answers8physPower };
     } else if (grade === "8" && subject === "physics") {
       data = { answers8phys };
+    } else if (grade === "9" && subject === "physics" && testId === "atom") {
+      data = { answers9physAtom };
     } else if (grade === "9" && subject === "physics") {
       data = { answers9phys };
     } else if (grade === "9" && subject === "technology") {
@@ -259,7 +289,7 @@ const Index = () => {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   // --- Progress ---
   const { answered, total } = useMemo(() => {
@@ -271,6 +301,8 @@ const Index = () => {
       return { answered: answers8physPower.filter(Boolean).length, total: 6 };
     } else if (grade === "8" && subject === "physics") {
       return { answered: answers8phys.filter(Boolean).length, total: 13 };
+    } else if (grade === "9" && subject === "physics" && testId === "atom") {
+      return { answered: answers9physAtom.filter(Boolean).length, total: 6 };
     } else if (grade === "9" && subject === "physics") {
       return { answered: answers9phys.filter(Boolean).length, total: 14 };
     } else if (grade === "9" && subject === "technology") {
@@ -289,7 +321,7 @@ const Index = () => {
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, subject, testId, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [grade, subject, testId, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
@@ -408,8 +440,11 @@ const Index = () => {
     };
   }, [screen, logCheat, notifyCopyAttempt, toast]);
 
+  // Timer only starts when test is active AND any quiz is finished
+  const timerActive = screen === "test" && (quizPhase === null || quizPhase === "done");
+
   useEffect(() => {
-    if (screen !== "test") return;
+    if (!timerActive) return;
 
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -424,7 +459,7 @@ const Index = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [screen]);
+  }, [timerActive]);
 
   useEffect(() => {
     if (screen === "test" && timeLeft === 0 && !autoSubmitTriggered) {
@@ -498,7 +533,19 @@ const Index = () => {
       return;
     }
     setTestId(chosenTestId);
+    const hasQuiz = !!TESTS_WITH_QUIZ[quizKey(grade, subject, chosenTestId)];
+    if (hasQuiz) {
+      setQuizPhase("intro");
+      setQuizResults(null);
+    } else {
+      setQuizPhase(null);
+    }
     setScreen("test");
+  };
+
+  const handleQuizFinish = (results: QuizResults) => {
+    setQuizResults(results);
+    setQuizPhase("done");
   };
 
   const uploadAttachments = async (files: Record<string | number, File | null>): Promise<Record<string, string>> => {
@@ -555,6 +602,13 @@ const Index = () => {
     } else if (g === "8" && s === "physics") {
       fileUrls = await uploadAttachments(attachments8physRef.current);
       answers = { type: "grade8physics", answers: answers8physRef.current };
+    } else if (g === "9" && s === "physics" && tid === "atom") {
+      fileUrls = await uploadAttachments(attachments9physAtomRef.current);
+      answers = {
+        type: "grade9physicsAtom",
+        answers: answers9physAtomRef.current,
+        quizResults: quizResultsRef.current,
+      };
     } else if (g === "9" && s === "physics") {
       fileUrls = await uploadAttachments(attachments9physRef.current);
       answers = { type: "grade9physics", answers: answers9physRef.current };
@@ -741,6 +795,27 @@ const Index = () => {
     );
   }
 
+  // QUIZ SCREENS (before main test) — only for tests that have a quiz
+  if (screen === "test" && quizPhase === "intro") {
+    return (
+      <QuizIntro
+        questionsCount={ATOM_QUIZ_QUESTIONS.length}
+        secondsPerQuestion={20}
+        onStart={() => setQuizPhase("running")}
+      />
+    );
+  }
+
+  if (screen === "test" && quizPhase === "running") {
+    return (
+      <Quiz
+        questions={ATOM_QUIZ_QUESTIONS}
+        secondsPerQuestion={20}
+        onFinish={handleQuizFinish}
+      />
+    );
+  }
+
   // TEST SCREEN
   const subjectLabel = subject === "informatics" ? "Информатика" : subject === "physics" ? "Физика" : "Технология";
 
@@ -888,7 +963,22 @@ const Index = () => {
           />
         )}
 
-        {grade === "9" && subject === "physics" && (
+        {grade === "9" && subject === "physics" && testId === "atom" && (
+          <Grade9PhysicsAtom
+            answers={answers9physAtom}
+            attachments={attachments9physAtom}
+            onAnswerChange={(i, v) => {
+              setAnswers9physAtom((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments9physAtom((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "9" && subject === "physics" && testId !== "atom" && (
           <Grade9Physics
             answers={answers9phys}
             attachments={attachments9phys}
