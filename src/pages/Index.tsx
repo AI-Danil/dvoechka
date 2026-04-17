@@ -795,6 +795,27 @@ const Index = () => {
     );
   }
 
+  // QUIZ SCREENS (before main test) — only for tests that have a quiz
+  if (screen === "test" && quizPhase === "intro") {
+    return (
+      <QuizIntro
+        questionsCount={ATOM_QUIZ_QUESTIONS.length}
+        secondsPerQuestion={20}
+        onStart={() => setQuizPhase("running")}
+      />
+    );
+  }
+
+  if (screen === "test" && quizPhase === "running") {
+    return (
+      <Quiz
+        questions={ATOM_QUIZ_QUESTIONS}
+        secondsPerQuestion={20}
+        onFinish={handleQuizFinish}
+      />
+    );
+  }
+
   // TEST SCREEN
   const subjectLabel = subject === "informatics" ? "Информатика" : subject === "physics" ? "Физика" : "Технология";
 
