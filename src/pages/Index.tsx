@@ -440,8 +440,11 @@ const Index = () => {
     };
   }, [screen, logCheat, notifyCopyAttempt, toast]);
 
+  // Timer only starts when test is active AND any quiz is finished
+  const timerActive = screen === "test" && (quizPhase === null || quizPhase === "done");
+
   useEffect(() => {
-    if (screen !== "test") return;
+    if (!timerActive) return;
 
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
@@ -456,7 +459,7 @@ const Index = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [screen]);
+  }, [timerActive]);
 
   useEffect(() => {
     if (screen === "test" && timeLeft === 0 && !autoSubmitTriggered) {
