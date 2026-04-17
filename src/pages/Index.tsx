@@ -321,7 +321,7 @@ const Index = () => {
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, subject, testId, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [grade, subject, testId, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
