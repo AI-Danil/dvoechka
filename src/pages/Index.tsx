@@ -178,6 +178,8 @@ const Index = () => {
   const attachments8physPowerRef = useRef(attachments8physPower);
   const answers7physRef = useRef(answers7phys);
   const attachments7physRef = useRef(attachments7phys);
+  const answers9physAtomRef = useRef(answers9physAtom);
+  const attachments9physAtomRef = useRef(attachments9physAtom);
   const gradeRef = useRef(grade);
   const subjectRef = useRef(subject);
   const testIdRef = useRef(testId);
