@@ -208,6 +208,9 @@ const Index = () => {
   useEffect(() => { attachments8physPowerRef.current = attachments8physPower; }, [attachments8physPower]);
   useEffect(() => { answers7physRef.current = answers7phys; }, [answers7phys]);
   useEffect(() => { attachments7physRef.current = attachments7phys; }, [attachments7phys]);
+  useEffect(() => { answers9physAtomRef.current = answers9physAtom; }, [answers9physAtom]);
+  useEffect(() => { attachments9physAtomRef.current = attachments9physAtom; }, [attachments9physAtom]);
+  useEffect(() => { quizResultsRef.current = quizResults; }, [quizResults]);
   useEffect(() => { gradeRef.current = grade; }, [grade]);
   useEffect(() => { subjectRef.current = subject; }, [subject]);
   useEffect(() => { testIdRef.current = testId; }, [testId]);
