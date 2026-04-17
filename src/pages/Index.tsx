@@ -602,6 +602,13 @@ const Index = () => {
     } else if (g === "8" && s === "physics") {
       fileUrls = await uploadAttachments(attachments8physRef.current);
       answers = { type: "grade8physics", answers: answers8physRef.current };
+    } else if (g === "9" && s === "physics" && tid === "atom") {
+      fileUrls = await uploadAttachments(attachments9physAtomRef.current);
+      answers = {
+        type: "grade9physicsAtom",
+        answers: answers9physAtomRef.current,
+        quizResults: quizResultsRef.current,
+      };
     } else if (g === "9" && s === "physics") {
       fileUrls = await uploadAttachments(attachments9physRef.current);
       answers = { type: "grade9physics", answers: answers9physRef.current };
