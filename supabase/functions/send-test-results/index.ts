@@ -358,6 +358,40 @@ serve(async (req) => {
       message += `🔍 БЛОК 3 (Качественная задача):\n`;
       const hasFile14 = attachmentMap["13"];
       message += `3.1 Преломление: ${ans[13] || "(пусто)"}${hasFile14 ? " 📎" : ""}\n\n`;
+    } else if (body.type === "grade9physicsAtom") {
+      const ans = body.answers as string[];
+      const labels = [
+        "Задача 1. Анатомия ядра калия ¹⁹₃₉K",
+        "Задача 2. Правила смещения (α-распад U-238, β-распад C-14)",
+        "Задача 3. Скрытая угроза (¹⁰₅B + ? → ⁷₃Li + ⁴₂He)",
+        "Задача 4. Многоступенчатый распад Th-234 → U-234",
+        "Задача 5. Таймер радиации (T½=2 суток, 6 суток)",
+        "Задача 6. Треки в камере Вильсона",
+      ];
+
+      const quiz = body.quizResults as
+        | {
+            correct: number;
+            total: number;
+            perQuestion: { answer: number; correct: number; timeSpent: number; timedOut: boolean }[];
+          }
+        | null
+        | undefined;
+
+      if (quiz) {
+        const optLabel = (n: number) => (n < 0 ? "—" : ["А", "Б", "В", "Г"][n] ?? "?");
+        message += `\n🎯 КВИЗ: ${quiz.correct}/${quiz.total} правильных\n`;
+        quiz.perQuestion.forEach((r, i) => {
+          const mark = r.answer === r.correct ? "✅" : r.timedOut ? "⏰" : "❌";
+          message += `Вопрос ${i + 1}: ${mark} ответ: ${optLabel(r.answer)} (правильный: ${optLabel(r.correct)}) ⏱ ${r.timeSpent}с${r.timedOut ? " (таймаут)" : ""}\n`;
+        });
+      }
+
+      message += `\n📊 ЗАДАЧИ:\n`;
+      for (let i = 0; i < ans.length; i++) {
+        const hasFile = attachmentMap[String(i)];
+        message += `${labels[i]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+      }
     } else {
       const blitz = body.blitz as string[];
       const tasks = body.tasks as Record<string, string>;
