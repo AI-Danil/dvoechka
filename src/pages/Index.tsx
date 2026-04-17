@@ -26,9 +26,9 @@ import Grade7Technology from "@/components/tests/Grade7Technology";
 import Grade8Physics from "@/components/tests/Grade8Physics";
 import Grade8PhysicsPower from "@/components/tests/Grade8PhysicsPower";
 import Grade7Physics from "@/components/tests/Grade7Physics";
-import Grade7PhysicsWork from "@/components/tests/Grade7PhysicsWork";
+import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork";
 import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
-import Quiz, { QuizIntro, type QuizResults } from "@/components/Quiz";
+import Quiz, { QuizIntro, type QuizQuestion, type QuizResults } from "@/components/Quiz";
 
 type Screen = "login" | "test" | "success";
 type LoginStep = "grade" | "subject" | "name" | "test-pick";
@@ -79,8 +79,14 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
   },
 };
 
-const TESTS_WITH_QUIZ: Record<string, true> = {
-  "9_physics_atom": true,
+interface QuizConfig {
+  questions: QuizQuestion[];
+  secondsPerQuestion: number;
+}
+
+const TESTS_WITH_QUIZ: Record<string, QuizConfig> = {
+  "9_physics_atom": { questions: ATOM_QUIZ_QUESTIONS, secondsPerQuestion: 20 },
+  "7_physics_work-power": { questions: WORK_POWER_QUIZ_QUESTIONS, secondsPerQuestion: 30 },
 };
 
 const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;
@@ -151,8 +157,8 @@ const Index = () => {
   const [answers7phys, setAnswers7phys] = useState<string[]>(Array(10).fill(""));
   const [attachments7phys, setAttachments7phys] = useState<Record<number, File | null>>({});
 
-  // Grade 7 physics WORK & POWER answers (11 questions)
-  const [answers7physWork, setAnswers7physWork] = useState<string[]>(Array(11).fill(""));
+  // Grade 7 physics WORK & POWER answers (6 tasks; theory is in quiz)
+  const [answers7physWork, setAnswers7physWork] = useState<string[]>(Array(6).fill(""));
   const [attachments7physWork, setAttachments7physWork] = useState<Record<number, File | null>>({});
 
   // Grade 9 physics ATOM answers (6 tasks)
@@ -261,7 +267,11 @@ const Index = () => {
       } else if (grade === "9") {
         if (draft.answers9) setAnswers9(draft.answers9);
       } else if (grade === "7" && subject === "physics" && testId === "work-power") {
-        if (draft.answers7physWork) setAnswers7physWork(draft.answers7physWork);
+        if (draft.answers7physWork) {
+          const restored = (draft.answers7physWork as string[]).slice(0, 6);
+          while (restored.length < 6) restored.push("");
+          setAnswers7physWork(restored);
+        }
       } else if (grade === "7" && subject === "physics") {
         if (draft.answers7phys) setAnswers7phys(draft.answers7phys);
       } else if (grade === "7" && subject === "technology") {
@@ -326,7 +336,7 @@ const Index = () => {
     } else if (grade === "9") {
       return { answered: answers9.filter(Boolean).length, total: 11 };
     } else if (grade === "7" && subject === "physics" && testId === "work-power") {
-      return { answered: answers7physWork.filter(Boolean).length, total: 11 };
+      return { answered: answers7physWork.filter(Boolean).length, total: 6 };
     } else if (grade === "7" && subject === "physics") {
       return { answered: answers7phys.filter(Boolean).length, total: 10 };
     } else if (grade === "7" && subject === "technology") {
@@ -638,7 +648,11 @@ const Index = () => {
       answers = { type: "grade9", answers: answers9Ref.current };
     } else if (g === "7" && s === "physics" && tid === "work-power") {
       fileUrls = await uploadAttachments(attachments7physWorkRef.current);
-      answers = { type: "grade7physicsWork", answers: answers7physWorkRef.current };
+      answers = {
+        type: "grade7physicsWork",
+        answers: answers7physWorkRef.current,
+        quizResults: quizResultsRef.current,
+      };
     } else if (g === "7" && s === "physics") {
       fileUrls = await uploadAttachments(attachments7physRef.current);
       answers = { type: "grade7physics", answers: answers7physRef.current };
@@ -818,23 +832,29 @@ const Index = () => {
 
   // QUIZ SCREENS (before main test) — only for tests that have a quiz
   if (screen === "test" && quizPhase === "intro") {
-    return (
-      <QuizIntro
-        questionsCount={ATOM_QUIZ_QUESTIONS.length}
-        secondsPerQuestion={20}
-        onStart={() => setQuizPhase("running")}
-      />
-    );
+    const cfg = TESTS_WITH_QUIZ[quizKey(grade, subject, testId)];
+    if (cfg) {
+      return (
+        <QuizIntro
+          questionsCount={cfg.questions.length}
+          secondsPerQuestion={cfg.secondsPerQuestion}
+          onStart={() => setQuizPhase("running")}
+        />
+      );
+    }
   }
 
   if (screen === "test" && quizPhase === "running") {
-    return (
-      <Quiz
-        questions={ATOM_QUIZ_QUESTIONS}
-        secondsPerQuestion={20}
-        onFinish={handleQuizFinish}
-      />
-    );
+    const cfg = TESTS_WITH_QUIZ[quizKey(grade, subject, testId)];
+    if (cfg) {
+      return (
+        <Quiz
+          questions={cfg.questions}
+          secondsPerQuestion={cfg.secondsPerQuestion}
+          onFinish={handleQuizFinish}
+        />
+      );
+    }
   }
 
   // TEST SCREEN
