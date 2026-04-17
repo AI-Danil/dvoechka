@@ -91,11 +91,10 @@ serve(async (req) => {
         body.type === "grade9technology" ||
         body.type === "grade8physics" ||
         body.type === "grade8physicsPower" ||
-        body.type === "grade7physics" ||
-        body.type === "grade7physicsWork"
+        body.type === "grade7physics"
       ) {
         answersData.answers = body.answers;
-      } else if (body.type === "grade9physicsAtom") {
+      } else if (body.type === "grade9physicsAtom" || body.type === "grade7physicsWork") {
         answersData.answers = body.answers;
         answersData.quizResults = body.quizResults;
       } else {
@@ -282,13 +281,6 @@ serve(async (req) => {
       }
     } else if (body.type === "grade7physicsWork") {
       const ans = body.answers as string[];
-      const theoryLabels = [
-        "1. Условия совершения механической работы",
-        "2. Формула работы (A=F·s) + единицы",
-        "3. Мощность — что характеризует и формула",
-        "4. Единица мощности в СИ + в честь кого",
-        "5. Рюкзак в горизонтальном коридоре (A=0)",
-      ];
       const taskLabels = [
         "Задача 1. Глубина колодца (m=10 кг, A=650 Дж)",
         "Задача 2. Подъёмный кран (m=5 т, h=8 м)",
@@ -298,16 +290,28 @@ serve(async (req) => {
         "⭐ Задача 6. Санки (F=100 Н, s=40 м, cos 60°=0,5)",
       ];
 
-      message += `\n📚 ЧАСТЬ 1 (ТЕОРИЯ):\n`;
-      for (let i = 0; i < 5; i++) {
-        const hasFile = attachmentMap[String(i)];
-        message += `${theoryLabels[i]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+      const quiz = body.quizResults as
+        | {
+            correct: number;
+            total: number;
+            perQuestion: { answer: number; correct: number; timeSpent: number; timedOut: boolean }[];
+          }
+        | null
+        | undefined;
+
+      if (quiz) {
+        const optLabel = (n: number) => (n < 0 ? "—" : ["А", "Б", "В", "Г"][n] ?? "?");
+        message += `\n🎯 КВИЗ (теория): ${quiz.correct}/${quiz.total} правильных\n`;
+        quiz.perQuestion.forEach((r, i) => {
+          const mark = r.answer === r.correct ? "✅" : r.timedOut ? "⏰" : "❌";
+          message += `Вопрос ${i + 1}: ${mark} ответ: ${optLabel(r.answer)} (правильный: ${optLabel(r.correct)}) ⏱ ${r.timeSpent}с${r.timedOut ? " (таймаут)" : ""}\n`;
+        });
       }
 
-      message += `🧮 ЧАСТЬ 2 (ЗАДАЧИ):\n`;
-      for (let i = 5; i < ans.length; i++) {
+      message += `\n🧮 РАСЧЁТНЫЕ ЗАДАЧИ:\n`;
+      for (let i = 0; i < ans.length; i++) {
         const hasFile = attachmentMap[String(i)];
-        message += `${taskLabels[i - 5]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+        message += `${taskLabels[i]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
       }
     } else if (body.type === "grade8physicsPower") {
       const ans = body.answers as string[];
