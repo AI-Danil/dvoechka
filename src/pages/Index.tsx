@@ -240,6 +240,8 @@ const Index = () => {
         if (draft.answers8physPower) setAnswers8physPower(draft.answers8physPower);
       } else if (grade === "8" && subject === "physics") {
         if (draft.answers8phys) setAnswers8phys(draft.answers8phys);
+      } else if (grade === "9" && subject === "physics" && testId === "atom") {
+        if (draft.answers9physAtom) setAnswers9physAtom(draft.answers9physAtom);
       } else if (grade === "9" && subject === "physics") {
         if (draft.answers9phys) setAnswers9phys(draft.answers9phys);
       } else if (grade === "9" && subject === "technology") {
