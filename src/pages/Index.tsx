@@ -301,6 +301,8 @@ const Index = () => {
       return { answered: answers8physPower.filter(Boolean).length, total: 6 };
     } else if (grade === "8" && subject === "physics") {
       return { answered: answers8phys.filter(Boolean).length, total: 13 };
+    } else if (grade === "9" && subject === "physics" && testId === "atom") {
+      return { answered: answers9physAtom.filter(Boolean).length, total: 6 };
     } else if (grade === "9" && subject === "physics") {
       return { answered: answers9phys.filter(Boolean).length, total: 14 };
     } else if (grade === "9" && subject === "technology") {
