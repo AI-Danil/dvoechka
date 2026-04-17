@@ -85,7 +85,14 @@ serve(async (req) => {
       if (body.type === "grade7" || body.type === "grade7technology") {
         answersData.theory = body.theory;
         answersData.practice = body.practice;
-      } else if (body.type === "grade9" || body.type === "grade9physics" || body.type === "grade9technology" || body.type === "grade8physics" || body.type === "grade7physics") {
+      } else if (
+        body.type === "grade9" ||
+        body.type === "grade9physics" ||
+        body.type === "grade9technology" ||
+        body.type === "grade8physics" ||
+        body.type === "grade8physicsPower" ||
+        body.type === "grade7physics"
+      ) {
         answersData.answers = body.answers;
       } else {
         answersData.blitz = body.blitz;
@@ -120,6 +127,9 @@ serve(async (req) => {
 
     let message = `🚀 ОТВЕТ: ${studentName}\n`;
     message += `📚 ${grade} класс, ${subject === "informatics" ? "Информатика" : subject === "physics" ? "Физика" : subject === "technology" ? "Технология" : subject}\n`;
+    if (body.testTitle) {
+      message += `📋 ${body.testTitle}\n`;
+    }
     if (attempt && String(attempt) !== "1") {
       message += `🔄 Попытка: ${attempt}\n`;
     }
@@ -265,6 +275,21 @@ serve(async (req) => {
       for (let i = 4; i < 10; i++) {
         const hasFile = attachmentMap[String(i)];
         message += `${part2Labels[i - 4]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+      }
+    } else if (body.type === "grade8physicsPower") {
+      const ans = body.answers as string[];
+      const labels = [
+        "Задача 1. Работа тока (U=24В, I=2А, t=5мин)",
+        "Задача 2. Паяльник (P=120Вт, U=220В) → I, R",
+        "Задача 3. Кол-во теплоты (R=100Ом, I=2А, t=15мин)",
+        "Задача 4. Электроплитка (стоимость энергии, тариф 5 р/кВт·ч)",
+        "Задача 5. Спираль утюга (длина нихромовой проволоки)",
+        "Задача 6. Укороченная спираль (новая мощность)",
+      ];
+      message += `\n📊 Работа и мощность тока. Закон Джоуля—Ленца:\n`;
+      for (let i = 0; i < ans.length; i++) {
+        const hasFile = attachmentMap[String(i)];
+        message += `${labels[i]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
       }
     } else if (body.type === "grade8physics") {
       const ans = body.answers as string[];

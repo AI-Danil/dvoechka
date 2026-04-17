@@ -4,13 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -23,6 +16,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ArrowLeft } from "lucide-react";
 import Grade8Informatics from "@/components/tests/Grade8Informatics";
 import Grade7Informatics from "@/components/tests/Grade7Informatics";
 import Grade9Informatics from "@/components/tests/Grade9Informatics";
@@ -30,9 +24,11 @@ import Grade9Physics from "@/components/tests/Grade9Physics";
 import Grade9Technology from "@/components/tests/Grade9Technology";
 import Grade7Technology from "@/components/tests/Grade7Technology";
 import Grade8Physics from "@/components/tests/Grade8Physics";
+import Grade8PhysicsPower from "@/components/tests/Grade8PhysicsPower";
 import Grade7Physics from "@/components/tests/Grade7Physics";
 
 type Screen = "login" | "test" | "success";
+type LoginStep = "grade" | "subject" | "name" | "test-pick";
 
 const TOTAL_TIME = 40 * 60;
 
@@ -48,21 +44,48 @@ const SUBJECT_LABELS: Record<string, string> = {
   technology: "Технология",
 };
 
-const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+(?:\s+(\d+))?$/;
-
-function getDraftKey(grade: string, subject: string, attempt: string) {
-  return `test_draft_${grade}_${subject}_${attempt}`;
+interface TestEntry {
+  id: string;
+  title: string;
 }
 
-function getSubmittedKey(grade: string, subject: string, name: string, attempt: string) {
-  return `test_submitted_${grade}_${subject}_${name.trim().toLowerCase()}_${attempt}`;
+const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
+  "7": {
+    informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    physics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    technology: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+  },
+  "8": {
+    informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    physics: [
+      { id: "electricity", title: "Контрольная №1. Электричество (3 четверть)" },
+      { id: "power-joule", title: "Контрольная №2. Работа и мощность тока. Закон Джоуля—Ленца" },
+    ],
+  },
+  "9": {
+    informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    physics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    technology: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+  },
+};
+
+const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+(?:\s+(\d+))?$/;
+
+function getDraftKey(grade: string, subject: string, attempt: string, testId: string) {
+  return `test_draft_${grade}_${subject}_${testId}_${attempt}`;
+}
+
+function getSubmittedKey(grade: string, subject: string, name: string, attempt: string, testId: string) {
+  return `test_submitted_${grade}_${subject}_${testId}_${name.trim().toLowerCase()}_${attempt}`;
 }
 
 const Index = () => {
   const [screen, setScreen] = useState<Screen>("login");
+  const [loginStep, setLoginStep] = useState<LoginStep>("grade");
   const [studentName, setStudentName] = useState("");
   const [grade, setGrade] = useState("");
   const [subject, setSubject] = useState("");
+  const [testId, setTestId] = useState("default");
   const [attempt, setAttempt] = useState("1");
   const [cleanName, setCleanName] = useState("");
   const [timeLeft, setTimeLeft] = useState(TOTAL_TIME);
@@ -104,11 +127,15 @@ const Index = () => {
   const [answers8phys, setAnswers8phys] = useState<string[]>(Array(13).fill(""));
   const [attachments8phys, setAttachments8phys] = useState<Record<number, File | null>>({});
 
+  // Grade 8 physics POWER answers (6 tasks)
+  const [answers8physPower, setAnswers8physPower] = useState<string[]>(Array(6).fill(""));
+  const [attachments8physPower, setAttachments8physPower] = useState<Record<number, File | null>>({});
+
   // Grade 7 physics answers
   const [answers7phys, setAnswers7phys] = useState<string[]>(Array(10).fill(""));
   const [attachments7phys, setAttachments7phys] = useState<Record<number, File | null>>({});
 
-  // Live refs for all data (so auto-submit always reads latest values)
+  // Live refs
   const blitz8Ref = useRef(blitz8);
   const tasks8Ref = useRef(tasks8);
   const attachments8Ref = useRef(attachments8);
@@ -126,15 +153,17 @@ const Index = () => {
   const attachments7techRef = useRef(attachments7tech);
   const answers8physRef = useRef(answers8phys);
   const attachments8physRef = useRef(attachments8phys);
+  const answers8physPowerRef = useRef(answers8physPower);
+  const attachments8physPowerRef = useRef(attachments8physPower);
   const answers7physRef = useRef(answers7phys);
   const attachments7physRef = useRef(attachments7phys);
   const gradeRef = useRef(grade);
   const subjectRef = useRef(subject);
+  const testIdRef = useRef(testId);
   const attemptRef = useRef(attempt);
   const cleanNameRef = useRef(cleanName);
   const timeLeftRef = useRef(timeLeft);
 
-  // Keep refs in sync
   useEffect(() => { blitz8Ref.current = blitz8; }, [blitz8]);
   useEffect(() => { tasks8Ref.current = tasks8; }, [tasks8]);
   useEffect(() => { attachments8Ref.current = attachments8; }, [attachments8]);
@@ -152,10 +181,13 @@ const Index = () => {
   useEffect(() => { attachments7techRef.current = attachments7tech; }, [attachments7tech]);
   useEffect(() => { answers8physRef.current = answers8phys; }, [answers8phys]);
   useEffect(() => { attachments8physRef.current = attachments8phys; }, [attachments8phys]);
+  useEffect(() => { answers8physPowerRef.current = answers8physPower; }, [answers8physPower]);
+  useEffect(() => { attachments8physPowerRef.current = attachments8physPower; }, [attachments8physPower]);
   useEffect(() => { answers7physRef.current = answers7phys; }, [answers7phys]);
   useEffect(() => { attachments7physRef.current = attachments7phys; }, [attachments7phys]);
   useEffect(() => { gradeRef.current = grade; }, [grade]);
   useEffect(() => { subjectRef.current = subject; }, [subject]);
+  useEffect(() => { testIdRef.current = testId; }, [testId]);
   useEffect(() => { attemptRef.current = attempt; }, [attempt]);
   useEffect(() => { cleanNameRef.current = cleanName; }, [cleanName]);
   useEffect(() => { timeLeftRef.current = timeLeft; }, [timeLeft]);
@@ -170,7 +202,7 @@ const Index = () => {
   // --- Autosave: restore draft on test start ---
   useEffect(() => {
     if (screen !== "test" || !grade || !subject) return;
-    const key = getDraftKey(grade, subject, attempt);
+    const key = getDraftKey(grade, subject, attempt, testId);
     const saved = localStorage.getItem(key);
     if (!saved) return;
     try {
@@ -178,6 +210,8 @@ const Index = () => {
       if (grade === "8" && subject === "informatics") {
         if (draft.blitz8) setBlitz8(draft.blitz8);
         if (draft.tasks8) setTasks8(draft.tasks8);
+      } else if (grade === "8" && subject === "physics" && testId === "power-joule") {
+        if (draft.answers8physPower) setAnswers8physPower(draft.answers8physPower);
       } else if (grade === "8" && subject === "physics") {
         if (draft.answers8phys) setAnswers8phys(draft.answers8phys);
       } else if (grade === "9" && subject === "physics") {
@@ -196,17 +230,19 @@ const Index = () => {
         if (draft.practice7) setPractice7(draft.practice7);
       }
     } catch {
-      // ignore corrupt data
+      // ignore
     }
-  }, [screen, grade, subject]);
+  }, [screen, grade, subject, testId, attempt]);
 
-  // --- Autosave: persist draft on every answer change ---
+  // --- Autosave: persist ---
   useEffect(() => {
     if (screen !== "test" || !grade || !subject) return;
-    const key = getDraftKey(grade, subject, attempt);
+    const key = getDraftKey(grade, subject, attempt, testId);
     let data: Record<string, unknown> = {};
     if (grade === "8" && subject === "informatics") {
       data = { blitz8, tasks8 };
+    } else if (grade === "8" && subject === "physics" && testId === "power-joule") {
+      data = { answers8physPower };
     } else if (grade === "8" && subject === "physics") {
       data = { answers8phys };
     } else if (grade === "9" && subject === "physics") {
@@ -223,14 +259,16 @@ const Index = () => {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, blitz8, tasks8, answers8phys, answers7phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
-  // --- Progress calculation ---
+  // --- Progress ---
   const { answered, total } = useMemo(() => {
     if (grade === "8" && subject === "informatics") {
       const blitzFilled = blitz8.filter(Boolean).length;
       const tasksFilled = Object.values(tasks8).filter(Boolean).length;
       return { answered: blitzFilled + tasksFilled, total: 7 + 6 };
+    } else if (grade === "8" && subject === "physics" && testId === "power-joule") {
+      return { answered: answers8physPower.filter(Boolean).length, total: 6 };
     } else if (grade === "8" && subject === "physics") {
       return { answered: answers8phys.filter(Boolean).length, total: 13 };
     } else if (grade === "9" && subject === "physics") {
@@ -251,7 +289,7 @@ const Index = () => {
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, subject, blitz8, tasks8, answers8phys, answers7phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [grade, subject, testId, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
@@ -266,7 +304,6 @@ const Index = () => {
     }
   }, []);
 
-  // Anti-copy notification helper
   const notifyCopyAttempt = useCallback(async (event: string) => {
     try {
       await supabase.functions.invoke("notify-copy-attempt", {
@@ -282,7 +319,6 @@ const Index = () => {
     }
   }, []);
 
-  // Anticheat listeners
   useEffect(() => {
     if (screen !== "test") return;
     testActiveRef.current = true;
@@ -305,7 +341,6 @@ const Index = () => {
     };
     const onPaste = () => logCheat("Вставил текст (paste)");
     const onKeyDown = (e: KeyboardEvent) => {
-      // Block copy shortcuts
       if ((e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "C" || e.key === "с" || e.key === "С")) {
         e.preventDefault();
         logCheat("Попытка Ctrl+C — ЗАБЛОКИРОВАНО");
@@ -346,7 +381,6 @@ const Index = () => {
       logCheat("Открыл контекстное меню (ПКМ) — ЗАБЛОКИРОВАНО");
     };
     const onSelectStart = (e: Event) => {
-      // Allow selection in input/textarea only
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
       e.preventDefault();
@@ -374,7 +408,6 @@ const Index = () => {
     };
   }, [screen, logCheat, notifyCopyAttempt, toast]);
 
-  // Timer — only counts down, no side effects
   useEffect(() => {
     if (screen !== "test") return;
 
@@ -393,11 +426,9 @@ const Index = () => {
     };
   }, [screen]);
 
-  // Auto-submit when time runs out (reads from refs, not stale closures)
   useEffect(() => {
     if (screen === "test" && timeLeft === 0 && !autoSubmitTriggered) {
       setAutoSubmitTriggered(true);
-      // Use a micro-delay to ensure all state→ref syncs have flushed
       setTimeout(() => {
         if (!submittingRef.current) {
           doSubmit();
@@ -406,7 +437,6 @@ const Index = () => {
     }
   }, [timeLeft, screen, autoSubmitTriggered]);
 
-  // 5-minute warning
   useEffect(() => {
     if (screen === "test" && timeLeft === 300 && !warned5min) {
       setWarned5min(true);
@@ -424,7 +454,21 @@ const Index = () => {
     return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  const handleStart = () => {
+  // === Step navigation ===
+  const goToSubjectStep = (g: string) => {
+    setGrade(g);
+    setSubject("");
+    setTestId("default");
+    setLoginStep("subject");
+  };
+
+  const goToNameStep = (s: string) => {
+    setSubject(s);
+    setTestId("default");
+    setLoginStep("name");
+  };
+
+  const goToTestPickStep = () => {
     const trimmedName = studentName.trim();
     const match = RUSSIAN_NAME_REGEX.exec(trimmedName);
     if (!match) {
@@ -435,39 +479,25 @@ const Index = () => {
       });
       return;
     }
-    if (!grade) {
-      toast({ title: "Ошибка", description: "Выберите класс", variant: "destructive" });
-      return;
-    }
-    if (!subject) {
-      toast({ title: "Ошибка", description: "Выберите предмет", variant: "destructive" });
-      return;
-    }
-    const available = AVAILABLE_TESTS[grade];
-    if (!available || !available.includes(subject)) {
-      toast({ title: "Тест недоступен", description: `Тест для ${grade} класса по этому предмету пока не добавлен.`, variant: "destructive" });
-      return;
-    }
-
-    // Parse attempt from optional third word
     const parsedAttempt = match[1] || "1";
     const nameParts = trimmedName.split(/\s+/);
     const pureName = `${nameParts[0]} ${nameParts[1]}`;
-
     setAttempt(parsedAttempt);
     setCleanName(pureName);
+    setLoginStep("test-pick");
+  };
 
-    // Check if already submitted
-    const submittedKey = getSubmittedKey(grade, subject, pureName, parsedAttempt);
+  const startTest = (chosenTestId: string) => {
+    const submittedKey = getSubmittedKey(grade, subject, cleanName, attempt, chosenTestId);
     if (localStorage.getItem(submittedKey)) {
       toast({
         title: "Повторная сдача",
-        description: "Вы уже прошли этот тест. Повторная сдача невозможна.",
+        description: "Вы уже прошли эту работу. Повторная сдача невозможна.",
         variant: "destructive",
       });
       return;
     }
-
+    setTestId(chosenTestId);
     setScreen("test");
   };
 
@@ -501,7 +531,6 @@ const Index = () => {
     return urls;
   };
 
-  // Core submit function that reads from refs (always has latest data)
   const doSubmit = async () => {
     if (submittingRef.current) return;
     submittingRef.current = true;
@@ -510,6 +539,7 @@ const Index = () => {
 
     const g = gradeRef.current;
     const s = subjectRef.current;
+    const tid = testIdRef.current;
     const a = attemptRef.current;
     const name = cleanNameRef.current;
 
@@ -519,6 +549,9 @@ const Index = () => {
     if (g === "8" && s === "informatics") {
       fileUrls = await uploadAttachments(attachments8Ref.current);
       answers = { type: "grade8", blitz: blitz8Ref.current, tasks: tasks8Ref.current };
+    } else if (g === "8" && s === "physics" && tid === "power-joule") {
+      fileUrls = await uploadAttachments(attachments8physPowerRef.current);
+      answers = { type: "grade8physicsPower", answers: answers8physPowerRef.current };
     } else if (g === "8" && s === "physics") {
       fileUrls = await uploadAttachments(attachments8physRef.current);
       answers = { type: "grade8physics", answers: answers8physRef.current };
@@ -542,11 +575,15 @@ const Index = () => {
       answers = { type: "grade7", theory: theory7Ref.current, practice: practice7Ref.current };
     }
 
+    const testTitle = TESTS_CATALOG[g]?.[s]?.find((t) => t.id === tid)?.title || "";
+
     const payload = {
       studentName: name,
       grade: g,
       subject: s,
       attempt: a,
+      testId: tid,
+      testTitle,
       ...answers,
       attachments: fileUrls,
       cheatLog: cheatLogRef.current,
@@ -560,10 +597,9 @@ const Index = () => {
       console.error("Failed to send results:", e);
     }
 
-    // Mark as submitted & clear draft
-    const submittedKey = getSubmittedKey(g, s, name, a);
+    const submittedKey = getSubmittedKey(g, s, name, a, tid);
     localStorage.setItem(submittedKey, "1");
-    localStorage.removeItem(getDraftKey(g, s, a));
+    localStorage.removeItem(getDraftKey(g, s, a, tid));
 
     setScreen("success");
     setSubmitting(false);
@@ -572,65 +608,123 @@ const Index = () => {
 
   const handleSubmit = () => doSubmit();
 
-  // LOGIN SCREEN
+  // ============ LOGIN SCREEN (multi-step) ============
   if (screen === "login") {
-    return (
+    const cardWrap = (children: React.ReactNode, title: string, subtitle?: string, back?: () => void) => (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md shadow-lg">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Итоговая аттестация за 3-ю четверть</CardTitle>
-            <p className="text-muted-foreground mt-2">
-              Пожалуйста, введите свои данные для начала тестирования.
-            </p>
+          <CardHeader className="text-center relative">
+            {back && (
+              <button
+                onClick={back}
+                className="absolute left-4 top-4 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Назад"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            )}
+            <CardTitle className="text-2xl">{title}</CardTitle>
+            {subtitle && <p className="text-muted-foreground mt-2 text-sm">{subtitle}</p>}
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="student-name">Ваше Имя и Фамилия:</Label>
-              <Input
-                id="student-name"
-                placeholder="Например: Иван Иванов"
-                value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
-                className="mt-1"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Два слова на русском, без цифр и символов</p>
-            </div>
-            <div>
-              <Label>Класс:</Label>
-              <Select value={grade} onValueChange={(v) => { setGrade(v); setSubject(""); }}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Выберите класс" />
-                </SelectTrigger>
-                <SelectContent>
-                  {["5", "6", "7", "8", "9"].map((g) => (
-                    <SelectItem key={g} value={g}>{g} класс</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Предмет:</Label>
-              <Select value={subject} onValueChange={setSubject} disabled={!grade}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Выберите предмет" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(AVAILABLE_TESTS[grade] || []).map((s) => (
-                    <SelectItem key={s} value={s}>{SUBJECT_LABELS[s]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={handleStart} className="w-full mt-4" size="lg">
-              Начать тестирование
-            </Button>
-          </CardContent>
+          <CardContent className="space-y-4">{children}</CardContent>
         </Card>
       </div>
     );
+
+    if (loginStep === "grade") {
+      return cardWrap(
+        <div className="grid grid-cols-1 gap-3">
+          {Object.keys(AVAILABLE_TESTS).map((g) => (
+            <Button
+              key={g}
+              variant="outline"
+              size="lg"
+              className="h-14 text-lg"
+              onClick={() => goToSubjectStep(g)}
+            >
+              {g} класс
+            </Button>
+          ))}
+        </div>,
+        "Шаг 1. Выберите класс",
+        "Итоговая аттестация за 3-ю четверть",
+      );
+    }
+
+    if (loginStep === "subject") {
+      const subjects = AVAILABLE_TESTS[grade] || [];
+      return cardWrap(
+        <div className="grid grid-cols-1 gap-3">
+          {subjects.map((s) => (
+            <Button
+              key={s}
+              variant="outline"
+              size="lg"
+              className="h-14 text-lg"
+              onClick={() => goToNameStep(s)}
+            >
+              {SUBJECT_LABELS[s]}
+            </Button>
+          ))}
+        </div>,
+        "Шаг 2. Выберите предмет",
+        `${grade} класс`,
+        () => setLoginStep("grade"),
+      );
+    }
+
+    if (loginStep === "name") {
+      return cardWrap(
+        <>
+          <div>
+            <Label htmlFor="student-name">Ваше Имя и Фамилия:</Label>
+            <Input
+              id="student-name"
+              placeholder="Например: Иван Иванов"
+              value={studentName}
+              onChange={(e) => setStudentName(e.target.value)}
+              className="mt-1"
+              autoFocus
+            />
+            <p className="text-xs text-muted-foreground mt-1">Два слова на русском, без цифр и символов</p>
+          </div>
+          <Button onClick={goToTestPickStep} className="w-full mt-2" size="lg">
+            Далее
+          </Button>
+        </>,
+        "Шаг 3. Имя и Фамилия",
+        `${grade} класс — ${SUBJECT_LABELS[subject]}`,
+        () => setLoginStep("subject"),
+      );
+    }
+
+    // test-pick
+    const tests = TESTS_CATALOG[grade]?.[subject] || [];
+    return cardWrap(
+      <div className="grid grid-cols-1 gap-3">
+        {tests.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center">Работы пока не добавлены.</p>
+        ) : (
+          tests.map((t) => (
+            <Button
+              key={t.id}
+              variant="outline"
+              size="lg"
+              className="h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start"
+              onClick={() => startTest(t.id)}
+            >
+              {t.title}
+            </Button>
+          ))
+        )}
+      </div>,
+      "Шаг 4. Выберите работу",
+      `${cleanName} • ${grade} класс • ${SUBJECT_LABELS[subject]}`,
+      () => setLoginStep("name"),
+    );
   }
 
-  // SUCCESS SCREEN
+  // SUCCESS
   if (screen === "success") {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -688,7 +782,22 @@ const Index = () => {
           />
         )}
 
-        {grade === "8" && subject === "physics" && (
+        {grade === "8" && subject === "physics" && testId === "power-joule" && (
+          <Grade8PhysicsPower
+            answers={answers8physPower}
+            attachments={attachments8physPower}
+            onAnswerChange={(i, v) => {
+              setAnswers8physPower((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments8physPower((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "8" && subject === "physics" && testId !== "power-joule" && (
           <Grade8Physics
             answers={answers8phys}
             attachments={attachments8phys}
