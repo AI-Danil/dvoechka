@@ -636,6 +636,9 @@ const Index = () => {
     } else if (g === "9") {
       fileUrls = await uploadAttachments(attachments9Ref.current);
       answers = { type: "grade9", answers: answers9Ref.current };
+    } else if (g === "7" && s === "physics" && tid === "work-power") {
+      fileUrls = await uploadAttachments(attachments7physWorkRef.current);
+      answers = { type: "grade7physicsWork", answers: answers7physWorkRef.current };
     } else if (g === "7" && s === "physics") {
       fileUrls = await uploadAttachments(attachments7physRef.current);
       answers = { type: "grade7physics", answers: answers7physRef.current };
@@ -928,7 +931,22 @@ const Index = () => {
           />
         )}
 
-        {grade === "7" && subject === "physics" && (
+        {grade === "7" && subject === "physics" && testId === "work-power" && (
+          <Grade7PhysicsWork
+            answers={answers7physWork}
+            attachments={attachments7physWork}
+            onAnswerChange={(i, v) => {
+              setAnswers7physWork((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments7physWork((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "7" && subject === "physics" && testId !== "work-power" && (
           <Grade7Physics
             answers={answers7phys}
             attachments={attachments7phys}
