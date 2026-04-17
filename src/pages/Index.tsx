@@ -26,9 +26,12 @@ import Grade7Technology from "@/components/tests/Grade7Technology";
 import Grade8Physics from "@/components/tests/Grade8Physics";
 import Grade8PhysicsPower from "@/components/tests/Grade8PhysicsPower";
 import Grade7Physics from "@/components/tests/Grade7Physics";
+import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
+import Quiz, { QuizIntro, type QuizResults } from "@/components/Quiz";
 
 type Screen = "login" | "test" | "success";
 type LoginStep = "grade" | "subject" | "name" | "test-pick";
+type QuizPhase = "intro" | "running" | "done";
 
 const TOTAL_TIME = 40 * 60;
 
