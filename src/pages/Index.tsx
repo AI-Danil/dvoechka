@@ -260,6 +260,8 @@ const Index = () => {
         if (draft.answers9tech) setAnswers9tech(draft.answers9tech);
       } else if (grade === "9") {
         if (draft.answers9) setAnswers9(draft.answers9);
+      } else if (grade === "7" && subject === "physics" && testId === "work-power") {
+        if (draft.answers7physWork) setAnswers7physWork(draft.answers7physWork);
       } else if (grade === "7" && subject === "physics") {
         if (draft.answers7phys) setAnswers7phys(draft.answers7phys);
       } else if (grade === "7" && subject === "technology") {
@@ -293,6 +295,8 @@ const Index = () => {
       data = { answers9tech };
     } else if (grade === "9") {
       data = { answers9 };
+    } else if (grade === "7" && subject === "physics" && testId === "work-power") {
+      data = { answers7physWork };
     } else if (grade === "7" && subject === "physics") {
       data = { answers7phys };
     } else if (grade === "7" && subject === "technology") {
@@ -301,7 +305,7 @@ const Index = () => {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   // --- Progress ---
   const { answered, total } = useMemo(() => {
@@ -321,6 +325,8 @@ const Index = () => {
       return { answered: answers9tech.filter(Boolean).length, total: 11 };
     } else if (grade === "9") {
       return { answered: answers9.filter(Boolean).length, total: 11 };
+    } else if (grade === "7" && subject === "physics" && testId === "work-power") {
+      return { answered: answers7physWork.filter(Boolean).length, total: 11 };
     } else if (grade === "7" && subject === "physics") {
       return { answered: answers7phys.filter(Boolean).length, total: 10 };
     } else if (grade === "7" && subject === "technology") {
@@ -333,7 +339,7 @@ const Index = () => {
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, subject, testId, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [grade, subject, testId, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
