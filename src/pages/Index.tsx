@@ -267,7 +267,11 @@ const Index = () => {
       } else if (grade === "9") {
         if (draft.answers9) setAnswers9(draft.answers9);
       } else if (grade === "7" && subject === "physics" && testId === "work-power") {
-        if (draft.answers7physWork) setAnswers7physWork(draft.answers7physWork);
+        if (draft.answers7physWork) {
+          const restored = (draft.answers7physWork as string[]).slice(0, 6);
+          while (restored.length < 6) restored.push("");
+          setAnswers7physWork(restored);
+        }
       } else if (grade === "7" && subject === "physics") {
         if (draft.answers7phys) setAnswers7phys(draft.answers7phys);
       } else if (grade === "7" && subject === "technology") {
