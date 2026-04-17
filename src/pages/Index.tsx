@@ -273,6 +273,8 @@ const Index = () => {
       data = { answers8physPower };
     } else if (grade === "8" && subject === "physics") {
       data = { answers8phys };
+    } else if (grade === "9" && subject === "physics" && testId === "atom") {
+      data = { answers9physAtom };
     } else if (grade === "9" && subject === "physics") {
       data = { answers9phys };
     } else if (grade === "9" && subject === "technology") {
