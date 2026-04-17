@@ -289,7 +289,7 @@ const Index = () => {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers9, answers9phys, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   // --- Progress ---
   const { answered, total } = useMemo(() => {
