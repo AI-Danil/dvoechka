@@ -67,10 +67,19 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
   },
   "9": {
     informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
-    physics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    physics: [
+      { id: "default", title: "Контрольная №1. Механика, волны, оптика" },
+      { id: "atom", title: "Контрольная №2. Атом и атомное ядро (с квизом)" },
+    ],
     technology: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
   },
 };
+
+const TESTS_WITH_QUIZ: Record<string, true> = {
+  "9_physics_atom": true,
+};
+
+const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;
 
 const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+(?:\s+(\d+))?$/;
 
