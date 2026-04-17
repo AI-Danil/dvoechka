@@ -533,7 +533,19 @@ const Index = () => {
       return;
     }
     setTestId(chosenTestId);
+    const hasQuiz = !!TESTS_WITH_QUIZ[quizKey(grade, subject, chosenTestId)];
+    if (hasQuiz) {
+      setQuizPhase("intro");
+      setQuizResults(null);
+    } else {
+      setQuizPhase(null);
+    }
     setScreen("test");
+  };
+
+  const handleQuizFinish = (results: QuizResults) => {
+    setQuizResults(results);
+    setQuizPhase("done");
   };
 
   const uploadAttachments = async (files: Record<string | number, File | null>): Promise<Record<string, string>> => {
