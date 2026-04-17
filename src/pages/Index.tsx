@@ -963,7 +963,22 @@ const Index = () => {
           />
         )}
 
-        {grade === "9" && subject === "physics" && (
+        {grade === "9" && subject === "physics" && testId === "atom" && (
+          <Grade9PhysicsAtom
+            answers={answers9physAtom}
+            attachments={attachments9physAtom}
+            onAnswerChange={(i, v) => {
+              setAnswers9physAtom((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments9physAtom((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "9" && subject === "physics" && testId !== "atom" && (
           <Grade9Physics
             answers={answers9phys}
             attachments={attachments9phys}
