@@ -26,6 +26,7 @@ import Grade7Technology from "@/components/tests/Grade7Technology";
 import Grade8Physics from "@/components/tests/Grade8Physics";
 import Grade8PhysicsPower from "@/components/tests/Grade8PhysicsPower";
 import Grade7Physics from "@/components/tests/Grade7Physics";
+import Grade7PhysicsWork from "@/components/tests/Grade7PhysicsWork";
 import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
 import Quiz, { QuizIntro, type QuizResults } from "@/components/Quiz";
 
@@ -55,7 +56,10 @@ interface TestEntry {
 const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
   "7": {
     informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
-    physics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    physics: [
+      { id: "default", title: "Контрольная №1. Давление, Архимедова сила" },
+      { id: "work-power", title: "Контрольная №2. Механическая работа и Мощность" },
+    ],
     technology: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
   },
   "8": {
@@ -147,6 +151,10 @@ const Index = () => {
   const [answers7phys, setAnswers7phys] = useState<string[]>(Array(10).fill(""));
   const [attachments7phys, setAttachments7phys] = useState<Record<number, File | null>>({});
 
+  // Grade 7 physics WORK & POWER answers (11 questions)
+  const [answers7physWork, setAnswers7physWork] = useState<string[]>(Array(11).fill(""));
+  const [attachments7physWork, setAttachments7physWork] = useState<Record<number, File | null>>({});
+
   // Grade 9 physics ATOM answers (6 tasks)
   const [answers9physAtom, setAnswers9physAtom] = useState<string[]>(Array(6).fill(""));
   const [attachments9physAtom, setAttachments9physAtom] = useState<Record<number, File | null>>({});
@@ -178,6 +186,8 @@ const Index = () => {
   const attachments8physPowerRef = useRef(attachments8physPower);
   const answers7physRef = useRef(answers7phys);
   const attachments7physRef = useRef(attachments7phys);
+  const answers7physWorkRef = useRef(answers7physWork);
+  const attachments7physWorkRef = useRef(attachments7physWork);
   const answers9physAtomRef = useRef(answers9physAtom);
   const attachments9physAtomRef = useRef(attachments9physAtom);
   const gradeRef = useRef(grade);
@@ -208,6 +218,8 @@ const Index = () => {
   useEffect(() => { attachments8physPowerRef.current = attachments8physPower; }, [attachments8physPower]);
   useEffect(() => { answers7physRef.current = answers7phys; }, [answers7phys]);
   useEffect(() => { attachments7physRef.current = attachments7phys; }, [attachments7phys]);
+  useEffect(() => { answers7physWorkRef.current = answers7physWork; }, [answers7physWork]);
+  useEffect(() => { attachments7physWorkRef.current = attachments7physWork; }, [attachments7physWork]);
   useEffect(() => { answers9physAtomRef.current = answers9physAtom; }, [answers9physAtom]);
   useEffect(() => { attachments9physAtomRef.current = attachments9physAtom; }, [attachments9physAtom]);
   useEffect(() => { quizResultsRef.current = quizResults; }, [quizResults]);
