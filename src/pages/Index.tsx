@@ -147,6 +147,15 @@ const Index = () => {
   const [answers7phys, setAnswers7phys] = useState<string[]>(Array(10).fill(""));
   const [attachments7phys, setAttachments7phys] = useState<Record<number, File | null>>({});
 
+  // Grade 9 physics ATOM answers (6 tasks)
+  const [answers9physAtom, setAnswers9physAtom] = useState<string[]>(Array(6).fill(""));
+  const [attachments9physAtom, setAttachments9physAtom] = useState<Record<number, File | null>>({});
+
+  // Quiz state
+  const [quizPhase, setQuizPhase] = useState<QuizPhase | null>(null);
+  const [quizResults, setQuizResults] = useState<QuizResults | null>(null);
+  const quizResultsRef = useRef<QuizResults | null>(null);
+
   // Live refs
   const blitz8Ref = useRef(blitz8);
   const tasks8Ref = useRef(tasks8);
