@@ -94,6 +94,9 @@ serve(async (req) => {
         body.type === "grade7physics"
       ) {
         answersData.answers = body.answers;
+      } else if (body.type === "grade9physicsAtom") {
+        answersData.answers = body.answers;
+        answersData.quizResults = body.quizResults;
       } else {
         answersData.blitz = body.blitz;
         answersData.tasks = body.tasks;
