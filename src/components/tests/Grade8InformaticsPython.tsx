@@ -201,7 +201,7 @@ const Grade8InformaticsPython = ({
               onKeyDown={blockKeyPaste}
               autoComplete="off"
               spellCheck={false}
-              placeholder={"# Пиши код сам, вставка запрещена\n# from random import randint\n\nhero_name = input(\"Имя героя: \")\n..."}
+              placeholder={"# Пиши код сам, вставка запрещена\n"}
               className="min-h-[400px] font-mono text-sm"
             />
             <p className="text-xs text-destructive">
