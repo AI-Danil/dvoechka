@@ -7,6 +7,7 @@ export interface QuizQuestion {
   q: string;
   options: [string, string, string, string];
   correct: number; // 0..3
+  seconds?: number; // опциональное индивидуальное время на этот вопрос
 }
 
 export interface QuizPerQuestionResult {
@@ -31,15 +32,17 @@ interface QuizProps {
 
 const Quiz = ({ questions, secondsPerQuestion, onFinish }: QuizProps) => {
   const [idx, setIdx] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(secondsPerQuestion);
+  const getSecondsFor = (i: number) => questions[i]?.seconds ?? secondsPerQuestion;
+  const [secondsLeft, setSecondsLeft] = useState(getSecondsFor(0));
   const resultsRef = useRef<QuizPerQuestionResult[]>([]);
   const startedAtRef = useRef<number>(Date.now());
   const finishedRef = useRef(false);
 
   // Reset timer for each question
   useEffect(() => {
-    setSecondsLeft(secondsPerQuestion);
+    setSecondsLeft(getSecondsFor(idx));
     startedAtRef.current = Date.now();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx, secondsPerQuestion]);
 
   // Tick
@@ -49,7 +52,7 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish }: QuizProps) => {
         if (prev <= 1) {
           // time-out → record and advance
           recordAndAdvance(-1, true);
-          return secondsPerQuestion;
+          return getSecondsFor(idx);
         }
         return prev - 1;
       });
@@ -61,8 +64,9 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish }: QuizProps) => {
   const recordAndAdvance = (answer: number, timedOut: boolean) => {
     const q = questions[idx];
     if (!q) return;
+    const qSeconds = getSecondsFor(idx);
     const timeSpent = Math.min(
-      secondsPerQuestion,
+      qSeconds,
       Math.round((Date.now() - startedAtRef.current) / 1000)
     );
     resultsRef.current.push({
@@ -91,7 +95,8 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish }: QuizProps) => {
   const q = questions[idx];
   if (!q) return null;
 
-  const percent = Math.round((secondsLeft / secondsPerQuestion) * 100);
+  const currentTotal = getSecondsFor(idx);
+  const percent = Math.round((secondsLeft / currentTotal) * 100);
   const labels = ["А", "Б", "В", "Г"];
 
   return (
@@ -143,7 +148,11 @@ interface QuizIntroProps {
   onStart: () => void;
 }
 
-export const QuizIntro = ({ questionsCount, secondsPerQuestion, onStart }: QuizIntroProps) => {
+export const QuizIntro = ({ questionsCount, secondsPerQuestion, onStart, perQuestionSeconds }: QuizIntroProps & { perQuestionSeconds?: number[] }) => {
+  const hasVarying = perQuestionSeconds && perQuestionSeconds.length > 0
+    && (Math.min(...perQuestionSeconds) !== Math.max(...perQuestionSeconds));
+  const minS = hasVarying ? Math.min(...perQuestionSeconds!) : secondsPerQuestion;
+  const maxS = hasVarying ? Math.max(...perQuestionSeconds!) : secondsPerQuestion;
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-lg text-center">
@@ -152,12 +161,14 @@ export const QuizIntro = ({ questionsCount, secondsPerQuestion, onStart }: QuizI
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            {questionsCount} вопросов, по {secondsPerQuestion} секунд на каждый.
-            Один правильный вариант ответа.
+            {questionsCount} вопросов,{" "}
+            {hasVarying
+              ? <>от <strong>{minS}</strong> до <strong>{maxS}</strong> секунд на вопрос</>
+              : <>по {secondsPerQuestion} секунд на каждый</>}
+            . Один правильный вариант ответа.
           </p>
           <p className="text-sm text-muted-foreground">
-            ⚠️ Назад вернуться нельзя. Если не ответите за {secondsPerQuestion} секунд —
-            вопрос пропускается.
+            ⚠️ Назад вернуться нельзя. Если не успеете ответить — вопрос пропускается.
           </p>
           <p className="text-sm text-muted-foreground">
             После квиза начнётся основная контрольная работа (40 минут).
