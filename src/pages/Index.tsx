@@ -28,6 +28,7 @@ import Grade8PhysicsPower from "@/components/tests/Grade8PhysicsPower";
 import Grade7Physics from "@/components/tests/Grade7Physics";
 import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork";
 import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
+import Grade8InformaticsPython, { PYTHON_HERO_QUIZ_QUESTIONS } from "@/components/tests/Grade8InformaticsPython";
 import Quiz, { QuizIntro, type QuizQuestion, type QuizResults } from "@/components/Quiz";
 
 type Screen = "login" | "test" | "success";
@@ -51,6 +52,7 @@ const SUBJECT_LABELS: Record<string, string> = {
 interface TestEntry {
   id: string;
   title: string;
+  date?: string;
 }
 
 const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
@@ -63,7 +65,10 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
     technology: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
   },
   "8": {
-    informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    informatics: [
+      { id: "default", title: "Итоговая контрольная (3 четверть)" },
+      { id: "python-hero", title: "Самостоятельная №2. Python: Генератор героя", date: "20.04.2026" },
+    ],
     physics: [
       { id: "electricity", title: "Контрольная №1. Электричество (3 четверть)" },
       { id: "power-joule", title: "Контрольная №2. Работа и мощность тока. Закон Джоуля—Ленца" },
@@ -87,6 +92,7 @@ interface QuizConfig {
 const TESTS_WITH_QUIZ: Record<string, QuizConfig> = {
   "9_physics_atom": { questions: ATOM_QUIZ_QUESTIONS, secondsPerQuestion: 20 },
   "7_physics_work-power": { questions: WORK_POWER_QUIZ_QUESTIONS, secondsPerQuestion: 30 },
+  "8_informatics_python-hero": { questions: PYTHON_HERO_QUIZ_QUESTIONS, secondsPerQuestion: 40 },
 };
 
 const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;
