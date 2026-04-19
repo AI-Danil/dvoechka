@@ -829,7 +829,14 @@ const Index = () => {
               className="h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start"
               onClick={() => startTest(t.id)}
             >
-              {t.title}
+              <span className="flex flex-col items-start gap-1 w-full">
+                <span>{t.title}</span>
+                {t.date && (
+                  <span className="text-xs font-bold text-accent bg-accent/15 px-2 py-0.5 rounded">
+                    📅 {t.date}
+                  </span>
+                )}
+              </span>
             </Button>
           ))
         )}
