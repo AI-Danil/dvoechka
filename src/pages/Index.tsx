@@ -641,7 +641,14 @@ const Index = () => {
     let answers: Record<string, unknown>;
     let fileUrls: Record<string, string> = {};
 
-    if (g === "8" && s === "informatics") {
+    if (g === "8" && s === "informatics" && tid === "python-hero") {
+      fileUrls = await uploadAttachments(attachments8infoPyRef.current);
+      answers = {
+        type: "grade8informaticsPython",
+        answers: answers8infoPyRef.current,
+        quizResults: quizResultsRef.current,
+      };
+    } else if (g === "8" && s === "informatics") {
       fileUrls = await uploadAttachments(attachments8Ref.current);
       answers = { type: "grade8", blitz: blitz8Ref.current, tasks: tasks8Ref.current };
     } else if (g === "8" && s === "physics" && tid === "power-joule") {
