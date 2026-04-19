@@ -129,6 +129,10 @@ const Index = () => {
   });
   const [attachments8, setAttachments8] = useState<Record<string, File | null>>({});
 
+  // Grade 8 informatics PYTHON answers (1 task)
+  const [answers8infoPy, setAnswers8infoPy] = useState<string[]>(Array(1).fill(""));
+  const [attachments8infoPy, setAttachments8infoPy] = useState<Record<number, File | null>>({});
+
   // Grade 7 answers
   const [theory7, setTheory7] = useState<string[]>(Array(7).fill(""));
   const [practice7, setPractice7] = useState<string[]>(Array(6).fill(""));
@@ -180,6 +184,8 @@ const Index = () => {
   const blitz8Ref = useRef(blitz8);
   const tasks8Ref = useRef(tasks8);
   const attachments8Ref = useRef(attachments8);
+  const answers8infoPyRef = useRef(answers8infoPy);
+  const attachments8infoPyRef = useRef(attachments8infoPy);
   const theory7Ref = useRef(theory7);
   const practice7Ref = useRef(practice7);
   const attachments7Ref = useRef(attachments7);
@@ -212,6 +218,8 @@ const Index = () => {
   useEffect(() => { blitz8Ref.current = blitz8; }, [blitz8]);
   useEffect(() => { tasks8Ref.current = tasks8; }, [tasks8]);
   useEffect(() => { attachments8Ref.current = attachments8; }, [attachments8]);
+  useEffect(() => { answers8infoPyRef.current = answers8infoPy; }, [answers8infoPy]);
+  useEffect(() => { attachments8infoPyRef.current = attachments8infoPy; }, [attachments8infoPy]);
   useEffect(() => { theory7Ref.current = theory7; }, [theory7]);
   useEffect(() => { practice7Ref.current = practice7; }, [practice7]);
   useEffect(() => { attachments7Ref.current = attachments7; }, [attachments7]);
