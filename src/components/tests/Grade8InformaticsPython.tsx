@@ -150,31 +150,27 @@ const Grade8InformaticsPython = ({
         <Card className="mb-3 border-l-4 border-l-accent">
           <CardContent className="pt-4 space-y-2">
             <Label className="font-bold text-accent">🟢 Уровень на «3» — Ввод и вывод</Label>
-            <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
-              <li>Спроси у пользователя имя героя — переменная <code>hero_name</code>.</li>
-              <li>Спроси расу героя (например, «Эльф», «Орк», «Человек») — переменная <code>race</code>.</li>
-              <li>Спроси уровень героя — переменная <code>level</code> (число! используй <code>int(input(...))</code>).</li>
-              <li>Выведи приветствие, например: «Привет, Леголас! Ты эльф 5 уровня».</li>
-            </ol>
+            <p className="text-sm text-muted-foreground">
+              Программа должна спросить у пользователя три характеристики героя: <strong>имя</strong>, <strong>расу</strong> (например: Эльф, Орк, Человек) и <strong>уровень</strong>. Затем вывести приветствие, в котором используются все три значения.
+            </p>
+            <p className="text-xs text-muted-foreground italic">
+              💡 Подумай: уровень — это число. В каком виде его лучше принять, чтобы потом с ним можно было считать?
+            </p>
           </CardContent>
         </Card>
 
         {/* Уровень 4 */}
         <Card className="mb-3 border-l-4 border-l-primary">
           <CardContent className="pt-4 space-y-2">
-            <Label className="font-bold text-primary">🟡 Уровень на «4» — Математика и условия</Label>
+            <Label className="font-bold text-primary">🟡 Уровень на «4» — Математика и условие</Label>
             <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
-              <li>Посчитай здоровье: <code>health = level * 50</code>.</li>
-              <li>Спроси базовый урон героя — переменная <code>base_damage</code> (тоже число, через <code>int()</code>).</li>
+              <li>По уровню героя посчитай его <strong>здоровье</strong> по правилу: каждый уровень даёт 50 очков HP.</li>
+              <li>Спроси у пользователя <strong>базовый урон</strong> героя.</li>
+              <li>Посчитай <strong>итоговый урон</strong>: к базовому прибавляется бонус оружия (+15).</li>
               <li>
-                Посчитай итоговый урон: <code>total_damage = base_damage + 15</code> (бонус за оружие).
+                Добавь <strong>расовый бонус через if / else</strong>: если раса героя — «Эльф», его здоровье увеличивается на 20. В остальных случаях остаётся как есть.
               </li>
-              <li>
-                Через <strong>if / else</strong> добавь бонус расы: если <code>race == "Эльф"</code> → прибавь 20 к здоровью; иначе оставь как есть.
-              </li>
-              <li>
-                Выведи характеристики героя: имя, расу, уровень, здоровье, итоговый урон.
-              </li>
+              <li>Выведи итоговую карточку героя со всеми характеристиками.</li>
             </ol>
           </CardContent>
         </Card>
@@ -183,18 +179,12 @@ const Grade8InformaticsPython = ({
         <Card className="mb-3 border-l-4 border-l-destructive">
           <CardContent className="pt-4 space-y-2">
             <Label className="font-bold text-destructive">🔴 Уровень на «5» — Случайность</Label>
-            <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
-              <li>
-                В самом начале программы добавь: <code>from random import randint</code>.
-              </li>
-              <li>
-                Сгенерируй удачу героя на сегодня:{" "}
-                <code>luck = randint(1, 100)</code>.
-              </li>
-              <li>
-                Выведи финальную строку: «Генерация героя завершена! Удача на сегодня: [luck] из 100».
-              </li>
-            </ol>
+            <p className="text-sm text-muted-foreground">
+              Подключи модуль <code>random</code> и сгенерируй герою <strong>«удачу дня»</strong> — случайное целое число от 1 до 100. Выведи его отдельной строкой в конце программы.
+            </p>
+            <p className="text-xs text-muted-foreground italic">
+              💡 Какой модуль и какая функция тебе нужны — поищи сам или вспомни из квиза.
+            </p>
           </CardContent>
         </Card>
 
@@ -211,7 +201,7 @@ const Grade8InformaticsPython = ({
               onKeyDown={blockKeyPaste}
               autoComplete="off"
               spellCheck={false}
-              placeholder={"# Пиши код сам, вставка запрещена\n# from random import randint\n\nhero_name = input(\"Имя героя: \")\n..."}
+              placeholder={"# Пиши код сам, вставка запрещена\n"}
               className="min-h-[400px] font-mono text-sm"
             />
             <p className="text-xs text-destructive">
