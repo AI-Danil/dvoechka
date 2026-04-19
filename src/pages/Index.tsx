@@ -908,7 +908,23 @@ const Index = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 mt-6 space-y-8">
-        {grade === "8" && subject === "informatics" && (
+        {grade === "8" && subject === "informatics" && testId === "python-hero" && (
+          <Grade8InformaticsPython
+            studentName={cleanName}
+            answers={answers8infoPy}
+            attachments={attachments8infoPy}
+            onAnswerChange={(i, v) => {
+              setAnswers8infoPy((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments8infoPy((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "8" && subject === "informatics" && testId !== "python-hero" && (
           <Grade8Informatics
             blitz={blitz8}
             tasks={tasks8}
