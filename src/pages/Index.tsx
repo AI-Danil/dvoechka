@@ -265,7 +265,9 @@ const Index = () => {
     if (!saved) return;
     try {
       const draft = JSON.parse(saved);
-      if (grade === "8" && subject === "informatics") {
+      if (grade === "8" && subject === "informatics" && testId === "python-hero") {
+        if (draft.answers8infoPy) setAnswers8infoPy(draft.answers8infoPy);
+      } else if (grade === "8" && subject === "informatics") {
         if (draft.blitz8) setBlitz8(draft.blitz8);
         if (draft.tasks8) setTasks8(draft.tasks8);
       } else if (grade === "8" && subject === "physics" && testId === "power-joule") {
@@ -305,7 +307,9 @@ const Index = () => {
     if (screen !== "test" || !grade || !subject) return;
     const key = getDraftKey(grade, subject, attempt, testId);
     let data: Record<string, unknown> = {};
-    if (grade === "8" && subject === "informatics") {
+    if (grade === "8" && subject === "informatics" && testId === "python-hero") {
+      data = { answers8infoPy };
+    } else if (grade === "8" && subject === "informatics") {
       data = { blitz8, tasks8 };
     } else if (grade === "8" && subject === "physics" && testId === "power-joule") {
       data = { answers8physPower };
