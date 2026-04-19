@@ -138,9 +138,9 @@ const Grade8InformaticsPython = ({
         </p>
 
         {/* Уровень 3 */}
-        <Card className="mb-3 border-l-4 border-l-emerald-500">
+        <Card className="mb-3 border-l-4 border-l-accent">
           <CardContent className="pt-4 space-y-2">
-            <Label className="font-bold text-emerald-700">🟢 Уровень на «3» — Ввод и вывод</Label>
+            <Label className="font-bold text-accent">🟢 Уровень на «3» — Ввод и вывод</Label>
             <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
               <li>Спроси у пользователя имя героя — переменная <code>hero_name</code>.</li>
               <li>Спроси расу героя (например, «Эльф», «Орк», «Человек») — переменная <code>race</code>.</li>
@@ -151,9 +151,9 @@ const Grade8InformaticsPython = ({
         </Card>
 
         {/* Уровень 4 */}
-        <Card className="mb-3 border-l-4 border-l-amber-500">
+        <Card className="mb-3 border-l-4 border-l-primary">
           <CardContent className="pt-4 space-y-2">
-            <Label className="font-bold text-amber-700">🟡 Уровень на «4» — Математика и условия</Label>
+            <Label className="font-bold text-primary">🟡 Уровень на «4» — Математика и условия</Label>
             <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
               <li>Посчитай здоровье: <code>health = level * 50</code>.</li>
               <li>Спроси базовый урон героя — переменная <code>base_damage</code> (тоже число, через <code>int()</code>).</li>
@@ -171,9 +171,9 @@ const Grade8InformaticsPython = ({
         </Card>
 
         {/* Уровень 5 */}
-        <Card className="mb-3 border-l-4 border-l-rose-500">
+        <Card className="mb-3 border-l-4 border-l-destructive">
           <CardContent className="pt-4 space-y-2">
-            <Label className="font-bold text-rose-700">🔴 Уровень на «5» — Случайность</Label>
+            <Label className="font-bold text-destructive">🔴 Уровень на «5» — Случайность</Label>
             <ol className="text-sm text-muted-foreground list-decimal pl-5 space-y-1">
               <li>
                 В самом начале программы добавь: <code>from random import randint</code>.
