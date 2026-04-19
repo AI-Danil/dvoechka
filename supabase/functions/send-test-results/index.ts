@@ -94,7 +94,11 @@ serve(async (req) => {
         body.type === "grade7physics"
       ) {
         answersData.answers = body.answers;
-      } else if (body.type === "grade9physicsAtom" || body.type === "grade7physicsWork") {
+      } else if (
+        body.type === "grade9physicsAtom" ||
+        body.type === "grade7physicsWork" ||
+        body.type === "grade8informaticsPython"
+      ) {
         answersData.answers = body.answers;
         answersData.quizResults = body.quizResults;
       } else {
@@ -426,6 +430,32 @@ serve(async (req) => {
         const hasFile = attachmentMap[String(i)];
         message += `${labels[i]}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
       }
+    } else if (body.type === "grade8informaticsPython") {
+      const ans = (body.answers as string[]) ?? [];
+      const code = ans[0] ?? "";
+
+      const quiz = body.quizResults as
+        | {
+            correct: number;
+            total: number;
+            perQuestion: { answer: number; correct: number; timeSpent: number; timedOut: boolean }[];
+          }
+        | null
+        | undefined;
+
+      message += `\n📅 Дата работы: 20.04.2026\n`;
+
+      if (quiz) {
+        const optLabel = (n: number) => (n < 0 ? "—" : ["А", "Б", "В", "Г"][n] ?? "?");
+        message += `\n🎯 КВИЗ Python: ${quiz.correct}/${quiz.total} правильных\n`;
+        quiz.perQuestion.forEach((r, i) => {
+          const mark = r.answer === r.correct ? "✅" : r.timedOut ? "⏰" : "❌";
+          message += `Вопрос ${i + 1}: ${mark} ответ: ${optLabel(r.answer)} (правильный: ${optLabel(r.correct)}) ⏱ ${r.timeSpent}с${r.timedOut ? " (таймаут)" : ""}\n`;
+        });
+      }
+
+      message += `\n💻 КОД (задание «Генератор героя»)${attachmentMap["0"] ? " 📎" : ""}:\n`;
+      message += `\`\`\`\n${code || "(пусто)"}\n\`\`\`\n`;
     } else {
       const blitz = body.blitz as string[];
       const tasks = body.tasks as Record<string, string>;

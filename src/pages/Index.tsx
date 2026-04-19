@@ -28,6 +28,7 @@ import Grade8PhysicsPower from "@/components/tests/Grade8PhysicsPower";
 import Grade7Physics from "@/components/tests/Grade7Physics";
 import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork";
 import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
+import Grade8InformaticsPython, { PYTHON_HERO_QUIZ_QUESTIONS } from "@/components/tests/Grade8InformaticsPython";
 import Quiz, { QuizIntro, type QuizQuestion, type QuizResults } from "@/components/Quiz";
 
 type Screen = "login" | "test" | "success";
@@ -51,6 +52,7 @@ const SUBJECT_LABELS: Record<string, string> = {
 interface TestEntry {
   id: string;
   title: string;
+  date?: string;
 }
 
 const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
@@ -63,7 +65,10 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
     technology: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
   },
   "8": {
-    informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    informatics: [
+      { id: "default", title: "Итоговая контрольная (3 четверть)" },
+      { id: "python-hero", title: "Самостоятельная №2. Python: Генератор героя", date: "20.04.2026" },
+    ],
     physics: [
       { id: "electricity", title: "Контрольная №1. Электричество (3 четверть)" },
       { id: "power-joule", title: "Контрольная №2. Работа и мощность тока. Закон Джоуля—Ленца" },
@@ -87,6 +92,7 @@ interface QuizConfig {
 const TESTS_WITH_QUIZ: Record<string, QuizConfig> = {
   "9_physics_atom": { questions: ATOM_QUIZ_QUESTIONS, secondsPerQuestion: 20 },
   "7_physics_work-power": { questions: WORK_POWER_QUIZ_QUESTIONS, secondsPerQuestion: 30 },
+  "8_informatics_python-hero": { questions: PYTHON_HERO_QUIZ_QUESTIONS, secondsPerQuestion: 40 },
 };
 
 const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;
@@ -122,6 +128,10 @@ const Index = () => {
     t1: "", t2: "", t3: "", t4: "", t5: "", t6: "",
   });
   const [attachments8, setAttachments8] = useState<Record<string, File | null>>({});
+
+  // Grade 8 informatics PYTHON answers (1 task)
+  const [answers8infoPy, setAnswers8infoPy] = useState<string[]>(Array(1).fill(""));
+  const [attachments8infoPy, setAttachments8infoPy] = useState<Record<number, File | null>>({});
 
   // Grade 7 answers
   const [theory7, setTheory7] = useState<string[]>(Array(7).fill(""));
@@ -174,6 +184,8 @@ const Index = () => {
   const blitz8Ref = useRef(blitz8);
   const tasks8Ref = useRef(tasks8);
   const attachments8Ref = useRef(attachments8);
+  const answers8infoPyRef = useRef(answers8infoPy);
+  const attachments8infoPyRef = useRef(attachments8infoPy);
   const theory7Ref = useRef(theory7);
   const practice7Ref = useRef(practice7);
   const attachments7Ref = useRef(attachments7);
@@ -206,6 +218,8 @@ const Index = () => {
   useEffect(() => { blitz8Ref.current = blitz8; }, [blitz8]);
   useEffect(() => { tasks8Ref.current = tasks8; }, [tasks8]);
   useEffect(() => { attachments8Ref.current = attachments8; }, [attachments8]);
+  useEffect(() => { answers8infoPyRef.current = answers8infoPy; }, [answers8infoPy]);
+  useEffect(() => { attachments8infoPyRef.current = attachments8infoPy; }, [attachments8infoPy]);
   useEffect(() => { theory7Ref.current = theory7; }, [theory7]);
   useEffect(() => { practice7Ref.current = practice7; }, [practice7]);
   useEffect(() => { attachments7Ref.current = attachments7; }, [attachments7]);
@@ -251,7 +265,9 @@ const Index = () => {
     if (!saved) return;
     try {
       const draft = JSON.parse(saved);
-      if (grade === "8" && subject === "informatics") {
+      if (grade === "8" && subject === "informatics" && testId === "python-hero") {
+        if (draft.answers8infoPy) setAnswers8infoPy(draft.answers8infoPy);
+      } else if (grade === "8" && subject === "informatics") {
         if (draft.blitz8) setBlitz8(draft.blitz8);
         if (draft.tasks8) setTasks8(draft.tasks8);
       } else if (grade === "8" && subject === "physics" && testId === "power-joule") {
@@ -291,7 +307,9 @@ const Index = () => {
     if (screen !== "test" || !grade || !subject) return;
     const key = getDraftKey(grade, subject, attempt, testId);
     let data: Record<string, unknown> = {};
-    if (grade === "8" && subject === "informatics") {
+    if (grade === "8" && subject === "informatics" && testId === "python-hero") {
+      data = { answers8infoPy };
+    } else if (grade === "8" && subject === "informatics") {
       data = { blitz8, tasks8 };
     } else if (grade === "8" && subject === "physics" && testId === "power-joule") {
       data = { answers8physPower };
@@ -315,11 +333,13 @@ const Index = () => {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   // --- Progress ---
   const { answered, total } = useMemo(() => {
-    if (grade === "8" && subject === "informatics") {
+    if (grade === "8" && subject === "informatics" && testId === "python-hero") {
+      return { answered: answers8infoPy.filter(Boolean).length, total: 1 };
+    } else if (grade === "8" && subject === "informatics") {
       const blitzFilled = blitz8.filter(Boolean).length;
       const tasksFilled = Object.values(tasks8).filter(Boolean).length;
       return { answered: blitzFilled + tasksFilled, total: 7 + 6 };
@@ -349,7 +369,7 @@ const Index = () => {
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, subject, testId, blitz8, tasks8, answers8phys, answers8physPower, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [grade, subject, testId, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
@@ -621,7 +641,14 @@ const Index = () => {
     let answers: Record<string, unknown>;
     let fileUrls: Record<string, string> = {};
 
-    if (g === "8" && s === "informatics") {
+    if (g === "8" && s === "informatics" && tid === "python-hero") {
+      fileUrls = await uploadAttachments(attachments8infoPyRef.current);
+      answers = {
+        type: "grade8informaticsPython",
+        answers: answers8infoPyRef.current,
+        quizResults: quizResultsRef.current,
+      };
+    } else if (g === "8" && s === "informatics") {
       fileUrls = await uploadAttachments(attachments8Ref.current);
       answers = { type: "grade8", blitz: blitz8Ref.current, tasks: tasks8Ref.current };
     } else if (g === "8" && s === "physics" && tid === "power-joule") {
@@ -802,7 +829,14 @@ const Index = () => {
               className="h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start"
               onClick={() => startTest(t.id)}
             >
-              {t.title}
+              <span className="flex flex-col items-start gap-1 w-full">
+                <span>{t.title}</span>
+                {t.date && (
+                  <span className="text-xs font-bold text-accent bg-accent/15 px-2 py-0.5 rounded">
+                    📅 {t.date}
+                  </span>
+                )}
+              </span>
             </Button>
           ))
         )}
@@ -881,7 +915,23 @@ const Index = () => {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 mt-6 space-y-8">
-        {grade === "8" && subject === "informatics" && (
+        {grade === "8" && subject === "informatics" && testId === "python-hero" && (
+          <Grade8InformaticsPython
+            studentName={cleanName}
+            answers={answers8infoPy}
+            attachments={attachments8infoPy}
+            onAnswerChange={(i, v) => {
+              setAnswers8infoPy((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments8infoPy((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "8" && subject === "informatics" && testId !== "python-hero" && (
           <Grade8Informatics
             blitz={blitz8}
             tasks={tasks8}
