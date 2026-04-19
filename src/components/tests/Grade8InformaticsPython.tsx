@@ -11,21 +11,25 @@ export const PYTHON_HERO_QUIZ_QUESTIONS: QuizQuestion[] = [
     q: "Какой тип данных в Python используется для хранения текста (строки)?",
     options: ["int", "float", "str", "bool"],
     correct: 2,
+    seconds: 20,
   },
   {
     q: "Какое имя переменной является правильным в Python?",
     options: ["2player", "player_name", "player-name", "class"],
     correct: 1,
+    seconds: 30,
   },
   {
     q: 'Что выведет код: print("2" + "3") ?',
     options: ["5", "23", "Ошибка", '"2"+"3"'],
     correct: 1,
+    seconds: 35,
   },
   {
     q: "Какая функция используется для получения данных от пользователя?",
     options: ["print()", "input()", "get()", "read()"],
     correct: 1,
+    seconds: 20,
   },
   {
     q: "Если нужен возраст пользователя для математики, как правильно его получить?",
@@ -36,6 +40,7 @@ export const PYTHON_HERO_QUIZ_QUESTIONS: QuizQuestion[] = [
       'age = int(input("Возраст: "))',
     ],
     correct: 3,
+    seconds: 45,
   },
   {
     q: "Что делает функция randint(1, 10) из модуля random?",
@@ -46,21 +51,25 @@ export const PYTHON_HERO_QUIZ_QUESTIONS: QuizQuestion[] = [
       "Возвращает дробное число от 1 до 10",
     ],
     correct: 1,
+    seconds: 30,
   },
   {
     q: "Что выведет код: print(10 // 3) ?",
     options: ["3.33", "3.0", "3", "1"],
     correct: 2,
+    seconds: 40,
   },
   {
     q: 'Что выведет код: print(3 * "ha") ?',
     options: ["9", "Ошибка", "hahaha", "3ha"],
     correct: 2,
+    seconds: 40,
   },
   {
     q: "Что выведет код: print(2 ** 3) ?",
     options: ["6", "8", "23", "5"],
     correct: 1,
+    seconds: 35,
   },
 ];
 
