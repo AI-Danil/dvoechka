@@ -59,8 +59,8 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
             cheat_log: [],
           },
         });
-        if (error) throw error;
-        if ((data as any)?.error) throw new Error((data as any).error);
+        if (error) throw new Error((data as any)?.error ?? error.message);
+        if (!(data as any)?.ok) throw new Error((data as any)?.error ?? "Ошибка отправки");
         toast({
           title: "Готово!",
           description: `Балл: ${(data as any).grade}/${(data as any).total}`,

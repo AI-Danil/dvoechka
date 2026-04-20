@@ -50,7 +50,7 @@ export default function MyTestsList({ isAdmin = false, refreshKey = 0 }: Props) 
     const { data, error } = await supabase.functions.invoke("publish-test", {
       body: { test_id: r.id, action },
     });
-    if (error || (data as any)?.error) {
+    if (error || !(data as any)?.ok) {
       toast({
         title: "Ошибка",
         description: (data as any)?.error ?? error?.message,
@@ -67,7 +67,7 @@ export default function MyTestsList({ isAdmin = false, refreshKey = 0 }: Props) 
     const { data, error } = await supabase.functions.invoke("delete-test", {
       body: { test_id: r.id },
     });
-    if (error || (data as any)?.error) {
+    if (error || !(data as any)?.ok) {
       toast({ title: "Ошибка", description: (data as any)?.error ?? error?.message, variant: "destructive" });
       return;
     }
