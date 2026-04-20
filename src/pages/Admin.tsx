@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import TeacherLoginGate from "@/components/TeacherLoginGate";
 import { useTeacherAuth } from "@/hooks/useTeacherAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, Play, FileText, RefreshCw } from "lucide-react";
+import { LogOut, Play, FileText, RefreshCw, Video } from "lucide-react";
 
 interface ResultRow {
   id: string;
@@ -48,7 +48,19 @@ function AdminInner() {
     }
   };
 
-  useEffect(() => { void load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => {
+    void load();
+    const channel = supabase
+      .channel("test_results_changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "test_results" },
+        () => { void load(); }
+      )
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = rows.filter((r) => {
     const q = search.trim().toLowerCase();
@@ -112,6 +124,7 @@ function AdminInner() {
                     <TableHead>Попытка</TableHead>
                     <TableHead>Время</TableHead>
                     <TableHead>Подозр.</TableHead>
+                    <TableHead>Запись</TableHead>
                     <TableHead className="text-right">Действия</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -134,6 +147,15 @@ function AdminInner() {
                           <Badge variant="secondary">0</Badge>
                         )}
                       </TableCell>
+                      <TableCell>
+                        {r.replay_url ? (
+                          <Badge variant="default" className="gap-1">
+                            <Video className="h-3 w-3" /> есть
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">нет</Badge>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button asChild size="sm" variant="outline">
@@ -152,7 +174,7 @@ function AdminInner() {
                   ))}
                   {filtered.length === 0 && !loading && (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                         Нет данных
                       </TableCell>
                     </TableRow>
