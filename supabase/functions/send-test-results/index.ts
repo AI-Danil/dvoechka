@@ -72,7 +72,7 @@ serve(async (req) => {
     if (!CHAT_ID) throw new Error("TELEGRAM_CHAT_ID is not configured");
 
     const body = await req.json();
-    const { studentName, grade, subject, cheatLog, timeSpent, attachments, attempt } = body;
+    const { studentName, grade, subject, cheatLog, timeSpent, attachments, attempt, resultId } = body;
 
     // Save to database BEFORE sending to Telegram
     try {
@@ -106,7 +106,7 @@ serve(async (req) => {
         answersData.tasks = body.tasks;
       }
 
-      const { error: dbError } = await supabaseAdmin.from("test_results").insert({
+      const insertPayload: Record<string, unknown> = {
         student_name: studentName,
         grade: Number(grade),
         subject,
@@ -116,7 +116,13 @@ serve(async (req) => {
         attachments: attachments || {},
         cheat_log: cheatLog || [],
         time_spent: timeSpent,
-      });
+      };
+      // Если клиент сгенерировал resultId — используем его, чтобы папка с rrweb-чанками
+      // совпала с id записи в test_results. Иначе БД сгенерирует свой UUID.
+      if (resultId && typeof resultId === "string" && /^[0-9a-f-]{36}$/i.test(resultId)) {
+        insertPayload.id = resultId;
+      }
+      const { error: dbError } = await supabaseAdmin.from("test_results").insert(insertPayload);
 
       if (dbError) {
         console.error("Failed to save to DB:", dbError);

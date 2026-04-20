@@ -30,6 +30,8 @@ import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests
 import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
 import Grade8InformaticsPython, { PYTHON_HERO_QUIZ_QUESTIONS } from "@/components/tests/Grade8InformaticsPython";
 import Quiz, { QuizIntro, type QuizQuestion, type QuizResults } from "@/components/Quiz";
+import RecordingBadge from "@/components/RecordingBadge";
+import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
 
 type Screen = "login" | "test" | "success";
 type LoginStep = "grade" | "subject" | "name" | "test-pick";
@@ -109,6 +111,11 @@ function getSubmittedKey(grade: string, subject: string, name: string, attempt: 
 
 const Index = () => {
   const [screen, setScreen] = useState<Screen>("login");
+  const [resultId, setResultId] = useState<string | null>(null);
+  const { finalize: finalizeRecording } = useRrwebRecorder({
+    resultId,
+    enabled: screen === "test",
+  });
   const [loginStep, setLoginStep] = useState<LoginStep>("grade");
   const [studentName, setStudentName] = useState("");
   const [grade, setGrade] = useState("");
@@ -618,6 +625,8 @@ const Index = () => {
       return;
     }
     setTestId(chosenTestId);
+    // Заранее генерируем UUID результата — он же путь для rrweb-записи
+    setResultId(crypto.randomUUID());
     const hasQuiz = !!TESTS_WITH_QUIZ[quizKey(grade, subject, chosenTestId)];
     if (hasQuiz) {
       setQuizPhase("intro");
@@ -749,6 +758,7 @@ const Index = () => {
       attempt: a,
       testId: tid,
       testTitle,
+      resultId,
       ...answers,
       attachments: fileUrls,
       cheatLog: cheatLogRef.current,
@@ -760,6 +770,13 @@ const Index = () => {
       if (error) throw error;
     } catch (e) {
       console.error("Failed to send results:", e);
+    }
+
+    // Финализируем запись экрана: дофлашить буфер и проставить replay_url
+    try {
+      await finalizeRecording();
+    } catch (e) {
+      console.error("Failed to finalize recording:", e);
     }
 
     const submittedKey = getSubmittedKey(g, s, name, a, tid);
@@ -945,6 +962,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-8">
+      <RecordingBadge />
       <div className="sticky top-0 z-50 bg-card border-b shadow-sm px-4 py-3">
         <div className="flex items-center justify-between">
           <span className="font-semibold text-muted-foreground">

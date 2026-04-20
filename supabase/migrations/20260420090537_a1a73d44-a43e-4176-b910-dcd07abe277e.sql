@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Anyone can list rrweb sessions" ON storage.objects;

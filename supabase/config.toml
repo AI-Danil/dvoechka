@@ -2,3 +2,15 @@ project_id = "gbpqlzjtcuhijtouwrvn"
 
 [functions.send-test-results]
 verify_jwt = false
+
+[functions.verify-teacher-credentials]
+verify_jwt = false
+
+[functions.list-results]
+verify_jwt = false
+
+[functions.replay-signed-url]
+verify_jwt = false
+
+[functions.update-replay-url]
+verify_jwt = false
