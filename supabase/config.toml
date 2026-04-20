@@ -20,3 +20,16 @@ verify_jwt = false
 
 [functions.claim-admin]
 verify_jwt = true
+
+[functions.generate-test]
+verify_jwt = true
+
+[functions.publish-test]
+verify_jwt = true
+
+[functions.delete-test]
+verify_jwt = true
+
+[functions.grade-quiz-submission]
+verify_jwt = false
+

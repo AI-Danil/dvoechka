@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut, BookOpen, Users } from "lucide-react";
-import CreateTestViaChat from "@/components/CreateTestViaChat";
+import CreateTestForm from "@/components/CreateTestForm";
+import MyTestsList from "@/components/MyTestsList";
 
 interface Assignment {
   id: string;
@@ -16,6 +17,7 @@ export default function TeacherDashboard() {
   const { signOut, user } = useAuth();
   const [profile, setProfile] = useState<{ full_name: string } | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [bump, setBump] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -75,14 +77,8 @@ export default function TeacherDashboard() {
           </Card>
         </div>
 
-        <CreateTestViaChat />
-
-        <Card>
-          <CardHeader><CardTitle>Скоро</CardTitle></CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Просмотр результатов учеников по своим предметам, UI-конструктор тестов, назначение тестов классам.
-          </CardContent>
-        </Card>
+        <CreateTestForm onCreated={() => setBump((x) => x + 1)} />
+        <MyTestsList refreshKey={bump} />
       </div>
     </div>
   );

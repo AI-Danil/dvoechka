@@ -32,6 +32,8 @@ import Grade8InformaticsPython, { PYTHON_HERO_QUIZ_QUESTIONS } from "@/component
 import Quiz, { QuizIntro, type QuizQuestion, type QuizResults } from "@/components/Quiz";
 import RecordingBadge from "@/components/RecordingBadge";
 import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
+import DbTestRunner from "@/components/DbTestRunner";
+import { loadPublishedTestsForGradeSubject, type DbTestSummary } from "@/lib/dbTests";
 
 type Screen = "login" | "test" | "success";
 type LoginStep = "grade" | "subject" | "name" | "test-pick";
@@ -186,6 +188,18 @@ const Index = () => {
   const [quizPhase, setQuizPhase] = useState<QuizPhase | null>(null);
   const [quizResults, setQuizResults] = useState<QuizResults | null>(null);
   const quizResultsRef = useRef<QuizResults | null>(null);
+
+  // DB-backed tests (created by teachers)
+  const [dbTests, setDbTests] = useState<DbTestSummary[]>([]);
+  const [activeDbTest, setActiveDbTest] = useState<DbTestSummary | null>(null);
+
+  useEffect(() => {
+    if (!grade || !subject) {
+      setDbTests([]);
+      return;
+    }
+    loadPublishedTestsForGradeSubject(grade, subject).then(setDbTests).catch(() => setDbTests([]));
+  }, [grade, subject]);
 
   // Live refs
   const blitz8Ref = useRef(blitz8);
@@ -880,6 +894,19 @@ const Index = () => {
 
   const handleSubmit = () => doSubmit();
 
+  // ============ DB-backed test (created by teacher) ============
+  if (activeDbTest) {
+    return (
+      <DbTestRunner
+        test={activeDbTest}
+        onBack={() => setActiveDbTest(null)}
+        onSubmitted={() => {
+          setActiveDbTest(null);
+        }}
+      />
+    );
+  }
+
   // ============ LOGIN SCREEN (multi-step) ============
   if (screen === "login") {
     const cardWrap = (children: React.ReactNode, title: string, subtitle?: string, back?: () => void) => (
@@ -972,29 +999,48 @@ const Index = () => {
 
     // test-pick
     const tests = TESTS_CATALOG[grade]?.[subject] || [];
+    const totalCount = tests.length + dbTests.length;
     return cardWrap(
       <div className="grid grid-cols-1 gap-3">
-        {tests.length === 0 ? (
+        {totalCount === 0 ? (
           <p className="text-sm text-muted-foreground text-center">Работы пока не добавлены.</p>
         ) : (
-          tests.map((t) => (
-            <Button
-              key={t.id}
-              variant="outline"
-              size="lg"
-              className="h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start"
-              onClick={() => startTest(t.id)}
-            >
-              <span className="flex flex-col items-start gap-1 w-full">
-                <span>{t.title}</span>
-                {t.date && (
-                  <span className="text-xs font-bold text-accent bg-accent/15 px-2 py-0.5 rounded">
-                    📅 {t.date}
+          <>
+            {tests.map((t) => (
+              <Button
+                key={t.id}
+                variant="outline"
+                size="lg"
+                className="h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start"
+                onClick={() => startTest(t.id)}
+              >
+                <span className="flex flex-col items-start gap-1 w-full">
+                  <span>{t.title}</span>
+                  {t.date && (
+                    <span className="text-xs font-bold text-accent bg-accent/15 px-2 py-0.5 rounded">
+                      📅 {t.date}
+                    </span>
+                  )}
+                </span>
+              </Button>
+            ))}
+            {dbTests.map((t) => (
+              <Button
+                key={t.id}
+                variant="outline"
+                size="lg"
+                className="h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start"
+                onClick={() => setActiveDbTest(t)}
+              >
+                <span className="flex flex-col items-start gap-1 w-full">
+                  <span>{t.title}</span>
+                  <span className="text-xs font-bold text-primary bg-primary/15 px-2 py-0.5 rounded">
+                    {t.kind === "quiz" ? "🎯 Квиз от учителя" : "📝 Самостоятельная от учителя"}
                   </span>
-                )}
-              </span>
-            </Button>
-          ))
+                </span>
+              </Button>
+            ))}
+          </>
         )}
       </div>,
       "Шаг 4. Выберите работу",

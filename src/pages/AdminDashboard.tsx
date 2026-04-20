@@ -6,7 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Users, GraduationCap, BookOpen, ClipboardList, LogOut, ShieldCheck } from "lucide-react";
-import CreateTestViaChat from "@/components/CreateTestViaChat";
+import CreateTestForm from "@/components/CreateTestForm";
+import MyTestsList from "@/components/MyTestsList";
 
 export default function AdminDashboard() {
   const { signOut, user, roles, refreshRoles } = useAuth();
@@ -116,7 +117,8 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <CreateTestViaChat />
+        <CreateTestForm isAdmin onCreated={() => {}} />
+        <MyTestsList isAdmin />
       </div>
     </div>
   );
