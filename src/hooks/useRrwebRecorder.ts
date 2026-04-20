@@ -178,6 +178,19 @@ export function useRrwebRecorder({ resultId, enabled }: Options) {
     console.log(`[rrweb] finalize done. uploaded chunks: ${uploaded}`);
     if (uploaded === 0) {
       console.error("[rrweb] PRODUCED NO CHUNKS — recording was not saved");
+      // Алерт учителю в Telegram, чтобы знать о провале сразу
+      try {
+        await supabase.functions.invoke("notify-copy-attempt", {
+          body: {
+            studentName: "(система)",
+            grade: "?",
+            subject: "informatics",
+            event: `⚠️ Запись экрана не сохранилась (0 чанков). resultId=${rid ?? "?"}, UA=${navigator.userAgent.slice(0, 80)}`,
+          },
+        });
+      } catch (e) {
+        console.error("[rrweb] failed to send no-chunks alert:", e);
+      }
       return;
     }
     if (!rid) return;
