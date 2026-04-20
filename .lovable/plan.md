@@ -1,104 +1,67 @@
 
 
-## Проблема сейчас
+## Что чиню
 
-Ошибка не исчезла по двум причинам:
+### 1. Блок «Результаты учеников» прямо в дашбордах учителя и админа
 
-1. **`generate-test` всё ещё настроен неверно в `supabase/config.toml`**  
-   В текущем коде у него стоит:
-   ```toml
-   [functions.generate-test]
-   verify_jwt = true
-   ```
-   То же самое у `publish-test` и `delete-test`.  
-   Значит прошлый фикс фактически **не применился**.
+Добавлю новый компонент `src/components/TestResultsList.tsx`:
+- читает `test_results` напрямую через Supabase client (RLS уже это позволяет учителю/админу — политика `Teachers and admins can view results` есть)
+- колонки: дата, ученик, предмет, балл, попытка, время (сек), нарушения (счётчик из `cheat_log`), кнопка «Подробнее» (модалка с разбором ответов и логом нарушений), ссылка на запись `replay_url` если есть
+- фильтры: поиск по имени, фильтр по предмету, фильтр «только с нарушениями»
+- автообновление раз в 15 секунд
+- для учителя — фильтрация по предметам из его `teacher_assignments` (для админа — всё)
 
-2. **Фронтенд показывает только общий текст `Edge Function returned a non-2xx status code`**  
-   Сейчас `CreateTestForm.tsx` вызывает `supabase.functions.invoke("generate-test")`, а функция отвечает статусами `400/401/403/422/500`.  
-   В таком режиме `invoke()` часто даёт только общий `FunctionsHttpError`, и реальная причина теряется.
+Встраиваю его в:
+- `src/pages/TeacherDashboard.tsx` — снизу, после `MyTestsList`
+- `src/pages/AdminDashboard.tsx` — снизу, после `MyTestsList`
 
-## Что исправлю
+Старую `/admin` (через teacher-token) не трогаю — она продолжает работать как есть.
 
-### 1) Починю конфиг edge functions
-В `supabase/config.toml`:
+### 2. Anti-cheat и запись в DB-тестах
 
-- `generate-test` → `verify_jwt = false`
-- `publish-test` → `verify_jwt = false`
-- `delete-test` → `verify_jwt = false`
+Правлю `src/components/DbTestRunner.tsx`:
+- подключаю `useAntiCheatNotify({ studentName, grade, subject })` — Telegram-алерты на копирование/переключение вкладок
+- подключаю `useRrwebRecorder` — запись сессии в `rrweb-sessions` bucket
+- собираю локальный `cheatLog: { type, timestamp, details }[]` через те же события, что и в хардкод-тестах: `copy`, `paste`, `cut`, `contextmenu`, `visibilitychange`, `blur`, devtools-открытие через `useDevToolsBlock`
+- передаю собранный `cheat_log` и `replay_url` в `grade-quiz-submission`
 
-`grade-quiz-submission` уже ок.
+Правлю `supabase/functions/grade-quiz-submission/index.ts`:
+- принимаю `replay_url` в body и сохраняю в колонку `replay_url` таблицы `test_results`
 
-JWT всё равно будет проверяться внутри функций через авторизационный заголовок, так что доступ не ослабляется.
+Подсмотрю реализацию anti-cheat у одного из существующих тестов (`Grade9PhysicsAtom` или `Grade7Physics`), чтобы повторить тот же набор слушателей событий и формат `cheatLog`.
 
-### 2) Сделаю нормальную схему ответов от edge functions
-В `supabase/functions/generate-test/index.ts`:
+### 3. Telegram-уведомление с результатом
 
-- переведу ответы на единый формат:
-  ```ts
-  { ok: true, test_id, title, kind, count }
-  { ok: false, error: "..." }
-  ```
-- для ожидаемых ошибок больше не буду полагаться на non-2xx как на способ показать сообщение пользователю
-- отдельно сохраню понятные сообщения для:
-  - не авторизован
-  - нет назначения на класс/предмет
-  - AI не распознал вопросы
-  - закончились кредиты AI
-  - rate limit
-  - ошибка вставки в БД
+В `grade-quiz-submission` после успешной вставки в `test_results` вызываю существующий поток уведомлений (тот же, что используется в `send-test-results`) — отправляю в Telegram отчёт: ученик, тест, балл, время, нарушения. Если уже есть подходящая edge-функция `send-test-results` — переиспользую её через прямой fetch внутри Deno; если она требует другого формата, добавлю минимальный inline-вызов Telegram API через `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`.
 
-Если нужно, сделаю ответ **всегда 200**, чтобы клиент гарантированно читал тело ответа и показывал точную причину, а не общий `non-2xx`.
+### Файлы
 
-### 3) Починю клиентскую обработку ошибки генерации
-В `src/components/CreateTestForm.tsx`:
+**Создать:**
+- `src/components/TestResultsList.tsx`
 
-- перестану показывать только `error.message`
-- буду читать `data.ok === false` / `data.error`
-- добавлю более точные toast-сообщения
-- если функция вернула диагностику, покажу её пользователю в читаемом виде
+**Править:**
+- `src/components/DbTestRunner.tsx` — anti-cheat + rrweb + сбор cheatLog
+- `src/pages/TeacherDashboard.tsx` — добавить `<TestResultsList />`
+- `src/pages/AdminDashboard.tsx` — добавить `<TestResultsList isAdmin />`
+- `supabase/functions/grade-quiz-submission/index.ts` — принимать `replay_url`, отправлять Telegram-отчёт
 
-Результат: вместо
-`Edge Function returned a non-2xx status code`
-будет, например:
-- `Нет назначения на этот класс/предмет`
-- `AI не извлёк ни одного вопроса`
-- `Превышен лимит запросов к AI`
-- `Не авторизован`
+**Не трогаю:**
+- RLS политики (уже корректные)
+- `/admin` старую страницу
+- хардкод-тесты
 
-### 4) Заодно укреплю CORS
-Во всех новых функциях (`generate-test`, `publish-test`, `delete-test`, `grade-quiz-submission`) приведу CORS к полному формату, совместимому с текущим клиентом:
+### Поток после фикса
 
-- `authorization`
-- `apikey`
-- `content-type`
-- `x-client-info`
-- при необходимости `x-supabase-client-*`
+```text
+Ученик → DbTestRunner (rrweb пишет, anti-cheat слушает) 
+       → grade-quiz-submission (cheat_log + replay_url + grade) 
+       → test_results (insert) + Telegram alert
+       → TeacherDashboard/AdminDashboard (TestResultsList тянет из БД через RLS)
+```
 
-Чтобы не ловить скрытые preflight-проблемы.
+### Как тестировать
 
-### 5) Быстро проверю весь связанный поток
-После фикса прогоню цепочку:
-
-1. логин под `teatcher01@test.ru`
-2. `/teacher/dashboard`
-3. выбор пары `9А — Физика`
-4. вставка вопросов
-5. `Сгенерировать`
-6. открытие превью
-7. `Опубликовать`
-
-И отдельно проверю, что `publish-test` и `delete-test` больше не упираются в тот же самый `verify_jwt=true`.
-
-## Файлы, которые правлю
-
-- `supabase/config.toml`
-- `supabase/functions/generate-test/index.ts`
-- `supabase/functions/publish-test/index.ts`
-- `supabase/functions/delete-test/index.ts`
-- `supabase/functions/grade-quiz-submission/index.ts` — только унификация ответа/CORS
-- `src/components/CreateTestForm.tsx`
-
-## Ожидаемый результат
-
-После фикса учитель сможет вставить вопросы в дашборде и нажать «Сгенерировать», а если что-то пойдёт не так, система покажет **реальную причину**, а не общий `Edge Function returned a non-2xx status code`.
+1. Опубликовать квиз под `Teatcher01@test.ru`.
+2. На `/` пройти его как ученик, попробовать скопировать вопрос (Ctrl+C), переключить вкладку → должны прилететь Telegram-алерты.
+3. Сдать тест → результат появляется в Telegram и в дашборде учителя/админа в блоке «Результаты», с числом нарушений >0 и кнопкой записи сессии.
 
