@@ -758,6 +758,7 @@ const Index = () => {
       attempt: a,
       testId: tid,
       testTitle,
+      resultId,
       ...answers,
       attachments: fileUrls,
       cheatLog: cheatLogRef.current,
@@ -769,6 +770,13 @@ const Index = () => {
       if (error) throw error;
     } catch (e) {
       console.error("Failed to send results:", e);
+    }
+
+    // Финализируем запись экрана: дофлашить буфер и проставить replay_url
+    try {
+      await finalizeRecording();
+    } catch (e) {
+      console.error("Failed to finalize recording:", e);
     }
 
     const submittedKey = getSubmittedKey(g, s, name, a, tid);
@@ -954,6 +962,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-8">
+      <RecordingBadge />
       <div className="sticky top-0 z-50 bg-card border-b shadow-sm px-4 py-3">
         <div className="flex items-center justify-between">
           <span className="font-semibold text-muted-foreground">
