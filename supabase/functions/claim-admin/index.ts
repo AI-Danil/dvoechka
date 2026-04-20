@@ -40,7 +40,9 @@ Deno.serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     const userId = decodeJwtSub(token);
     console.log("claim-admin: userId =", userId);
-    if (!userId) return respond(false, { error: "Invalid token" });
+    if (!userId) {
+      return respond(false, { error: "Не удалось определить пользователя. Войдите заново и попробуйте снова." });
+    }
 
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,

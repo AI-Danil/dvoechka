@@ -40,7 +40,17 @@ export default function AdminDashboard() {
 
   const claimAdmin = async () => {
     setBusy(true);
-    const { data, error } = await supabase.functions.invoke("claim-admin", { body: {} });
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) {
+      setBusy(false);
+      toast({ title: "Не авторизован", description: "Войдите заново", variant: "destructive" });
+      return;
+    }
+    const { data, error } = await supabase.functions.invoke("claim-admin", {
+      body: {},
+      headers: { Authorization: `Bearer ${token}` },
+    });
     setBusy(false);
     const ok = (data as any)?.ok === true;
     if (!ok) {
