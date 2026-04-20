@@ -28,7 +28,7 @@ export default function CreateTestForm({ isAdmin = false, onCreated }: Props) {
   const { toast } = useToast();
   const [pairs, setPairs] = useState<{ class_id: string; subject_id: string; label: string }[]>([]);
   const [pairKey, setPairKey] = useState<string>("");
-  const [kind, setKind] = useState<"quiz" | "written">("quiz");
+  const [kind, setKind] = useState<"quiz" | "written" | "hybrid">("quiz");
   const [title, setTitle] = useState("");
   const [rawText, setRawText] = useState("");
   const [seconds, setSeconds] = useState(30);
@@ -155,14 +155,22 @@ export default function CreateTestForm({ isAdmin = false, onCreated }: Props) {
           </div>
           <div className="space-y-1">
             <Label>Тип</Label>
-            <RadioGroup value={kind} onValueChange={(v) => setKind(v as any)} className="flex gap-4 pt-2">
+            <RadioGroup value={kind} onValueChange={(v) => setKind(v as any)} className="flex flex-wrap gap-4 pt-2">
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="quiz" id="k-quiz" /> <Label htmlFor="k-quiz">Квиз</Label>
               </div>
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="written" id="k-written" /> <Label htmlFor="k-written">Самостоятельная</Label>
               </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="hybrid" id="k-hybrid" /> <Label htmlFor="k-hybrid">Смешанный (квиз + самост.)</Label>
+              </div>
             </RadioGroup>
+            {kind === "hybrid" && (
+              <p className="text-[11px] text-muted-foreground pt-1">
+                Один файл может содержать блиц-квиз и письменные задачи. AI разделит их автоматически и использует ключи учителя.
+              </p>
+            )}
           </div>
         </div>
 
