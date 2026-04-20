@@ -7,7 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import TeacherLoginGate from "@/components/TeacherLoginGate";
 import { useTeacherAuth } from "@/hooks/useTeacherAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { LogOut, Play, FileText, RefreshCw, Video } from "lucide-react";
 
 interface ResultRow {
@@ -70,15 +69,10 @@ function AdminInner() {
 
   useEffect(() => {
     void load();
-    const channel = supabase
-      .channel("test_results_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "test_results" },
-        () => { void load(); }
-      )
-      .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    // RLS закрыт — realtime-подписка через postgres_changes больше недоступна.
+    // Используем простой polling каждые 15 секунд.
+    const interval = setInterval(() => { void load(); }, 15000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
