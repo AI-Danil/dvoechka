@@ -1,37 +1,55 @@
 
 
-Разбираю 4 задачи:
+Юзер хочет №1 целиком. Разбиваю по компонентам.
 
-**1. Удалить тестовые записи "Аа Аа" / "А А"**
-Надо посмотреть, что реально в базе — какие имена считать тестовыми. Запрошу через `supabase--read_query` список коротких имён (где каждое слово ≤ 2 символа), покажу юзеру и удалю миграцией. RLS сейчас запрещает DELETE для public — миграция выполнится service-role'ом, это ок.
+**Важно:** платформа просит не делать backend rate-limiting (нет инфры). Скажу юзеру в плане, что rate-limit сделаю как просили (ad-hoc, в памяти инстанса edge-функции — несовершенно, переживёт перезапуск), но честно предупрежу про ограничение.
 
-**2. Кнопка закрытия в Replay не работает**
-Проверил `Replay.tsx` — там уже есть кнопка «Закрыть» с `navigate("/admin")`. Раз юзер говорит «не закрывается» — вероятно навигация уходит на `/admin`, но `TeacherLoginGate` снова перерисовывает Replay (или плеер rrweb перехватывает клики/оверлеит кнопку). Надо посмотреть DOM плеера — он может растягиваться на весь экран и перекрывать кнопку. Решение: в `useEffect` инициализации плеера — поставить кнопке `z-50 relative`, шапку обернуть в `sticky top-0 z-50 bg-background`. Плюс уничтожать плеер перед навигацией (`$destroy()` в `onClick` закрытия).
+**RLS-фикс:**
+- `DROP POLICY "Allow select for all"` и `"Allow insert for all"` на `test_results`.
+- Создать `user_roles` + enum `app_role` ('admin','teacher','student') + `has_role()` security definer.
+- Новые политики: SELECT — только `has_role(auth.uid(), 'teacher'|'admin')`. INSERT — `false` (только через service-role из edge-функции). UPDATE/DELETE остаются запрещены.
+- ⚠️ Учитель сейчас ходит **без** Supabase Auth (HMAC-токен + service-role в `list-results`). Значит `auth.uid()` у него null → SELECT с клиента работать не будет. Это ОК: учитель и так читает через `list-results` edge-функцию с service-role, RLS его не касается. Но любой клиентский `supabase.from('test_results').select(...)` сломается. Нужно проверить, что в коде нет таких вызовов.
 
-**3. Показ ответов ученика + правильности в Replay**
-Сейчас `Replay.tsx` получает `result.answers` от edge-функции, но не отображает. Надо:
-- Загрузить «правильные ответы» теста по `grade + subject + test_type` — они лежат в компонентах `src/components/tests/Grade*.tsx` как массив вопросов с `correctAnswer`.
-- Чтобы не дублировать тесты, вынесу определения тестов (вопросы + правильные ответы) в `src/lib/testsRegistry.ts` — функция `getTestQuestions(grade, subject, testType)` вернёт массив `{ id, question, correctAnswer, type }`.
-- В Replay добавлю третий таб **«Ответы»** со списком: вопрос → ответ ученика → правильный ответ → ✅/❌, и в шапке покажу итог «X из Y (Z%)».
+**Submit edge-функция:**
+- Новая `supabase/functions/submit-test-result/index.ts`, `verify_jwt = false`.
+- Принимает `{ student_name, grade, subject, test_type, attempt, answers, attachments, cheat_log, time_spent, replay_url }`.
+- Валидация Zod-style вручную (или просто проверка типов — Zod утяжелит, обойдусь руками).
+- Rate-limit in-memory `Map<ip, timestamps[]>`: 1 в 30с, 50 в час. IP из `x-forwarded-for`. При превышении — 429.
+- Вставка через service-role.
+- Возвращает `{ id }`.
 
-⚠️ Это самая объёмная часть — тесты сейчас разбросаны по 12 файлам в `src/components/tests/`. Нужно прочитать их структуру (как там описаны вопросы и правильные ответы) — сделаю это в default mode перед тем как создавать registry. Возможно, registry окажется проще — просто экспортировать `questions` массив из каждого test-компонента.
+**Клиент:**
+- Найти все `supabase.from('test_results').insert(...)` — заменить на `supabase.functions.invoke('submit-test-result', ...)`. Это `Index.tsx` (сабмит теста) и, возможно, `update-replay-url` (но он уже edge — там UPDATE, RLS не пускает, значит уже идёт service-role).
+- Найти все `supabase.from('test_results').select(...)` с клиента — должны исчезнуть. Если есть — переключить на `list-results`.
 
-**4. Запись должна открываться с кнопки** (видимо: не сразу автоплеем, а по клику)
-Сейчас плеер инициализируется автоматически как только загружены events. Сделаю: показывать большую кнопку «▶ Открыть запись» — плеер инициализируется только после клика. Закрытие — кнопка «✕ Свернуть запись» рядом, она вызовет `$destroy()` и сбросит state, чтобы можно было снова открыть.
+**Шаги в default mode:**
+1. Прочитать `Index.tsx` (как сейчас сабмитит) и поискать все клиентские обращения к `test_results`.
+2. Миграция: enum + `user_roles` + `has_role` + удалить старые политики + новые политики на `test_results`.
+3. Создать `supabase/functions/submit-test-result/index.ts` + блок в `config.toml`.
+4. Заменить клиентский INSERT на invoke.
+5. Проверить, что нигде на клиенте не осталось `from('test_results').select`.
+6. Запустить security-linter, убедиться что warning'ов нет.
 
-# План работ
+# План
 
-1. **Очистка БД**: запросом найти записи с короткими именами (≤2 симв на слово), показать список, удалить миграцией.
-2. **Replay — кнопка закрытия**: добавить `sticky` шапке, `z-50` кнопке, `$destroy()` плеера перед navigate.
-3. **Replay — ответы и оценка**:
-   - Прочитать 1-2 файла из `src/components/tests/` чтобы понять формат.
-   - Создать `src/lib/testsRegistry.ts` с маппингом `(grade, subject, testType) → questions[]` (реэкспорт из существующих компонентов или копия данных).
-   - Добавить в Replay третий таб «Ответы» с таблицей: вопрос / ответ ученика / правильный / результат, и итоговый счёт в шапке.
-4. **Replay — запуск/остановка плеера по кнопке**:
-   - State `playerOpen: boolean`.
-   - Если `false` — большая кнопка «▶ Открыть запись».
-   - Если `true` — плеер + кнопка «✕ Свернуть».
-   - При сворачивании — `$destroy()` + `playerOpen=false` (events остаются в памяти, повторное открытие мгновенное).
+1. **Миграция БД:**
+   - Enum `app_role` ('admin','teacher','student').
+   - Таблица `user_roles(id, user_id, role, created_at)` + RLS (только админ читает/пишет, security definer функции для проверок).
+   - Функция `has_role(_user_id uuid, _role app_role) returns boolean` (security definer, stable).
+   - Удалить политики «Allow select/insert for all» на `test_results`.
+   - Новые политики `test_results`:
+     - SELECT: `has_role(auth.uid(),'teacher') OR has_role(auth.uid(),'admin')`.
+     - INSERT: `false` (вставка только через edge-функцию с service-role).
 
-После approve — переключусь в default mode и сделаю.
+2. **Edge-функция `submit-test-result`:**
+   - `verify_jwt = false`, CORS, валидация полей, in-memory rate-limit (1/30с и 50/час по IP), вставка через service-role, ответ `{ id }` или 429/400.
+   - ⚠️ Rate-limit будет ad-hoc в памяти инстанса — при перезапуске или нескольких инстансах может не сработать идеально. Платформа официально ещё не предоставляет примитивов rate-limit. Это компромисс.
+
+3. **Клиент:**
+   - В `src/pages/Index.tsx` (и где ещё найдётся) заменить `supabase.from('test_results').insert(...)` на `supabase.functions.invoke('submit-test-result', { body })`.
+   - Убедиться, что нигде на клиенте нет `supabase.from('test_results').select(...)` — учитель уже ходит через `list-results`, ученику читать чужие результаты не надо.
+
+4. **Проверка:** запустить `supabase--linter`, убедиться что критичных warning'ов нет. `list-results` НЕ трогаю — там service-role + HMAC, работает как раньше.
+
+После реализации: ученик сабмитит тест → идёт через edge-функцию → вставка в БД. Прямой `select` с anon-key больше не вернёт ничего. Учитель видит результаты как раньше через `list-results`.
 
