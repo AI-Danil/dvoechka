@@ -104,7 +104,7 @@ export default function TestPreview({
     });
     setBusy(false);
     const r = data as any;
-    if (error || r?.error) {
+    if (error || !r?.ok) {
       toast({ title: "Не удалось опубликовать", description: r?.error ?? error?.message, variant: "destructive" });
       return;
     }

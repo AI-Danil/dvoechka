@@ -97,9 +97,9 @@ export default function CreateTestForm({ isAdmin = false, onCreated }: Props) {
           time_per_question_sec: seconds,
         },
       });
-      if (error) throw error;
       const r = data as any;
-      if (r?.error) throw new Error(r.error);
+      if (error) throw new Error(r?.error ?? error.message);
+      if (!r?.ok) throw new Error(r?.error ?? "Не удалось сгенерировать тест");
       toast({ title: "Тест создан", description: `Распознано: ${r.count} вопрос(ов)` });
       setCreatedTestId(r.test_id);
       onCreated?.();
