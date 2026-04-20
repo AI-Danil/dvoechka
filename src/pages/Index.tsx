@@ -32,6 +32,8 @@ import Grade8InformaticsPython, { PYTHON_HERO_QUIZ_QUESTIONS } from "@/component
 import Quiz, { QuizIntro, type QuizQuestion, type QuizResults } from "@/components/Quiz";
 import RecordingBadge from "@/components/RecordingBadge";
 import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
+import DbTestRunner from "@/components/DbTestRunner";
+import { loadPublishedTestsForGradeSubject, type DbTestSummary } from "@/lib/dbTests";
 
 type Screen = "login" | "test" | "success";
 type LoginStep = "grade" | "subject" | "name" | "test-pick";
