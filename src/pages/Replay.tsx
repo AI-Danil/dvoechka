@@ -8,7 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface CheatEntry {
   raw: string;
@@ -42,6 +43,7 @@ function ReplayInner() {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") === "log" ? "log" : "replay";
   const { token } = useTeacherAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<"replay" | "log">(initialTab);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -173,13 +175,24 @@ function ReplayInner() {
           <Button asChild variant="ghost" size="sm">
             <Link to="/admin"><ArrowLeft className="h-4 w-4" /> К списку</Link>
           </Button>
-          {result && (
-            <div className="text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{result.student_name}</span>
-              {" · "}{result.grade} класс · {result.subject}
-              {" · "}{new Date(result.created_at).toLocaleString("ru-RU")}
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {result && (
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{result.student_name}</span>
+                {" · "}{result.grade} класс · {result.subject}
+                {" · "}{new Date(result.created_at).toLocaleString("ru-RU")}
+              </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/admin")}
+              aria-label="Закрыть просмотр"
+              title="Закрыть"
+            >
+              <X className="h-4 w-4" /> Закрыть
+            </Button>
+          </div>
         </div>
 
         <div className="flex gap-2">
