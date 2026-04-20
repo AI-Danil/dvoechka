@@ -935,11 +935,14 @@ const Index = () => {
     const cfg = TESTS_WITH_QUIZ[quizKey(grade, subject, testId)];
     if (cfg) {
       return (
-        <QuizIntro
-          questionsCount={cfg.questions.length}
-          secondsPerQuestion={cfg.secondsPerQuestion}
-          onStart={() => setQuizPhase("running")}
-        />
+        <>
+          <RecordingBadge />
+          <QuizIntro
+            questionsCount={cfg.questions.length}
+            secondsPerQuestion={cfg.secondsPerQuestion}
+            onStart={() => setQuizPhase("running")}
+          />
+        </>
       );
     }
   }
@@ -948,11 +951,14 @@ const Index = () => {
     const cfg = TESTS_WITH_QUIZ[quizKey(grade, subject, testId)];
     if (cfg) {
       return (
-        <Quiz
-          questions={cfg.questions}
-          secondsPerQuestion={cfg.secondsPerQuestion}
-          onFinish={handleQuizFinish}
-        />
+        <>
+          <RecordingBadge />
+          <Quiz
+            questions={cfg.questions}
+            secondsPerQuestion={cfg.secondsPerQuestion}
+            onFinish={handleQuizFinish}
+          />
+        </>
       );
     }
   }
