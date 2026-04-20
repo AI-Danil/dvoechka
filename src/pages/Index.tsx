@@ -510,6 +510,58 @@ const Index = () => {
       e.preventDefault();
     };
 
+    // --- Детектор подозрительной скорости печати и массовых вставок ---
+    // Скользящее окно 5 секунд по символам; срабатывание не чаще 1 раза в 30 сек на поле.
+    const TYPING_WINDOW_MS = 5000;
+    const TYPING_MAX_CHARS_PER_SEC = 17; // ~1000 знаков/мин — быстрее топ-машинистки
+    const TYPING_NOTIFY_COOLDOWN_MS = 30_000;
+    const PASTE_DELTA_THRESHOLD = 30; // символов за один input event
+    const typingBuffers = new WeakMap<HTMLElement, { times: number[]; lastNotifyAt: number }>();
+    const lengthSnapshot = new WeakMap<HTMLElement, number>();
+
+    const fieldLabel = (el: HTMLElement) => {
+      const name = el.getAttribute("name") || el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.getAttribute("id") || el.tagName.toLowerCase();
+      return name.slice(0, 40);
+    };
+
+    const onInput = (e: Event) => {
+      const el = e.target as HTMLInputElement | HTMLTextAreaElement | null;
+      if (!el) return;
+      const tag = el.tagName;
+      if (tag !== "INPUT" && tag !== "TEXTAREA") return;
+      const value = (el as HTMLInputElement).value ?? "";
+      const prevLen = lengthSnapshot.get(el) ?? 0;
+      const delta = value.length - prevLen;
+      lengthSnapshot.set(el, value.length);
+
+      // Большая дельта за один input → массовая вставка
+      const inputType = (e as InputEvent).inputType || "";
+      if (delta >= PASTE_DELTA_THRESHOLD || inputType === "insertFromPaste" || inputType === "insertFromDrop") {
+        const reason = inputType === "insertFromPaste" ? "вставка" : inputType === "insertFromDrop" ? "drag-n-drop" : "массовый ввод";
+        const msg = `📋 Подозрительная ${reason}: +${delta} симв. в поле «${fieldLabel(el)}»`;
+        logCheat(msg);
+        notifyCopyAttempt(msg);
+      }
+
+      if (delta <= 0) return;
+      const now = Date.now();
+      const buf = typingBuffers.get(el) ?? { times: [], lastNotifyAt: 0 };
+      for (let i = 0; i < delta; i++) buf.times.push(now);
+      // Чистим окно
+      const cutoff = now - TYPING_WINDOW_MS;
+      while (buf.times.length && buf.times[0] < cutoff) buf.times.shift();
+      typingBuffers.set(el, buf);
+
+      const charsInWindow = buf.times.length;
+      const cps = charsInWindow / (TYPING_WINDOW_MS / 1000);
+      if (cps > TYPING_MAX_CHARS_PER_SEC && now - buf.lastNotifyAt > TYPING_NOTIFY_COOLDOWN_MS) {
+        buf.lastNotifyAt = now;
+        const msg = `🚀 Подозрительно быстрый набор: ${cps.toFixed(1)} симв/сек в поле «${fieldLabel(el)}»`;
+        logCheat(msg);
+        notifyCopyAttempt(msg);
+      }
+    };
+
     window.addEventListener("blur", onBlur);
     document.addEventListener("visibilitychange", onVisibility);
     document.addEventListener("copy", onCopy);
@@ -518,6 +570,7 @@ const Index = () => {
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("contextmenu", onContext);
     document.addEventListener("selectstart", onSelectStart);
+    document.addEventListener("input", onInput, true);
 
     return () => {
       testActiveRef.current = false;
@@ -529,6 +582,7 @@ const Index = () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("contextmenu", onContext);
       document.removeEventListener("selectstart", onSelectStart);
+      document.removeEventListener("input", onInput, true);
     };
   }, [screen, logCheat, notifyCopyAttempt, toast]);
 
