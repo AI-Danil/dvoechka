@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
       cheat_log = [],
       result_id,
       replay_url,
+      per_question,
     } = await req.json();
     if (!test_id || !student_name || !answers)
       return fail("test_id, student_name, answers обязательны");
