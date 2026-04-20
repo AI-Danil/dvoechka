@@ -189,6 +189,18 @@ const Index = () => {
   const [quizResults, setQuizResults] = useState<QuizResults | null>(null);
   const quizResultsRef = useRef<QuizResults | null>(null);
 
+  // DB-backed tests (created by teachers)
+  const [dbTests, setDbTests] = useState<DbTestSummary[]>([]);
+  const [activeDbTest, setActiveDbTest] = useState<DbTestSummary | null>(null);
+
+  useEffect(() => {
+    if (!grade || !subject) {
+      setDbTests([]);
+      return;
+    }
+    loadPublishedTestsForGradeSubject(grade, subject).then(setDbTests).catch(() => setDbTests([]));
+  }, [grade, subject]);
+
   // Live refs
   const blitz8Ref = useRef(blitz8);
   const tasks8Ref = useRef(tasks8);
