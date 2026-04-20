@@ -66,11 +66,19 @@ function ReplayInner() {
       setLoading(true);
       setError(null);
       try {
-        const { data, error: invokeErr } = await supabase.functions.invoke("replay-signed-url", {
-          body: { resultId: id },
-          headers: { "x-teacher-token": token || "" },
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/replay-signed-url`;
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token || ""}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ resultId: id }),
         });
-        if (invokeErr) throw invokeErr;
+        if (resp.status === 401) throw new Error("Сессия истекла. Войдите заново.");
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(data?.error || `HTTP ${resp.status}`);
         if (data?.error) throw new Error(data.error);
         if (cancelled) return;
         setResult(data.result);

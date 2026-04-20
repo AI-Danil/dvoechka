@@ -34,21 +34,25 @@ function AdminInner() {
     setLoading(true);
     setError(null);
     try {
-      console.log("[Admin] load(): invoking list-results, token len:", (token || "").length);
-      const { data, error: invokeErr } = await supabase.functions.invoke("list-results", {
-        headers: { "x-teacher-token": token || "" },
+      console.log("[Admin] load(): fetching list-results, token len:", (token || "").length);
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/list-results`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token || ""}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          "Content-Type": "application/json",
+        },
+        body: "{}",
       });
-      console.log("[Admin] list-results response:", { invokeErr, data });
-      if (invokeErr) {
-        const msg = String((invokeErr as Error)?.message || invokeErr);
-        // ВАЖНО: не делаем logout автоматически — раньше любая ошибка fetch (network/CORS)
-        // выглядела как "non-2xx" и моментально выкидывала юзера обратно на логин.
-        // Теперь только показываем ошибку, юзер сам решит.
-        if (msg.toLowerCase().includes("unauthorized") || msg.includes("401")) {
-          setError("Сессия истекла. Войдите заново и попробуйте снова.");
-        } else {
-          setError(`Ошибка загрузки: ${msg}`);
-        }
+      console.log("[Admin] list-results status:", resp.status);
+      if (resp.status === 401) {
+        setError("Сессия истекла. Войдите заново и попробуйте снова.");
+        return;
+      }
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        setError(`Ошибка загрузки: ${data?.error || resp.status}`);
         return;
       }
       if (data?.error) {
