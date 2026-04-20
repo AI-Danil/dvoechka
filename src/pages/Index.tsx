@@ -30,6 +30,8 @@ import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests
 import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
 import Grade8InformaticsPython, { PYTHON_HERO_QUIZ_QUESTIONS } from "@/components/tests/Grade8InformaticsPython";
 import Quiz, { QuizIntro, type QuizQuestion, type QuizResults } from "@/components/Quiz";
+import RecordingBadge from "@/components/RecordingBadge";
+import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
 
 type Screen = "login" | "test" | "success";
 type LoginStep = "grade" | "subject" | "name" | "test-pick";
@@ -109,6 +111,11 @@ function getSubmittedKey(grade: string, subject: string, name: string, attempt: 
 
 const Index = () => {
   const [screen, setScreen] = useState<Screen>("login");
+  const [resultId, setResultId] = useState<string | null>(null);
+  const { finalize: finalizeRecording } = useRrwebRecorder({
+    resultId,
+    enabled: screen === "test",
+  });
   const [loginStep, setLoginStep] = useState<LoginStep>("grade");
   const [studentName, setStudentName] = useState("");
   const [grade, setGrade] = useState("");
@@ -618,6 +625,8 @@ const Index = () => {
       return;
     }
     setTestId(chosenTestId);
+    // Заранее генерируем UUID результата — он же путь для rrweb-записи
+    setResultId(crypto.randomUUID());
     const hasQuiz = !!TESTS_WITH_QUIZ[quizKey(grade, subject, chosenTestId)];
     if (hasQuiz) {
       setQuizPhase("intro");
