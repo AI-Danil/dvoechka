@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Users, GraduationCap, BookOpen, ClipboardList, LogOut, ShieldCheck } from "lucide-react";
+import CreateTestViaChat from "@/components/CreateTestViaChat";
 
 export default function AdminDashboard() {
   const { signOut, user, roles, refreshRoles } = useAuth();
@@ -111,9 +112,11 @@ export default function AdminDashboard() {
             <Button asChild variant="outline"><Link to="/admin">Старая панель результатов</Link></Button>
             <Button variant="outline" disabled>Пригласить учителя (скоро)</Button>
             <Button variant="outline" disabled>Управление классами (скоро)</Button>
-            <Button variant="outline" disabled>Конструктор тестов (скоро)</Button>
+            <Button variant="outline" disabled>Конструктор тестов в UI (скоро)</Button>
           </CardContent>
         </Card>
+
+        <CreateTestViaChat />
       </div>
     </div>
   );
