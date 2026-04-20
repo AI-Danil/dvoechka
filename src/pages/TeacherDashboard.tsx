@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut, BookOpen, Users } from "lucide-react";
+import CreateTestViaChat from "@/components/CreateTestViaChat";
 
 interface Assignment {
   id: string;
@@ -74,10 +75,12 @@ export default function TeacherDashboard() {
           </Card>
         </div>
 
+        <CreateTestViaChat />
+
         <Card>
           <CardHeader><CardTitle>Скоро</CardTitle></CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Просмотр результатов учеников по своим предметам, конструктор тестов, назначение тестов классам.
+            Просмотр результатов учеников по своим предметам, UI-конструктор тестов, назначение тестов классам.
           </CardContent>
         </Card>
       </div>
