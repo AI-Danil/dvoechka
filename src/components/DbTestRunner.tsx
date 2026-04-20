@@ -13,6 +13,7 @@ import { ArrowLeft } from "lucide-react";
 import { useAntiCheatNotify } from "@/hooks/useAntiCheatNotify";
 import { useDevToolsBlock } from "@/hooks/useDevToolsBlock";
 import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
+import RecordingBadge from "@/components/RecordingBadge";
 
 interface Props {
   test: DbTestSummary;
