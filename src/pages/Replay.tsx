@@ -331,7 +331,7 @@ function ReplayInner() {
                                 </div>
                                 <div>
                                   {isCorrect ? (
-                                    <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                                    <Badge className="bg-primary text-primary-foreground hover:bg-primary">
                                       <Check className="h-3 w-3" />
                                     </Badge>
                                   ) : (
