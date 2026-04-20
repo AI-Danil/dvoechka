@@ -626,8 +626,20 @@ const Index = () => {
     return urls;
   };
 
+  const lastSubmitAtRef = useRef<number>(0);
+
   const doSubmit = async () => {
     if (submittingRef.current) return;
+    const now = Date.now();
+    if (now - lastSubmitAtRef.current < 30_000) {
+      toast({
+        title: "Подожди немного",
+        description: "Повторная отправка возможна через 30 секунд.",
+        variant: "destructive",
+      });
+      return;
+    }
+    lastSubmitAtRef.current = now;
     submittingRef.current = true;
     setSubmitting(true);
     if (timerRef.current) clearInterval(timerRef.current);
