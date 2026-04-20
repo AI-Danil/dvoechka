@@ -1,55 +1,104 @@
 
 
-## Что чиню
+## Проблема сейчас
 
-### 1. Edge functions возвращают 401 (главная проблема)
+Ошибка не исчезла по двум причинам:
 
-В edge-логах видно: `POST /generate-test → 401` ещё до выполнения кода. Платформа режет запрос, потому что у новых функций включён `verify_jwt`, а у нас в коде свой `getUser()`-механизм.
+1. **`generate-test` всё ещё настроен неверно в `supabase/config.toml`**  
+   В текущем коде у него стоит:
+   ```toml
+   [functions.generate-test]
+   verify_jwt = true
+   ```
+   То же самое у `publish-test` и `delete-test`.  
+   Значит прошлый фикс фактически **не применился**.
 
-**Правлю `supabase/config.toml`** — добавляю блоки:
-```toml
-[functions.generate-test]
-verify_jwt = false
+2. **Фронтенд показывает только общий текст `Edge Function returned a non-2xx status code`**  
+   Сейчас `CreateTestForm.tsx` вызывает `supabase.functions.invoke("generate-test")`, а функция отвечает статусами `400/401/403/422/500`.  
+   В таком режиме `invoke()` часто даёт только общий `FunctionsHttpError`, и реальная причина теряется.
 
-[functions.publish-test]
-verify_jwt = false
+## Что исправлю
 
-[functions.delete-test]
-verify_jwt = false
+### 1) Починю конфиг edge functions
+В `supabase/config.toml`:
 
-[functions.grade-quiz-submission]
-verify_jwt = false
-```
+- `generate-test` → `verify_jwt = false`
+- `publish-test` → `verify_jwt = false`
+- `delete-test` → `verify_jwt = false`
 
-JWT всё равно валидируется внутри функции через `userClient.auth.getUser()` — безопасность не страдает.
+`grade-quiz-submission` уже ок.
 
-### 2. Roles race condition на `/account`
+JWT всё равно будет проверяться внутри функций через авторизационный заголовок, так что доступ не ослабляется.
 
-`useAuth` грузит роли асинхронно, после `setUser`. Из-за этого `Account.tsx` мгновенно показывает «У вас нет роли», хотя роль `teacher` уже в БД.
+### 2) Сделаю нормальную схему ответов от edge functions
+В `supabase/functions/generate-test/index.ts`:
 
-Правлю `src/hooks/useAuth.tsx` — `loading` снимаю только **после** загрузки ролей при `onAuthStateChange` (сейчас `loading=false` ставится только в `getSession`, а на повторный логин не пересчитывается).
+- переведу ответы на единый формат:
+  ```ts
+  { ok: true, test_id, title, kind, count }
+  { ok: false, error: "..." }
+  ```
+- для ожидаемых ошибок больше не буду полагаться на non-2xx как на способ показать сообщение пользователю
+- отдельно сохраню понятные сообщения для:
+  - не авторизован
+  - нет назначения на класс/предмет
+  - AI не распознал вопросы
+  - закончились кредиты AI
+  - rate limit
+  - ошибка вставки в БД
 
-Правлю `src/pages/Account.tsx` — пока `loading=true` показываю спиннер, а не «нет роли». И делаю редирект `teacher → /teacher/dashboard` / `admin → /admin/dashboard` сразу как роли подгрузились.
+Если нужно, сделаю ответ **всегда 200**, чтобы клиент гарантированно читал тело ответа и показывал точную причину, а не общий `non-2xx`.
 
-### 3. Кнопка «Стать админом» висит у не-админов
+### 3) Починю клиентскую обработку ошибки генерации
+В `src/components/CreateTestForm.tsx`:
 
-Правлю `src/pages/Account.tsx` (или где она рендерится) — кнопку показываю только если в системе **ещё нет ни одного админа**. Проверка через edge-функцию `claim-admin` (она уже умеет отвечать 403, если админ есть) — делаю быструю проверку при маунте: вызываю claim с флагом `dry_run` или просто скрываю кнопку, если у пользователя уже есть любая роль (`teacher`/`student`).
+- перестану показывать только `error.message`
+- буду читать `data.ok === false` / `data.error`
+- добавлю более точные toast-сообщения
+- если функция вернула диагностику, покажу её пользователю в читаемом виде
 
-Проще: **скрываю кнопку, если `roles.length > 0`** — учитель не должен видеть «стать админом».
+Результат: вместо
+`Edge Function returned a non-2xx status code`
+будет, например:
+- `Нет назначения на этот класс/предмет`
+- `AI не извлёк ни одного вопроса`
+- `Превышен лимит запросов к AI`
+- `Не авторизован`
 
-### Файлы
+### 4) Заодно укреплю CORS
+Во всех новых функциях (`generate-test`, `publish-test`, `delete-test`, `grade-quiz-submission`) приведу CORS к полному формату, совместимому с текущим клиентом:
 
-- `supabase/config.toml` — добавить блоки `verify_jwt = false` для 4 новых функций
-- `src/hooks/useAuth.tsx` — фиксить loading после onAuthStateChange
-- `src/pages/Account.tsx` — спиннер пока loading, редирект по ролям, скрыть кнопку «стать админом» если уже есть роль
+- `authorization`
+- `apikey`
+- `content-type`
+- `x-client-info`
+- при необходимости `x-supabase-client-*`
 
-### Не трогаю
+Чтобы не ловить скрытые preflight-проблемы.
 
-БД, RLS, сами edge-функции (код корректный), `seed-teacher`, `claim-admin`.
+### 5) Быстро проверю весь связанный поток
+После фикса прогоню цепочку:
 
-### Проверка после
+1. логин под `teatcher01@test.ru`
+2. `/teacher/dashboard`
+3. выбор пары `9А — Физика`
+4. вставка вопросов
+5. `Сгенерировать`
+6. открытие превью
+7. `Опубликовать`
 
-1. Выйти/войти под `teatcher01@test.ru` → должен сразу попасть в `/teacher/dashboard` без мелькания «нет роли», кнопки «стать админом» нет.
-2. На дашборде учителя выбрать «9А (2025) — Физика», вставить вопросы, нажать «Сгенерировать» → ответ 200, превью с вопросами.
-3. Опубликовать → открыть `/`, выбрать 9 класс / физику → новый тест в списке.
+И отдельно проверю, что `publish-test` и `delete-test` больше не упираются в тот же самый `verify_jwt=true`.
+
+## Файлы, которые правлю
+
+- `supabase/config.toml`
+- `supabase/functions/generate-test/index.ts`
+- `supabase/functions/publish-test/index.ts`
+- `supabase/functions/delete-test/index.ts`
+- `supabase/functions/grade-quiz-submission/index.ts` — только унификация ответа/CORS
+- `src/components/CreateTestForm.tsx`
+
+## Ожидаемый результат
+
+После фикса учитель сможет вставить вопросы в дашборде и нажать «Сгенерировать», а если что-то пойдёт не так, система покажет **реальную причину**, а не общий `Edge Function returned a non-2xx status code`.
 
