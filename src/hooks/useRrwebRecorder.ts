@@ -64,17 +64,17 @@ export function useRrwebRecorder({ resultId, enabled }: Options) {
     }
     bufferRef.current = [];
     const idx = chunkIndexRef.current++;
-    const fileName = `chunk-${String(idx).padStart(4, "0")}.json.gz`;
-    const path = `${rid}/${fileName}`;
 
     const uploadPromise = (async () => {
       try {
-        const gz = await gzipJson(events);
-        console.log(`[rrweb] uploading ${path} (${events.length} events, ${gz.size}b)`);
+        const encoded = await encodeJson(events);
+        const fileName = `chunk-${String(idx).padStart(4, "0")}.${encoded.ext}`;
+        const path = `${rid}/${fileName}`;
+        console.log(`[rrweb] uploading ${path} (${events.length} events, ${encoded.blob.size}b, ${encoded.ext})`);
         const { error } = await supabase.storage
           .from("rrweb-sessions")
-          .upload(path, gz, {
-            contentType: "application/gzip",
+          .upload(path, encoded.blob, {
+            contentType: encoded.contentType,
             upsert: true,
           });
         if (error) {
