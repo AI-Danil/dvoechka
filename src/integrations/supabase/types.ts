@@ -155,35 +155,101 @@ export type Database = {
         }
         Relationships: []
       }
+      test_attempts: {
+        Row: {
+          attempt_no: number
+          cheat_log: Json
+          created_at: string
+          current_phase: string
+          current_question: number
+          draft_answers: Json
+          finished_at: string | null
+          id: string
+          last_activity_at: string
+          result_id: string | null
+          started_at: string
+          status: string
+          student_fingerprint: string | null
+          student_name: string
+          test_id: string
+        }
+        Insert: {
+          attempt_no?: number
+          cheat_log?: Json
+          created_at?: string
+          current_phase?: string
+          current_question?: number
+          draft_answers?: Json
+          finished_at?: string | null
+          id?: string
+          last_activity_at?: string
+          result_id?: string | null
+          started_at?: string
+          status?: string
+          student_fingerprint?: string | null
+          student_name: string
+          test_id: string
+        }
+        Update: {
+          attempt_no?: number
+          cheat_log?: Json
+          created_at?: string
+          current_phase?: string
+          current_question?: number
+          draft_answers?: Json
+          finished_at?: string | null
+          id?: string
+          last_activity_at?: string
+          result_id?: string | null
+          started_at?: string
+          status?: string
+          student_fingerprint?: string | null
+          student_name?: string
+          test_id?: string
+        }
+        Relationships: []
+      }
       test_questions: {
         Row: {
+          block_title: string | null
           correct_index: number | null
           created_at: string
+          expected_answer: string | null
           id: string
           options: Json
           points: number
           position: number
           question_text: string
+          response_kind: string
+          seconds_override: number | null
           test_id: string
         }
         Insert: {
+          block_title?: string | null
           correct_index?: number | null
           created_at?: string
+          expected_answer?: string | null
           id?: string
           options?: Json
           points?: number
           position: number
           question_text: string
+          response_kind?: string
+          seconds_override?: number | null
           test_id: string
         }
         Update: {
+          block_title?: string | null
           correct_index?: number | null
           created_at?: string
+          expected_answer?: string | null
           id?: string
           options?: Json
           points?: number
           position?: number
           question_text?: string
+          response_kind?: string
+          seconds_override?: number | null
           test_id?: string
         }
         Relationships: [
@@ -337,12 +403,37 @@ export type Database = {
     Views: {
       public_test_questions: {
         Row: {
+          block_title: string | null
           id: string | null
           options: Json | null
           points: number | null
           position: number | null
           question_text: string | null
+          response_kind: string | null
+          seconds_override: number | null
           test_id: string | null
+        }
+        Insert: {
+          block_title?: string | null
+          id?: string | null
+          options?: Json | null
+          points?: number | null
+          position?: number | null
+          question_text?: string | null
+          response_kind?: string | null
+          seconds_override?: number | null
+          test_id?: string | null
+        }
+        Update: {
+          block_title?: string | null
+          id?: string | null
+          options?: Json | null
+          points?: number | null
+          position?: number | null
+          question_text?: string | null
+          response_kind?: string | null
+          seconds_override?: number | null
+          test_id?: string | null
         }
         Relationships: [
           {
@@ -418,7 +509,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "teacher" | "student"
-      test_kind: "quiz" | "written"
+      test_kind: "quiz" | "written" | "hybrid"
       test_status: "draft" | "published"
     }
     CompositeTypes: {
@@ -548,7 +639,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "teacher", "student"],
-      test_kind: ["quiz", "written"],
+      test_kind: ["quiz", "written", "hybrid"],
       test_status: ["draft", "published"],
     },
   },
