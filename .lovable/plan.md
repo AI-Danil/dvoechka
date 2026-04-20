@@ -1,67 +1,51 @@
 
 
-## Что чиню
+## Чиню в DbTestRunner недостающие индикаторы и время
 
-### 1. Блок «Результаты учеников» прямо в дашбордах учителя и админа
+### 1. Индикатор записи (RecordingBadge) во всех активных фазах
 
-Добавлю новый компонент `src/components/TestResultsList.tsx`:
-- читает `test_results` напрямую через Supabase client (RLS уже это позволяет учителю/админу — политика `Teachers and admins can view results` есть)
-- колонки: дата, ученик, предмет, балл, попытка, время (сек), нарушения (счётчик из `cheat_log`), кнопка «Подробнее» (модалка с разбором ответов и логом нарушений), ссылка на запись `replay_url` если есть
-- фильтры: поиск по имени, фильтр по предмету, фильтр «только с нарушениями»
-- автообновление раз в 15 секунд
-- для учителя — фильтрация по предметам из его `teacher_assignments` (для админа — всё)
+В `src/components/DbTestRunner.tsx` добавляю `<RecordingBadge />` на экранах `intro`, `quiz`, `written`, `submitting` — точно как это сделано в `Index.tsx` для хардкод-тестов.
 
-Встраиваю его в:
-- `src/pages/TeacherDashboard.tsx` — снизу, после `MyTestsList`
-- `src/pages/AdminDashboard.tsx` — снизу, после `MyTestsList`
+### 2. Расширенный бейдж «Запись + контроль действий»
 
-Старую `/admin` (через teacher-token) не трогаю — она продолжает работать как есть.
+Правлю `src/components/RecordingBadge.tsx` — добавляю опциональный пропс `variant="full"`, который к надписи «Идёт запись действий» добавляет вторую строчку: «Контроль копирования, переключений вкладок и горячих клавиш». Для хардкод-тестов оставляю старый вид по умолчанию (без правок поведения там), а в DbTestRunner использую расширенный вариант — пользователь явно видит, что мониторинг активен.
 
-### 2. Anti-cheat и запись в DB-тестах
+### 3. Тост при старте теста: «Горячие клавиши заблокированы»
 
-Правлю `src/components/DbTestRunner.tsx`:
-- подключаю `useAntiCheatNotify({ studentName, grade, subject })` — Telegram-алерты на копирование/переключение вкладок
-- подключаю `useRrwebRecorder` — запись сессии в `rrweb-sessions` bucket
-- собираю локальный `cheatLog: { type, timestamp, details }[]` через те же события, что и в хардкод-тестах: `copy`, `paste`, `cut`, `contextmenu`, `visibilitychange`, `blur`, devtools-открытие через `useDevToolsBlock`
-- передаю собранный `cheat_log` и `replay_url` в `grade-quiz-submission`
+В `DbTestRunner` при переходе в фазу `intro`/`written` показываю один информационный toast:
+> «Внимание: запись экрана включена. F12, Ctrl+U, Ctrl+S, ПКМ и копирование заблокированы. Любые попытки фиксируются и отправляются учителю.»
 
-Правлю `supabase/functions/grade-quiz-submission/index.ts`:
-- принимаю `replay_url` в body и сохраняю в колонку `replay_url` таблицы `test_results`
+Так ученик понимает правила до начала. В хардкод-тестах ничего не меняю.
 
-Подсмотрю реализацию anti-cheat у одного из существующих тестов (`Grade9PhysicsAtom` или `Grade7Physics`), чтобы повторить тот же набор слушателей событий и формат `cheatLog`.
+### 4. Время на ответ возвращается в статистику
 
-### 3. Telegram-уведомление с результатом
+Сейчас `Quiz` возвращает `perQuestion: [{ answer, correct, timeSpent, timedOut }]`, но в `submit()` это игнорируется. Правлю DbTestRunner так, чтобы при квизе передавать в edge function дополнительное поле `per_question` (массив `{ position, time_spent, timed_out }`).
 
-В `grade-quiz-submission` после успешной вставки в `test_results` вызываю существующий поток уведомлений (тот же, что используется в `send-test-results`) — отправляю в Telegram отчёт: ученик, тест, балл, время, нарушения. Если уже есть подходящая edge-функция `send-test-results` — переиспользую её через прямой fetch внутри Deno; если она требует другого формата, добавлю минимальный inline-вызов Telegram API через `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID`.
+В `supabase/functions/grade-quiz-submission/index.ts` сохраняю `per_question` внутрь `answers.per_question` (колонка JSONB, схему БД не трогаю).
+
+В `src/components/TestResultsList.tsx` в модалке «Подробнее» добавляю отдельный блок «Время по вопросам» — таблица `№ вопроса / выбран / правильный / время, c / таймаут`. Сразу видно, сколько ученик потратил на каждый вопрос. Колонка «Время, c» в сводной таблице остаётся (общее время).
+
+### 5. (Заодно) Корректное общее время
+
+Сейчас `startedAt` в `DbTestRunner` ставится на маунт компонента, ещё до ввода имени. Переношу инициализацию `startedAt` в момент нажатия «Начать» — общее `time_spent` будет считаться от реального старта теста, а не с экрана ввода ФИО.
 
 ### Файлы
 
-**Создать:**
-- `src/components/TestResultsList.tsx`
-
 **Править:**
-- `src/components/DbTestRunner.tsx` — anti-cheat + rrweb + сбор cheatLog
-- `src/pages/TeacherDashboard.tsx` — добавить `<TestResultsList />`
-- `src/pages/AdminDashboard.tsx` — добавить `<TestResultsList isAdmin />`
-- `supabase/functions/grade-quiz-submission/index.ts` — принимать `replay_url`, отправлять Telegram-отчёт
+- `src/components/DbTestRunner.tsx` — RecordingBadge на всех активных фазах, info-toast при старте, корректный `startedAt`, передача `per_question` в submit
+- `src/components/RecordingBadge.tsx` — добавить `variant="full"` со второй строкой про контроль
+- `supabase/functions/grade-quiz-submission/index.ts` — принимать `per_question` и складывать в `answers.per_question`
+- `src/components/TestResultsList.tsx` — отрисовать `per_question` в модалке деталей
 
 **Не трогаю:**
-- RLS политики (уже корректные)
-- `/admin` старую страницу
-- хардкод-тесты
+- БД, RLS, схему таблиц
+- Хардкод-тесты и `Index.tsx`
+- Anti-cheat хуки и rrweb-логику
 
-### Поток после фикса
+### Проверка после
 
-```text
-Ученик → DbTestRunner (rrweb пишет, anti-cheat слушает) 
-       → grade-quiz-submission (cheat_log + replay_url + grade) 
-       → test_results (insert) + Telegram alert
-       → TeacherDashboard/AdminDashboard (TestResultsList тянет из БД через RLS)
-```
-
-### Как тестировать
-
-1. Опубликовать квиз под `Teatcher01@test.ru`.
-2. На `/` пройти его как ученик, попробовать скопировать вопрос (Ctrl+C), переключить вкладку → должны прилететь Telegram-алерты.
-3. Сдать тест → результат появляется в Telegram и в дашборде учителя/админа в блоке «Результаты», с числом нарушений >0 и кнопкой записи сессии.
+1. Под учителем опубликовать квиз, под учеником начать его — на всех экранах теста виден бейдж «Идёт запись действий · Контроль копирования и горячих клавиш».
+2. При первом входе в тест появляется info-toast о блокировках.
+3. Нажать F12 / Ctrl+U / ПКМ → видны блокирующие toast-ы (как и раньше).
+4. Сдать квиз → в дашборде учителя в строке результата видно общее время, в модалке «Подробнее» есть таблица времени по каждому вопросу.
 
