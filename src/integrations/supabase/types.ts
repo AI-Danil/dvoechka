@@ -23,6 +23,7 @@ export type Database = {
           created_at: string | null
           grade: number
           id: string
+          replay_url: string | null
           student_name: string
           subject: string
           test_type: string | null
@@ -36,6 +37,7 @@ export type Database = {
           created_at?: string | null
           grade: number
           id?: string
+          replay_url?: string | null
           student_name: string
           subject: string
           test_type?: string | null
@@ -49,6 +51,7 @@ export type Database = {
           created_at?: string | null
           grade?: number
           id?: string
+          replay_url?: string | null
           student_name?: string
           subject?: string
           test_type?: string | null
