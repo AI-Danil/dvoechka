@@ -92,11 +92,23 @@ const Grade8InformaticsPython = ({
   studentName,
 }: Grade8InformaticsPythonProps) => {
   const { toast } = useToast();
+  const lastNotifyAtRef = useRef<number>(0);
+  const pendingCountRef = useRef<number>(0);
 
   const notifyPaste = async (event: string) => {
+    pendingCountRef.current += 1;
+    const now = Date.now();
+    if (now - lastNotifyAtRef.current < NOTIFY_COOLDOWN_MS) {
+      // дебаунс: тихо копим попытки, в Telegram не шлём
+      return;
+    }
+    const count = pendingCountRef.current;
+    lastNotifyAtRef.current = now;
+    pendingCountRef.current = 0;
+    const eventWithCount = count > 1 ? `${event} (всего попыток за период: ${count})` : event;
     try {
       await supabase.functions.invoke("notify-copy-attempt", {
-        body: { studentName, grade: "8", subject: "informatics", event },
+        body: { studentName, grade: "8", subject: "informatics", event: eventWithCount },
       });
     } catch (e) {
       console.error("Failed to notify paste attempt:", e);
