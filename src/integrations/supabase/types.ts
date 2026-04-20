@@ -155,6 +155,54 @@ export type Database = {
         }
         Relationships: []
       }
+      test_questions: {
+        Row: {
+          correct_index: number | null
+          created_at: string
+          id: string
+          options: Json
+          points: number
+          position: number
+          question_text: string
+          test_id: string
+        }
+        Insert: {
+          correct_index?: number | null
+          created_at?: string
+          id?: string
+          options?: Json
+          points?: number
+          position: number
+          question_text: string
+          test_id: string
+        }
+        Update: {
+          correct_index?: number | null
+          created_at?: string
+          id?: string
+          options?: Json
+          points?: number
+          position?: number
+          question_text?: string
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_questions_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "public_tests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_questions_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_results: {
         Row: {
           answers: Json
@@ -200,6 +248,70 @@ export type Database = {
         }
         Relationships: []
       }
+      tests: {
+        Row: {
+          author_user_id: string
+          class_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["test_kind"]
+          status: Database["public"]["Enums"]["test_status"]
+          subject_id: string
+          teacher_id: string | null
+          time_per_question_sec: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_user_id: string
+          class_id: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["test_kind"]
+          status?: Database["public"]["Enums"]["test_status"]
+          subject_id: string
+          teacher_id?: string | null
+          time_per_question_sec?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_user_id?: string
+          class_id?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["test_kind"]
+          status?: Database["public"]["Enums"]["test_status"]
+          subject_id?: string
+          teacher_id?: string | null
+          time_per_question_sec?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tests_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -223,7 +335,77 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_test_questions: {
+        Row: {
+          id: string | null
+          options: Json | null
+          points: number | null
+          position: number | null
+          question_text: string | null
+          test_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_questions_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "public_tests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_questions_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_tests: {
+        Row: {
+          class_id: string | null
+          created_at: string | null
+          id: string | null
+          kind: Database["public"]["Enums"]["test_kind"] | null
+          subject_id: string | null
+          time_per_question_sec: number | null
+          title: string | null
+        }
+        Insert: {
+          class_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          kind?: Database["public"]["Enums"]["test_kind"] | null
+          subject_id?: string | null
+          time_per_question_sec?: number | null
+          title?: string | null
+        }
+        Update: {
+          class_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          kind?: Database["public"]["Enums"]["test_kind"] | null
+          subject_id?: string | null
+          time_per_question_sec?: number | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tests_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tests_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
@@ -236,6 +418,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "teacher" | "student"
+      test_kind: "quiz" | "written"
+      test_status: "draft" | "published"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -364,6 +548,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "teacher", "student"],
+      test_kind: ["quiz", "written"],
+      test_status: ["draft", "published"],
     },
   },
 } as const
