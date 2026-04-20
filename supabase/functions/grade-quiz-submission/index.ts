@@ -1,4 +1,5 @@
-// Grades a DB-backed quiz submission and stores result in test_results
+// Grades a DB-backed test submission (quiz / written / hybrid) and stores result in test_results.
+// Closes attempt: marks it 'submitted' and merges accumulated cheat_log.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
@@ -57,6 +58,7 @@ Deno.serve(async (req) => {
       result_id,
       replay_url,
       per_question,
+      attempt_id,
     } = await req.json();
     if (!test_id || !student_name || !answers)
       return fail("test_id, student_name, answers обязательны");
@@ -72,7 +74,7 @@ Deno.serve(async (req) => {
 
     const { data: questions } = await admin
       .from("test_questions")
-      .select("id, position, correct_index, points, options")
+      .select("id, position, correct_index, points, options, response_kind")
       .eq("test_id", test_id)
       .order("position");
 
@@ -80,37 +82,72 @@ Deno.serve(async (req) => {
     let total = 0;
     const breakdown: any[] = [];
 
-    if (test.kind === "quiz") {
-      for (const q of questions ?? []) {
-        const userAns = answers[q.position];
+    // answers structure:
+    // - quiz: { [position]: number }
+    // - written: { [position]: string }
+    // - hybrid: { quiz: {...}, written: {...} }
+    const isHybrid = test.kind === "hybrid";
+    const quizAns = isHybrid ? (answers?.quiz ?? {}) : (test.kind === "quiz" ? answers : {});
+    const writtenAns = isHybrid ? (answers?.written ?? {}) : (test.kind === "written" ? answers : {});
+
+    for (const q of questions ?? []) {
+      total += q.points || 1;
+      const rk = (q as any).response_kind ?? (test.kind === "quiz" ? "quiz" : "written");
+      if (rk === "quiz") {
+        const userAns = quizAns[q.position];
         const isCorrect =
           typeof q.correct_index === "number" && Number(userAns) === q.correct_index;
         if (isCorrect) grade += q.points || 1;
-        total += q.points || 1;
         breakdown.push({
           position: q.position,
+          response_kind: "quiz",
           user_answer: userAns,
           correct: q.correct_index,
           is_correct: isCorrect,
         });
-      }
-    } else {
-      for (const q of questions ?? []) {
-        total += q.points || 1;
-        breakdown.push({ position: q.position, user_answer: answers[q.position] ?? "" });
+      } else {
+        breakdown.push({
+          position: q.position,
+          response_kind: "written",
+          user_answer: writtenAns[q.position] ?? "",
+          pending_review: true,
+        });
       }
     }
 
     const subjectName = (test as any).subjects?.name ?? "—";
 
+    // Мерджим cheat_log из попытки (накопленный сервером) и из клиента (этой сессии)
+    let mergedCheatLog: any[] = Array.isArray(cheat_log) ? [...cheat_log] : [];
+    let attemptRow: any = null;
+    if (attempt_id) {
+      const { data: a } = await admin
+        .from("test_attempts")
+        .select("cheat_log, attempt_no")
+        .eq("id", attempt_id)
+        .maybeSingle();
+      attemptRow = a;
+      if (Array.isArray(a?.cheat_log)) {
+        mergedCheatLog = [...a.cheat_log, ...mergedCheatLog];
+      }
+    }
+    const finalAttempt = attemptRow?.attempt_no ?? attempt;
+
     const insertPayload: Record<string, unknown> = {
       student_name,
       subject: subjectName,
       grade,
-      answers: { test_id, breakdown, raw: answers, total_points: total, per_question: per_question ?? null },
-      cheat_log,
+      answers: {
+        test_id,
+        breakdown,
+        raw: answers,
+        total_points: total,
+        per_question: per_question ?? null,
+        kind: test.kind,
+      },
+      cheat_log: mergedCheatLog,
       time_spent: time_spent ?? null,
-      attempt,
+      attempt: finalAttempt,
       test_type: `db:${test_id}`,
       replay_url: replay_url ?? null,
     };
@@ -125,18 +162,33 @@ Deno.serve(async (req) => {
       .single();
     if (error) return fail(error.message);
 
+    // Закрываем попытку
+    if (attempt_id) {
+      await admin
+        .from("test_attempts")
+        .update({
+          status: "submitted",
+          finished_at: new Date().toISOString(),
+          result_id: row.id,
+        })
+        .eq("id", attempt_id);
+    }
+
     // Telegram-уведомление
-    const cheatCount = Array.isArray(cheat_log) ? cheat_log.length : 0;
+    const cheatCount = mergedCheatLog.length;
     const mins = time_spent ? Math.floor(time_spent / 60) : 0;
     const secs = time_spent ? time_spent % 60 : 0;
+    const kindLabel =
+      test.kind === "hybrid" ? "Смешанный" : test.kind === "quiz" ? "Квиз" : "Самостоятельная";
     const msg =
-      `🚀 Новый результат\n` +
+      `🚀 Новый результат (${kindLabel})\n` +
       `👤 ${student_name}\n` +
       `📚 ${subjectName}\n` +
       `📋 ${(test as any).title}\n` +
-      `🎯 Балл: ${grade}/${total}\n` +
-      `⏱ Время: ${mins}м ${secs}с\n` +
-      `🔄 Попытка: ${attempt}\n` +
+      `🎯 Балл: ${grade}/${total}` +
+      (test.kind !== "quiz" ? " (письм. часть требует проверки)" : "") +
+      `\n⏱ Время: ${mins}м ${secs}с\n` +
+      `🔄 Попытка: ${finalAttempt}\n` +
       (cheatCount > 0 ? `⚠️ Нарушений: ${cheatCount}\n` : "") +
       (replay_url ? `🎬 Запись: ${replay_url}` : "");
     void notifyTelegram(msg);

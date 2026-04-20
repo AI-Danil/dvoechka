@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Trash2, Plus, CheckCircle2 } from "lucide-react";
@@ -16,12 +17,15 @@ interface Question {
   options: string[];
   correct_index: number | null;
   points: number;
+  response_kind: "quiz" | "written";
+  block_title: string | null;
+  expected_answer: string | null;
 }
 
 interface TestRow {
   id: string;
   title: string;
-  kind: "quiz" | "written";
+  kind: "quiz" | "written" | "hybrid";
   status: "draft" | "published";
 }
 
@@ -43,12 +47,18 @@ export default function TestPreview({
       supabase.from("tests").select("id, title, kind, status").eq("id", testId).maybeSingle(),
       supabase
         .from("test_questions")
-        .select("id, position, question_text, options, correct_index, points")
+        .select("id, position, question_text, options, correct_index, points, response_kind, block_title, expected_answer")
         .eq("test_id", testId)
         .order("position"),
     ]);
     setTest(t as any);
-    setQs(((q ?? []) as any).map((x: any) => ({ ...x, options: Array.isArray(x.options) ? x.options : [] })));
+    setQs(((q ?? []) as any).map((x: any) => ({
+      ...x,
+      options: Array.isArray(x.options) ? x.options : [],
+      response_kind: x.response_kind ?? (((t as any)?.kind === "written") ? "written" : "quiz"),
+      block_title: x.block_title ?? null,
+      expected_answer: x.expected_answer ?? null,
+    })));
   };
 
   useEffect(() => {
@@ -64,7 +74,10 @@ export default function TestPreview({
         options: q.options,
         correct_index: q.correct_index,
         points: q.points,
-      })
+        response_kind: q.response_kind,
+        block_title: q.block_title,
+        expected_answer: q.expected_answer,
+      } as any)
       .eq("id", q.id);
     setSavingId(null);
     if (error) toast({ title: "Не сохранилось", description: error.message, variant: "destructive" });
@@ -76,7 +89,7 @@ export default function TestPreview({
     setQs((prev) => prev.filter((x) => x.id !== q.id));
   };
 
-  const addQuestion = async () => {
+  const addQuestion = async (forKind: "quiz" | "written") => {
     if (!test) return;
     const pos = qs.length;
     const { data, error } = await supabase
@@ -85,11 +98,12 @@ export default function TestPreview({
         test_id: testId,
         position: pos,
         question_text: "Новый вопрос",
-        options: test.kind === "quiz" ? ["", "", "", ""] : [],
+        options: forKind === "quiz" ? ["", "", "", ""] : [],
         correct_index: null,
         points: 1,
-      })
-      .select("id, position, question_text, options, correct_index, points")
+        response_kind: forKind,
+      } as any)
+      .select("id, position, question_text, options, correct_index, points, response_kind, block_title, expected_answer")
       .single();
     if (error) return toast({ title: "Ошибка", description: error.message, variant: "destructive" });
     setQs((p) => [...p, { ...(data as any), options: (data as any).options ?? [] }]);
@@ -97,7 +111,6 @@ export default function TestPreview({
 
   const publish = async () => {
     setBusy(true);
-    // сохраняем все правки
     await Promise.all(qs.map(saveQuestion));
     const { data, error } = await supabase.functions.invoke("publish-test", {
       body: { test_id: testId, action: "publish" },
@@ -120,7 +133,114 @@ export default function TestPreview({
     onClose();
   };
 
+  // Группировка по block_title
+  const grouped = useMemo(() => {
+    const map = new Map<string, Question[]>();
+    for (const q of qs) {
+      const key = q.block_title || "Без блока";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(q);
+    }
+    return Array.from(map.entries());
+  }, [qs]);
+
   if (!test) return <p>Загрузка…</p>;
+
+  const kindLabel = test.kind === "hybrid" ? "Смешанный" : test.kind === "quiz" ? "Квиз" : "Самостоятельная";
+
+  const renderQuestion = (q: Question, indexInList: number) => (
+    <Card key={q.id} className="bg-muted/30">
+      <CardContent className="pt-4 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground">№{q.position + 1}</Label>
+            <Badge variant={q.response_kind === "quiz" ? "default" : "secondary"} className="text-[10px]">
+              {q.response_kind === "quiz" ? "Квиз" : "Письм."}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            {savingId === q.id && <Loader2 className="h-3 w-3 animate-spin" />}
+            <Button size="sm" variant="ghost" onClick={() => deleteQuestion(q)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+        <Textarea
+          rows={2}
+          value={q.question_text}
+          onChange={(e) =>
+            setQs((p) => p.map((x) => (x.id === q.id ? { ...x, question_text: e.target.value } : x)))
+          }
+          onBlur={() => saveQuestion(q)}
+        />
+
+        {q.response_kind === "quiz" ? (
+          <>
+            <RadioGroup
+              value={q.correct_index !== null ? String(q.correct_index) : ""}
+              onValueChange={(v) => {
+                const updated = { ...q, correct_index: Number(v) };
+                setQs((p) => p.map((x) => (x.id === q.id ? updated : x)));
+                saveQuestion(updated);
+              }}
+              className="space-y-2"
+            >
+              {[0, 1, 2, 3].map((oi) => (
+                <div key={oi} className="flex items-center gap-2">
+                  <RadioGroupItem value={String(oi)} id={`${q.id}-${oi}`} />
+                  <span className="text-xs w-4">{["А", "Б", "В", "Г"][oi]})</span>
+                  <Input
+                    value={q.options[oi] ?? ""}
+                    onChange={(e) => {
+                      const opts = [...q.options];
+                      opts[oi] = e.target.value;
+                      while (opts.length < 4) opts.push("");
+                      setQs((p) => p.map((x) => (x.id === q.id ? { ...x, options: opts } : x)));
+                    }}
+                    onBlur={() => saveQuestion(q)}
+                  />
+                </div>
+              ))}
+            </RadioGroup>
+            {q.correct_index === null && (
+              <p className="text-xs text-destructive">⚠ Отметьте правильный вариант</p>
+            )}
+          </>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs">Баллы:</Label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                className="w-20"
+                value={q.points}
+                onChange={(e) =>
+                  setQs((p) =>
+                    p.map((x) => (x.id === q.id ? { ...x, points: Number(e.target.value) || 1 } : x)),
+                  )
+                }
+                onBlur={() => saveQuestion(q)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Ожидаемый ответ (виден только учителю)</Label>
+              <Textarea
+                rows={2}
+                value={q.expected_answer ?? ""}
+                onChange={(e) =>
+                  setQs((p) => p.map((x) => (x.id === q.id ? { ...x, expected_answer: e.target.value } : x)))
+                }
+                onBlur={() => saveQuestion(q)}
+                placeholder="Ключ для проверки…"
+              />
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   return (
     <Card>
@@ -129,89 +249,36 @@ export default function TestPreview({
           <span>
             Превью: <span className="text-primary">{test.title}</span>
           </span>
-          <span className="text-xs text-muted-foreground">
-            {test.kind === "quiz" ? "Квиз" : "Самостоятельная"} · {qs.length} вопрос(ов)
-          </span>
+          <span className="text-xs text-muted-foreground">{kindLabel} · {qs.length} вопрос(ов)</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {qs.map((q, i) => (
-          <Card key={q.id} className="bg-muted/30">
-            <CardContent className="pt-4 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <Label className="text-xs text-muted-foreground">Вопрос {i + 1}</Label>
-                <div className="flex items-center gap-2">
-                  {savingId === q.id && <Loader2 className="h-3 w-3 animate-spin" />}
-                  <Button size="sm" variant="ghost" onClick={() => deleteQuestion(q)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+        {test.kind === "hybrid" ? (
+          grouped.map(([blockTitle, items]) => (
+            <div key={blockTitle} className="space-y-2">
+              <div className="flex items-center justify-between border-b pb-1">
+                <h3 className="text-sm font-semibold">{blockTitle}</h3>
+                <span className="text-xs text-muted-foreground">{items.length} вопросов</span>
               </div>
-              <Textarea
-                rows={2}
-                value={q.question_text}
-                onChange={(e) =>
-                  setQs((p) => p.map((x) => (x.id === q.id ? { ...x, question_text: e.target.value } : x)))
-                }
-                onBlur={() => saveQuestion(q)}
-              />
+              {items.map((q, i) => renderQuestion(q, i))}
+            </div>
+          ))
+        ) : (
+          qs.map((q, i) => renderQuestion(q, i))
+        )}
 
-              {test.kind === "quiz" ? (
-                <RadioGroup
-                  value={q.correct_index !== null ? String(q.correct_index) : ""}
-                  onValueChange={(v) => {
-                    const updated = { ...q, correct_index: Number(v) };
-                    setQs((p) => p.map((x) => (x.id === q.id ? updated : x)));
-                    saveQuestion(updated);
-                  }}
-                  className="space-y-2"
-                >
-                  {[0, 1, 2, 3].map((oi) => (
-                    <div key={oi} className="flex items-center gap-2">
-                      <RadioGroupItem value={String(oi)} id={`${q.id}-${oi}`} />
-                      <span className="text-xs w-4">{["А", "Б", "В", "Г"][oi]})</span>
-                      <Input
-                        value={q.options[oi] ?? ""}
-                        onChange={(e) => {
-                          const opts = [...q.options];
-                          opts[oi] = e.target.value;
-                          while (opts.length < 4) opts.push("");
-                          setQs((p) => p.map((x) => (x.id === q.id ? { ...x, options: opts } : x)));
-                        }}
-                        onBlur={() => saveQuestion(q)}
-                      />
-                    </div>
-                  ))}
-                </RadioGroup>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs">Баллы:</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={20}
-                    className="w-20"
-                    value={q.points}
-                    onChange={(e) =>
-                      setQs((p) =>
-                        p.map((x) => (x.id === q.id ? { ...x, points: Number(e.target.value) || 1 } : x)),
-                      )
-                    }
-                    onBlur={() => saveQuestion(q)}
-                  />
-                </div>
-              )}
-
-              {test.kind === "quiz" && q.correct_index === null && (
-                <p className="text-xs text-destructive">⚠ Отметьте правильный вариант</p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-
-        <Button variant="outline" size="sm" onClick={addQuestion}>
-          <Plus className="h-4 w-4 mr-1" /> Добавить вопрос
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {(test.kind === "quiz" || test.kind === "hybrid") && (
+            <Button variant="outline" size="sm" onClick={() => addQuestion("quiz")}>
+              <Plus className="h-4 w-4 mr-1" /> Добавить квиз-вопрос
+            </Button>
+          )}
+          {(test.kind === "written" || test.kind === "hybrid") && (
+            <Button variant="outline" size="sm" onClick={() => addQuestion("written")}>
+              <Plus className="h-4 w-4 mr-1" /> Добавить письменную задачу
+            </Button>
+          )}
+        </div>
 
         <div className="flex flex-wrap gap-2 pt-4 border-t">
           <Button onClick={publish} disabled={busy}>

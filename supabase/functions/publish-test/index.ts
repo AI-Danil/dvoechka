@@ -48,14 +48,16 @@ Deno.serve(async (req) => {
     if (!isAdmin && test.author_user_id !== u.user.id)
       return fail("Недостаточно прав");
 
-    if (action === "publish" && test.kind === "quiz") {
-      const { data: bad } = await admin
+    if (action === "publish" && (test.kind === "quiz" || test.kind === "hybrid")) {
+      const q = admin
         .from("test_questions")
         .select("id")
         .eq("test_id", test_id)
         .is("correct_index", null);
+      if (test.kind === "hybrid") q.eq("response_kind", "quiz");
+      const { data: bad } = await q;
       if (bad && bad.length > 0)
-        return fail(`Нельзя опубликовать: у ${bad.length} вопросов не указан правильный ответ`);
+        return fail(`Нельзя опубликовать: у ${bad.length} квиз-вопросов не указан правильный ответ`);
     }
 
     const newStatus = action === "publish" ? "published" : "draft";
