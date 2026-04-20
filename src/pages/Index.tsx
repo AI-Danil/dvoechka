@@ -805,6 +805,42 @@ const Index = () => {
 
     const testTitle = TESTS_CATALOG[g]?.[s]?.find((t) => t.id === tid)?.title || "";
 
+    const elapsedSec = TOTAL_TIME - timeLeftRef.current;
+
+    // Оценка темпа прохождения: считаем количество заполненных ответов
+    const countFilled = (val: unknown): number => {
+      if (Array.isArray(val)) return val.filter((x) => x !== "" && x !== null && x !== undefined).length;
+      if (val && typeof val === "object") return Object.values(val).filter((x) => x !== "" && x !== null && x !== undefined).length;
+      return 0;
+    };
+    let answeredCount = 0;
+    for (const v of Object.values(answers as Record<string, unknown>)) {
+      if (typeof v === "string" || typeof v === "number") {
+        if (v !== "") answeredCount += 1;
+      } else {
+        answeredCount += countFilled(v);
+      }
+    }
+    if (answeredCount >= 3 && elapsedSec > 0) {
+      const avgPerAnswer = elapsedSec / answeredCount;
+      if (elapsedSec < 60 || avgPerAnswer < 5) {
+        const msg = `⚡ Подозрительно быстрое прохождение: тест за ${elapsedSec} сек, ${answeredCount} ответов (≈ ${avgPerAnswer.toFixed(1)} сек/ответ)`;
+        cheatLogRef.current.push(`[${getTime()}] ${msg}`);
+        try {
+          await supabase.functions.invoke("notify-copy-attempt", {
+            body: {
+              studentName: name,
+              grade: g,
+              subject: s,
+              event: msg,
+            },
+          });
+        } catch (e) {
+          console.error("Failed to notify fast pace:", e);
+        }
+      }
+    }
+
     const payload = {
       studentName: name,
       grade: g,
@@ -816,7 +852,7 @@ const Index = () => {
       ...answers,
       attachments: fileUrls,
       cheatLog: cheatLogRef.current,
-      timeSpent: TOTAL_TIME - timeLeftRef.current,
+      timeSpent: elapsedSec,
     };
 
     try {
