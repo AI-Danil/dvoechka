@@ -26,9 +26,9 @@ serve(async (req) => {
 
     const { data, error } = await supabase
       .from("test_results")
-      .select("id, student_name, grade, subject, test_type, attempt, time_spent, cheat_log, replay_url, attachments, created_at")
+      .select("id, student_name, grade, subject, test_type, attempt, time_spent, cheat_log, replay_url, created_at")
       .order("created_at", { ascending: false })
-      .limit(500);
+      .limit(1000);
 
     if (error) throw error;
 
