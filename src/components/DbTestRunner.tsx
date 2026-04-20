@@ -13,6 +13,7 @@ import { ArrowLeft } from "lucide-react";
 import { useAntiCheatNotify } from "@/hooks/useAntiCheatNotify";
 import { useDevToolsBlock } from "@/hooks/useDevToolsBlock";
 import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
+import RecordingBadge from "@/components/RecordingBadge";
 
 interface Props {
   test: DbTestSummary;
@@ -34,7 +35,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const [studentName, setStudentName] = useState("");
   const [phase, setPhase] = useState<"intake" | "intro" | "quiz" | "written" | "submitting" | "done">("intake");
   const [writtenAnswers, setWrittenAnswers] = useState<Record<number, string>>({});
-  const [startedAt] = useState<number>(() => Date.now());
+  const [startedAt, setStartedAt] = useState<number | null>(null);
   const cheatLogRef = useRef<CheatEvent[]>([]);
   const [resultId] = useState<string>(() => crypto.randomUUID());
 
@@ -100,21 +101,32 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
       toast({ title: "Ошибка", description: "Введите имя и фамилию русскими буквами (Иван Иванов)", variant: "destructive" });
       return;
     }
+    setStartedAt(Date.now());
+    toast({
+      title: "Внимание: запись экрана включена",
+      description: "F12, Ctrl+U, Ctrl+S, ПКМ и копирование заблокированы. Любые попытки фиксируются и отправляются учителю.",
+    });
     setPhase(test.kind === "quiz" ? "intro" : "written");
   };
 
   const submit = async (
     rawAnswers: Record<number, number | string>,
-    _quizResults?: QuizResults,
+    quizResults?: QuizResults,
   ) => {
     setPhase("submitting");
     try {
-      const time_spent = Math.round((Date.now() - startedAt) / 1000);
+      const time_spent = Math.round((Date.now() - (startedAt ?? Date.now())) / 1000);
 
       // Финализируем запись rrweb перед отправкой
       try { await finalize(); } catch (e) { console.error("finalize failed:", e); }
 
       const replay_url = `${resultId}/`;
+
+      const per_question = quizResults?.perQuestion?.map((p, i) => ({
+        position: i,
+        time_spent: p.timeSpent,
+        timed_out: p.timedOut,
+      }));
 
       const { data, error } = await supabase.functions.invoke("grade-quiz-submission", {
         body: {
@@ -126,6 +138,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
           cheat_log: cheatLogRef.current,
           result_id: resultId,
           replay_url,
+          per_question,
         },
       });
       if (error) throw new Error((data as any)?.error ?? error.message);
@@ -181,11 +194,14 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
 
   if (phase === "intro" && test.kind === "quiz") {
     return (
-      <QuizIntro
-        questionsCount={questions.length}
-        secondsPerQuestion={test.time_per_question_sec}
-        onStart={() => setPhase("quiz")}
-      />
+      <>
+        <RecordingBadge variant="full" />
+        <QuizIntro
+          questionsCount={questions.length}
+          secondsPerQuestion={test.time_per_question_sec}
+          onStart={() => setPhase("quiz")}
+        />
+      </>
     );
   }
 
@@ -202,21 +218,25 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
       seconds: test.time_per_question_sec,
     }));
     return (
-      <Quiz
-        questions={qs}
-        secondsPerQuestion={test.time_per_question_sec}
-        onFinish={(results) => {
-          const ans: Record<number, number> = {};
-          results.answers.forEach((a, i) => { ans[i] = a; });
-          submit(ans, results);
-        }}
-      />
+      <>
+        <RecordingBadge variant="full" />
+        <Quiz
+          questions={qs}
+          secondsPerQuestion={test.time_per_question_sec}
+          onFinish={(results) => {
+            const ans: Record<number, number> = {};
+            results.answers.forEach((a, i) => { ans[i] = a; });
+            submit(ans, results);
+          }}
+        />
+      </>
     );
   }
 
   if (phase === "written" || phase === "submitting") {
     return (
       <div className="min-h-screen p-4 max-w-3xl mx-auto space-y-4">
+        <RecordingBadge variant="full" />
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Назад

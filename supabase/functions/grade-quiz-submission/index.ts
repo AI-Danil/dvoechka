@@ -56,6 +56,7 @@ Deno.serve(async (req) => {
       cheat_log = [],
       result_id,
       replay_url,
+      per_question,
     } = await req.json();
     if (!test_id || !student_name || !answers)
       return fail("test_id, student_name, answers обязательны");
@@ -106,7 +107,7 @@ Deno.serve(async (req) => {
       student_name,
       subject: subjectName,
       grade,
-      answers: { test_id, breakdown, raw: answers, total_points: total },
+      answers: { test_id, breakdown, raw: answers, total_points: total, per_question: per_question ?? null },
       cheat_log,
       time_spent: time_spent ?? null,
       attempt,
