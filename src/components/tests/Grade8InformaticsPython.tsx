@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -5,6 +6,8 @@ import FileAttach from "@/components/FileAttach";
 import type { QuizQuestion } from "@/components/Quiz";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+const NOTIFY_COOLDOWN_MS = 10_000;
 
 export const PYTHON_HERO_QUIZ_QUESTIONS: QuizQuestion[] = [
   {
