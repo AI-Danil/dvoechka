@@ -122,6 +122,12 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
 
       const replay_url = `${resultId}/`;
 
+      const per_question = quizResults?.perQuestion?.map((p, i) => ({
+        position: i,
+        time_spent: p.timeSpent,
+        timed_out: p.timedOut,
+      }));
+
       const { data, error } = await supabase.functions.invoke("grade-quiz-submission", {
         body: {
           test_id: test.id,
@@ -132,6 +138,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
           cheat_log: cheatLogRef.current,
           result_id: resultId,
           replay_url,
+          per_question,
         },
       });
       if (error) throw new Error((data as any)?.error ?? error.message);
