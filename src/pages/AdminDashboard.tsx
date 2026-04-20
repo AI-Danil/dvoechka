@@ -42,10 +42,11 @@ export default function AdminDashboard() {
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("claim-admin", { body: {} });
     setBusy(false);
-    if (error || (data as any)?.error) {
+    const ok = (data as any)?.ok === true;
+    if (!ok) {
       toast({
         title: "Не удалось",
-        description: (data as any)?.error ?? error?.message,
+        description: (data as any)?.error ?? error?.message ?? "Ошибка",
         variant: "destructive",
       });
     } else {
