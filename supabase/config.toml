@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.update-replay-url]
 verify_jwt = false
+
+[functions.seed-teacher]
+verify_jwt = false
+
+[functions.claim-admin]
+verify_jwt = true
