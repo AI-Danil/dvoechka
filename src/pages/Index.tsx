@@ -384,14 +384,30 @@ const Index = () => {
     }
   }, []);
 
+  // Дебаунс уведомлений: не больше 1 алерта в Telegram за 10 секунд.
+  // В перерыве копим попытки и шлём суммарный счётчик.
+  const lastNotifyAtRef = useRef<number>(0);
+  const pendingNotifyCountRef = useRef<number>(0);
+  const NOTIFY_COOLDOWN_MS = 10_000;
+
   const notifyCopyAttempt = useCallback(async (event: string) => {
+    pendingNotifyCountRef.current += 1;
+    const now = Date.now();
+    if (now - lastNotifyAtRef.current < NOTIFY_COOLDOWN_MS) {
+      return; // тихо копим, не флудим Telegram
+    }
+    const count = pendingNotifyCountRef.current;
+    lastNotifyAtRef.current = now;
+    pendingNotifyCountRef.current = 0;
+    const eventWithCount =
+      count > 1 ? `${event} (всего попыток за период: ${count})` : event;
     try {
       await supabase.functions.invoke("notify-copy-attempt", {
         body: {
           studentName: cleanNameRef.current,
           grade: gradeRef.current,
           subject: subjectRef.current,
-          event,
+          event: eventWithCount,
         },
       });
     } catch (e) {
@@ -442,7 +458,28 @@ const Index = () => {
       if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S" || e.key === "ы" || e.key === "Ы") && !e.shiftKey) {
         e.preventDefault();
         logCheat("Попытка Ctrl+S — ЗАБЛОКИРОВАНО");
+        notifyCopyAttempt("Попытка сохранить страницу (Ctrl+S)");
+        toast({ title: "⛔ Действие заблокировано", description: "Сохранение страницы запрещено.", variant: "destructive" });
         return;
+      }
+      // F12 — DevTools
+      if (e.key === "F12") {
+        e.preventDefault();
+        logCheat("Попытка открыть DevTools (F12) — ЗАБЛОКИРОВАНО");
+        notifyCopyAttempt("Попытка открыть DevTools (F12)");
+        toast({ title: "⛔ Инструменты разработчика запрещены", description: "Попытка зафиксирована.", variant: "destructive" });
+        return;
+      }
+      // Ctrl+Shift+I / J / C — DevTools
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+        const k = e.key.toLowerCase();
+        if (k === "i" || k === "j" || k === "c" || k === "ш" || k === "о" || k === "с") {
+          e.preventDefault();
+          logCheat(`Попытка открыть DevTools (Ctrl+Shift+${k.toUpperCase()}) — ЗАБЛОКИРОВАНО`);
+          notifyCopyAttempt(`Попытка открыть DevTools (Ctrl+Shift+${k.toUpperCase()})`);
+          toast({ title: "⛔ Инструменты разработчика запрещены", description: "Попытка зафиксирована.", variant: "destructive" });
+          return;
+        }
       }
       if (e.key === "PrintScreen") {
         logCheat("Нажал PrintScreen (скриншот)");
