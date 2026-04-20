@@ -194,11 +194,14 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
 
   if (phase === "intro" && test.kind === "quiz") {
     return (
-      <QuizIntro
-        questionsCount={questions.length}
-        secondsPerQuestion={test.time_per_question_sec}
-        onStart={() => setPhase("quiz")}
-      />
+      <>
+        <RecordingBadge variant="full" />
+        <QuizIntro
+          questionsCount={questions.length}
+          secondsPerQuestion={test.time_per_question_sec}
+          onStart={() => setPhase("quiz")}
+        />
+      </>
     );
   }
 
@@ -215,21 +218,25 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
       seconds: test.time_per_question_sec,
     }));
     return (
-      <Quiz
-        questions={qs}
-        secondsPerQuestion={test.time_per_question_sec}
-        onFinish={(results) => {
-          const ans: Record<number, number> = {};
-          results.answers.forEach((a, i) => { ans[i] = a; });
-          submit(ans, results);
-        }}
-      />
+      <>
+        <RecordingBadge variant="full" />
+        <Quiz
+          questions={qs}
+          secondsPerQuestion={test.time_per_question_sec}
+          onFinish={(results) => {
+            const ans: Record<number, number> = {};
+            results.answers.forEach((a, i) => { ans[i] = a; });
+            submit(ans, results);
+          }}
+        />
+      </>
     );
   }
 
   if (phase === "written" || phase === "submitting") {
     return (
       <div className="min-h-screen p-4 max-w-3xl mx-auto space-y-4">
+        <RecordingBadge variant="full" />
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Назад
