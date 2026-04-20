@@ -22,13 +22,13 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.generate-test]
-verify_jwt = true
+verify_jwt = false
 
 [functions.publish-test]
-verify_jwt = true
+verify_jwt = false
 
 [functions.delete-test]
-verify_jwt = true
+verify_jwt = false
 
 [functions.grade-quiz-submission]
 verify_jwt = false

@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -12,18 +12,28 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 
+const json = (body: unknown) =>
+  new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const ok = (body: Record<string, unknown>) => json({ ok: true, ...body });
+const fail = (error: string, diagnostics?: Record<string, unknown>) =>
+  json(diagnostics ? { ok: false, error, diagnostics } : { ok: false, error });
+
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) return json({ error: "Не авторизован" }, 401);
+    if (!authHeader) return fail("Не авторизован");
 
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: u, error: ue } = await userClient.auth.getUser();
-    if (ue || !u.user) return json({ error: "Не авторизован" }, 401);
+    if (ue || !u.user) return fail("Не авторизован");
     const user = u.user;
 
     const body = await req.json();
@@ -36,18 +46,15 @@ Deno.serve(async (req) => {
       time_per_question_sec = 30,
     } = body ?? {};
 
-    if (!raw_text || typeof raw_text !== "string" || raw_text.length > 20000)
-      return json({ error: "raw_text обязателен (до 20000 символов)" }, 400);
-    if (!["quiz", "written"].includes(kind)) return json({ error: "kind: quiz|written" }, 400);
-    if (!class_id || !subject_id) return json({ error: "class_id и subject_id обязательны" }, 400);
+    if (!raw_text || typeof raw_text !== "string" || raw_text.length > 20000) {
+      return fail("raw_text обязателен (до 20000 символов)");
+    }
+    if (!["quiz", "written"].includes(kind)) return fail("kind: quiz|written");
+    if (!class_id || !subject_id) return fail("class_id и subject_id обязательны");
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    // Проверка прав: админ ИЛИ учитель с назначением на (class_id, subject_id)
-    const { data: roles } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
+    const { data: roles } = await admin.from("user_roles").select("role").eq("user_id", user.id);
     const isAdmin = !!roles?.find((r) => r.role === "admin");
 
     let teacherId: string | null = null;
@@ -57,7 +64,7 @@ Deno.serve(async (req) => {
         .select("id")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (!teacher) return json({ error: "Не учитель и не админ" }, 403);
+      if (!teacher) return fail("Не учитель и не админ");
       teacherId = teacher.id;
 
       const { data: assign } = await admin
@@ -67,7 +74,7 @@ Deno.serve(async (req) => {
         .eq("class_id", class_id)
         .eq("subject_id", subject_id)
         .maybeSingle();
-      if (!assign) return json({ error: "Нет назначения на этот класс/предмет" }, 403);
+      if (!assign) return fail("Нет назначения на этот класс/предмет");
     } else {
       const { data: t } = await admin
         .from("teachers")
@@ -77,7 +84,6 @@ Deno.serve(async (req) => {
       teacherId = t?.id ?? null;
     }
 
-    // Tool schemas
     const quizTool = {
       type: "function",
       function: {
@@ -158,36 +164,31 @@ Deno.serve(async (req) => {
       }),
     });
 
-    if (aiResp.status === 429)
-      return json({ error: "Превышен лимит запросов к AI. Подождите минуту." }, 429);
-    if (aiResp.status === 402)
-      return json(
-        { error: "Закончились кредиты Lovable AI. Пополните в Settings → Workspace → Usage." },
-        402,
-      );
+    if (aiResp.status === 429) return fail("Превышен лимит запросов к AI. Подождите минуту.");
+    if (aiResp.status === 402) {
+      return fail("Закончились кредиты Lovable AI. Пополните в Settings → Workspace → Usage.");
+    }
     if (!aiResp.ok) {
-      const t = await aiResp.text();
-      console.error("AI error", aiResp.status, t);
-      return json({ error: "Ошибка AI", detail: t }, 500);
+      const detail = (await aiResp.text()).slice(0, 2000);
+      console.error("AI error", aiResp.status, detail);
+      return fail("Ошибка AI", { status: aiResp.status, detail });
     }
 
     const aiData = await aiResp.json();
     const call = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!call?.function?.arguments) return json({ error: "AI не вернул структуру" }, 500);
+    if (!call?.function?.arguments) return fail("AI не вернул структуру");
 
     let parsed: any;
     try {
       parsed = JSON.parse(call.function.arguments);
     } catch {
-      return json({ error: "AI вернул невалидный JSON" }, 500);
+      return fail("AI вернул невалидный JSON");
     }
 
     const title = (titleIn?.trim() || parsed.title || "Без названия").slice(0, 200);
     const items = kind === "quiz" ? parsed.questions ?? [] : parsed.tasks ?? [];
-    if (!Array.isArray(items) || items.length === 0)
-      return json({ error: "AI не извлёк ни одного вопроса" }, 422);
+    if (!Array.isArray(items) || items.length === 0) return fail("AI не извлёк ни одного вопроса");
 
-    // Сохраняем
     const { data: testRow, error: te } = await admin
       .from("tests")
       .insert({
@@ -202,7 +203,7 @@ Deno.serve(async (req) => {
       })
       .select("id")
       .single();
-    if (te) return json({ error: te.message }, 500);
+    if (te) return fail(te.message);
 
     const rows = items.map((q: any, i: number) =>
       kind === "quiz"
@@ -228,19 +229,12 @@ Deno.serve(async (req) => {
     const { error: qe } = await admin.from("test_questions").insert(rows);
     if (qe) {
       await admin.from("tests").delete().eq("id", testRow.id);
-      return json({ error: qe.message }, 500);
+      return fail(qe.message);
     }
 
-    return json({ test_id: testRow.id, title, kind, count: rows.length });
+    return ok({ test_id: testRow.id, title, kind, count: rows.length });
   } catch (e) {
     console.error(e);
-    return json({ error: e instanceof Error ? e.message : "unknown" }, 500);
+    return fail(e instanceof Error ? e.message : "unknown");
   }
 });
-
-function json(b: unknown, status = 200) {
-  return new Response(JSON.stringify(b), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
