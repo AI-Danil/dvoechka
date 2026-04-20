@@ -35,7 +35,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const [studentName, setStudentName] = useState("");
   const [phase, setPhase] = useState<"intake" | "intro" | "quiz" | "written" | "submitting" | "done">("intake");
   const [writtenAnswers, setWrittenAnswers] = useState<Record<number, string>>({});
-  const [startedAt] = useState<number>(() => Date.now());
+  const [startedAt, setStartedAt] = useState<number | null>(null);
   const cheatLogRef = useRef<CheatEvent[]>([]);
   const [resultId] = useState<string>(() => crypto.randomUUID());
 
