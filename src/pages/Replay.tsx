@@ -1,20 +1,38 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams, useNavigate } from "react-router-dom";
 import rrwebPlayer from "rrweb-player";
 import "rrweb-player/dist/style.css";
 import TeacherLoginGate from "@/components/TeacherLoginGate";
 import { useTeacherAuth } from "@/hooks/useTeacherAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { ArrowLeft, X, Play, Minimize2, Check, X as XIcon } from "lucide-react";
+import { getQuizQuestionsForTestType } from "@/lib/quizRegistry";
 
 interface CheatEntry {
   raw: string;
-  timeStr: string; // HH:MM:SS
+  timeStr: string;
   text: string;
+}
+
+interface PerQuestion {
+  answer: number;
+  correct: number;
+  timeSpent?: number;
+  timedOut?: boolean;
+}
+
+interface AnswersPayload {
+  type?: string;
+  answers?: string[];
+  quizResults?: {
+    answers: number[];
+    correct: number;
+    total: number;
+    perQuestion: PerQuestion[];
+  };
+  // legacy / non-quiz tests могут хранить просто массив строк
 }
 
 function parseCheatLog(log: unknown): CheatEntry[] {
@@ -41,16 +59,19 @@ async function ungzipToJson(url: string): Promise<unknown[]> {
 function ReplayInner() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get("tab") === "log" ? "log" : "replay";
+  const initialTab = (searchParams.get("tab") as "replay" | "log" | "answers") || "answers";
   const { token } = useTeacherAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"replay" | "log">(initialTab);
+  const [tab, setTab] = useState<"replay" | "log" | "answers">(
+    initialTab === "log" || initialTab === "replay" || initialTab === "answers" ? initialTab : "answers"
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
     student_name: string;
     grade: number;
     subject: string;
+    test_type?: string | null;
     cheat_log: unknown;
     time_spent: number | null;
     created_at: string;
@@ -59,9 +80,11 @@ function ReplayInner() {
   const [chunkUrls, setChunkUrls] = useState<string[]>([]);
   const [events, setEvents] = useState<unknown[]>([]);
   const [recordStartTs, setRecordStartTs] = useState<number | null>(null);
+  const [playerOpen, setPlayerOpen] = useState(false);
   const playerHostRef = useRef<HTMLDivElement | null>(null);
   const playerInstanceRef = useRef<rrwebPlayer | null>(null);
 
+  // Загрузка метаданных + ссылок на чанки
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -81,7 +104,6 @@ function ReplayInner() {
         if (resp.status === 401) throw new Error("Сессия истекла. Войдите заново.");
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(data?.error || `HTTP ${resp.status}`);
-        if (data?.error) throw new Error(data.error);
         if (cancelled) return;
         setResult(data.result);
         setChunkUrls(data.chunkUrls || []);
@@ -95,7 +117,7 @@ function ReplayInner() {
     return () => { cancelled = true; };
   }, [id, token]);
 
-  // Загрузить и склеить чанки
+  // Загрузить и склеить чанки записи (только если они есть)
   useEffect(() => {
     if (chunkUrls.length === 0) return;
     let cancelled = false;
@@ -118,40 +140,55 @@ function ReplayInner() {
     return () => { cancelled = true; };
   }, [chunkUrls]);
 
-  // Инициализировать плеер
+  // Уничтожить плеер
+  const destroyPlayer = () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (playerInstanceRef.current as any)?.$destroy?.();
+    } catch { /* ignore */ }
+    playerInstanceRef.current = null;
+    if (playerHostRef.current) playerHostRef.current.innerHTML = "";
+  };
+
+  // Инициализировать плеер при открытии
   useEffect(() => {
-    if (tab !== "replay") return;
+    if (!playerOpen) return;
     if (!playerHostRef.current || events.length < 2) return;
     if (playerInstanceRef.current) return;
     try {
       playerInstanceRef.current = new rrwebPlayer({
         target: playerHostRef.current,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        props: { events: events as any, width: 960, height: 540, autoPlay: false },
+        props: { events: events as any, width: 880, height: 500, autoPlay: true },
       });
     } catch (e) {
       console.error("Player init failed:", e);
       setError("Ошибка инициализации плеера");
     }
     return () => {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (playerInstanceRef.current as any)?.$destroy?.();
-      } catch { /* ignore */ }
-      playerInstanceRef.current = null;
+      destroyPlayer();
     };
-  }, [tab, events]);
+  }, [playerOpen, events]);
+
+  // При смене таба — сворачиваем плеер, чтобы не висел в DOM
+  useEffect(() => {
+    if (tab !== "replay" && playerOpen) {
+      setPlayerOpen(false);
+    }
+  }, [tab, playerOpen]);
+
+  // Закрытие просмотра — сначала уничтожаем плеер, потом навигация
+  const handleClose = () => {
+    destroyPlayer();
+    navigate("/admin");
+  };
 
   const cheatEntries = parseCheatLog(result?.cheat_log);
 
-  // Перемотать плеер на отметку времени из лога
   const seekToCheat = (entry: CheatEntry) => {
-    if (!entry.timeStr || !recordStartTs) {
-      setTab("replay");
-      return;
-    }
     setTab("replay");
-    // Превратить HH:MM:SS в timestamp в локальный день записи
+    if (!playerOpen) setPlayerOpen(true);
+    if (!entry.timeStr || !recordStartTs) return;
     const start = new Date(recordStartTs);
     const [h, m, s] = entry.timeStr.split(":").map(Number);
     const target = new Date(start);
@@ -165,28 +202,57 @@ function ReplayInner() {
       } catch (e) {
         console.error("seek failed:", e);
       }
-    }, 100);
+    }, 200);
   };
 
+  // ====== РАЗБОР ОТВЕТОВ ======
+  const answersPayload: AnswersPayload | null =
+    result?.answers && typeof result.answers === "object" && !Array.isArray(result.answers)
+      ? (result.answers as AnswersPayload)
+      : null;
+
+  const legacyAnswersArray: string[] | null = Array.isArray(result?.answers)
+    ? (result!.answers as string[])
+    : null;
+
+  const openTextAnswers: string[] = answersPayload?.answers ?? legacyAnswersArray ?? [];
+  const quizResults = answersPayload?.quizResults ?? null;
+
+  const quizQuestions = getQuizQuestionsForTestType(
+    answersPayload?.type ?? result?.test_type ?? null
+  );
+
+  const labels = ["А", "Б", "В", "Г"];
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
-      <div className="max-w-6xl mx-auto space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+    <div className="min-h-screen bg-background">
+      {/* Sticky header — всегда поверх плеера */}
+      <div className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="max-w-6xl mx-auto p-4 flex items-center justify-between flex-wrap gap-2">
           <Button asChild variant="ghost" size="sm">
             <Link to="/admin"><ArrowLeft className="h-4 w-4" /> К списку</Link>
           </Button>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {result && (
               <div className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{result.student_name}</span>
                 {" · "}{result.grade} класс · {result.subject}
+                {quizResults && (
+                  <>
+                    {" · "}
+                    <span className="font-medium text-foreground">
+                      {quizResults.correct} / {quizResults.total}
+                    </span>
+                    {" "}({Math.round((quizResults.correct / quizResults.total) * 100)}%)
+                  </>
+                )}
                 {" · "}{new Date(result.created_at).toLocaleString("ru-RU")}
               </div>
             )}
             <Button
-              variant="outline"
+              variant="destructive"
               size="sm"
-              onClick={() => navigate("/admin")}
+              onClick={handleClose}
               aria-label="Закрыть просмотр"
               title="Закрыть"
             >
@@ -194,8 +260,13 @@ function ReplayInner() {
             </Button>
           </div>
         </div>
+      </div>
 
-        <div className="flex gap-2">
+      <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-4">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant={tab === "answers" ? "default" : "outline"} size="sm" onClick={() => setTab("answers")}>
+            Ответы
+          </Button>
           <Button variant={tab === "replay" ? "default" : "outline"} size="sm" onClick={() => setTab("replay")}>
             Запись экрана
           </Button>
@@ -209,24 +280,142 @@ function ReplayInner() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className={tab === "replay" ? "lg:col-span-2" : "lg:col-span-3"}>
-            {tab === "replay" && (
+            {tab === "answers" && (
               <Card>
                 <CardHeader>
+                  <CardTitle className="text-base">
+                    Ответы ученика
+                    {quizResults && (
+                      <Badge variant="secondary" className="ml-2">
+                        Квиз: {quizResults.correct}/{quizResults.total}
+                      </Badge>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Квиз */}
+                  {quizResults && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-sm uppercase text-muted-foreground">Тестовая часть</h3>
+                      <ol className="space-y-3">
+                        {quizResults.perQuestion.map((pq, i) => {
+                          const q = quizQuestions?.[i];
+                          const isCorrect = pq.answer === pq.correct;
+                          const isSkipped = pq.answer === -1;
+                          return (
+                            <li key={i} className="border border-border rounded-md p-3 space-y-1.5">
+                              <div className="flex items-start gap-2">
+                                <span className="font-mono text-xs text-muted-foreground mt-1">{i + 1}.</span>
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium">
+                                    {q?.q ?? <span className="text-muted-foreground italic">[вопрос недоступен]</span>}
+                                  </div>
+                                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+                                    <div>
+                                      <span className="text-muted-foreground">Ответ ученика: </span>
+                                      {isSkipped ? (
+                                        <span className="italic text-muted-foreground">пропущен</span>
+                                      ) : (
+                                        <span className="font-medium">
+                                          {labels[pq.answer]}){q?.options?.[pq.answer] ? ` ${q.options[pq.answer]}` : ""}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Правильный: </span>
+                                      <span className="font-medium">
+                                        {labels[pq.correct]}){q?.options?.[pq.correct] ? ` ${q.options[pq.correct]}` : ""}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div>
+                                  {isCorrect ? (
+                                    <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                                      <Check className="h-3 w-3" />
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="destructive">
+                                      <XIcon className="h-3 w-3" />
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  )}
+
+                  {/* Открытые ответы */}
+                  {openTextAnswers.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-sm uppercase text-muted-foreground">
+                        Открытые ответы ({openTextAnswers.filter((a) => a?.trim()).length} из {openTextAnswers.length} заполнено)
+                      </h3>
+                      <ol className="space-y-3">
+                        {openTextAnswers.map((a, i) => (
+                          <li key={i} className="border border-border rounded-md p-3">
+                            <div className="text-xs text-muted-foreground mb-1">Задание {i + 1}</div>
+                            {a?.trim() ? (
+                              <div className="text-sm whitespace-pre-wrap">{a}</div>
+                            ) : (
+                              <div className="text-sm italic text-muted-foreground">— пусто —</div>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                      <p className="text-xs text-muted-foreground italic">
+                        Открытые ответы оцениваются учителем вручную.
+                      </p>
+                    </div>
+                  )}
+
+                  {!quizResults && openTextAnswers.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Ответы не найдены.</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {tab === "replay" && (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0">
                   <CardTitle className="text-base">Воспроизведение</CardTitle>
+                  {playerOpen && events.length >= 2 && (
+                    <Button variant="outline" size="sm" onClick={() => setPlayerOpen(false)}>
+                      <Minimize2 className="h-4 w-4" /> Свернуть
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   {chunkUrls.length === 0 && !loading && (
                     <p className="text-sm text-muted-foreground">
-                      Запись для этого результата отсутствует.
+                      Запись для этого результата отсутствует (старая работа без записи экрана).
                     </p>
+                  )}
+                  {chunkUrls.length > 0 && events.length === 0 && !error && (
+                    <p className="text-sm text-muted-foreground">Загрузка записи…</p>
                   )}
                   {events.length > 0 && events.length < 2 && (
                     <p className="text-sm text-muted-foreground">Запись слишком короткая.</p>
                   )}
-                  <div ref={playerHostRef} />
+                  {events.length >= 2 && !playerOpen && (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3">
+                      <Button size="lg" onClick={() => setPlayerOpen(true)}>
+                        <Play className="h-5 w-5" /> Открыть запись
+                      </Button>
+                      <p className="text-xs text-muted-foreground">
+                        {events.length.toLocaleString("ru-RU")} событий
+                      </p>
+                    </div>
+                  )}
+                  <div ref={playerHostRef} className={playerOpen ? "" : "hidden"} />
                 </CardContent>
               </Card>
             )}
+
             {tab === "log" && (
               <Card>
                 <CardHeader>
