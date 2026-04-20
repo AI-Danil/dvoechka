@@ -986,29 +986,48 @@ const Index = () => {
 
     // test-pick
     const tests = TESTS_CATALOG[grade]?.[subject] || [];
+    const totalCount = tests.length + dbTests.length;
     return cardWrap(
       <div className="grid grid-cols-1 gap-3">
-        {tests.length === 0 ? (
+        {totalCount === 0 ? (
           <p className="text-sm text-muted-foreground text-center">Работы пока не добавлены.</p>
         ) : (
-          tests.map((t) => (
-            <Button
-              key={t.id}
-              variant="outline"
-              size="lg"
-              className="h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start"
-              onClick={() => startTest(t.id)}
-            >
-              <span className="flex flex-col items-start gap-1 w-full">
-                <span>{t.title}</span>
-                {t.date && (
-                  <span className="text-xs font-bold text-accent bg-accent/15 px-2 py-0.5 rounded">
-                    📅 {t.date}
+          <>
+            {tests.map((t) => (
+              <Button
+                key={t.id}
+                variant="outline"
+                size="lg"
+                className="h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start"
+                onClick={() => startTest(t.id)}
+              >
+                <span className="flex flex-col items-start gap-1 w-full">
+                  <span>{t.title}</span>
+                  {t.date && (
+                    <span className="text-xs font-bold text-accent bg-accent/15 px-2 py-0.5 rounded">
+                      📅 {t.date}
+                    </span>
+                  )}
+                </span>
+              </Button>
+            ))}
+            {dbTests.map((t) => (
+              <Button
+                key={t.id}
+                variant="outline"
+                size="lg"
+                className="h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start"
+                onClick={() => setActiveDbTest(t)}
+              >
+                <span className="flex flex-col items-start gap-1 w-full">
+                  <span>{t.title}</span>
+                  <span className="text-xs font-bold text-primary bg-primary/15 px-2 py-0.5 rounded">
+                    {t.kind === "quiz" ? "🎯 Квиз от учителя" : "📝 Самостоятельная от учителя"}
                   </span>
-                )}
-              </span>
-            </Button>
-          ))
+                </span>
+              </Button>
+            ))}
+          </>
         )}
       </div>,
       "Шаг 4. Выберите работу",
