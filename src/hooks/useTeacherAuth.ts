@@ -21,6 +21,24 @@ export function useTeacherAuth() {
   });
 
   useEffect(() => {
+    const onAuthChange = () => {
+      const t = sessionStorage.getItem(TOKEN_KEY);
+      const exp = Number(sessionStorage.getItem(EXP_KEY) || "0");
+      if (!t || !exp || Date.now() / 1000 > exp) {
+        setToken(null);
+      } else {
+        setToken(t);
+      }
+    };
+    window.addEventListener("teacher-auth-change", onAuthChange);
+    window.addEventListener("storage", onAuthChange);
+    return () => {
+      window.removeEventListener("teacher-auth-change", onAuthChange);
+      window.removeEventListener("storage", onAuthChange);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!token) return;
     const exp = Number(sessionStorage.getItem(EXP_KEY) || "0");
     if (!exp) return;
@@ -37,12 +55,14 @@ export function useTeacherAuth() {
     sessionStorage.setItem(TOKEN_KEY, newToken);
     sessionStorage.setItem(EXP_KEY, String(expiresAt));
     setToken(newToken);
+    window.dispatchEvent(new Event("teacher-auth-change"));
   }, []);
 
   const logout = useCallback(() => {
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(EXP_KEY);
     setToken(null);
+    window.dispatchEvent(new Event("teacher-auth-change"));
   }, []);
 
   return { token, login, logout };
