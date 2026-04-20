@@ -11,10 +11,29 @@ interface Options {
   enabled: boolean;
 }
 
-async function gzipJson(obj: unknown): Promise<Blob> {
+interface EncodedChunk {
+  blob: Blob;
+  ext: "json.gz" | "json";
+  contentType: string;
+}
+
+async function encodeJson(obj: unknown): Promise<EncodedChunk> {
   const json = JSON.stringify(obj);
-  const stream = new Blob([json]).stream().pipeThrough(new CompressionStream("gzip"));
-  return new Response(stream).blob();
+  // Try gzip; fallback to raw JSON if CompressionStream missing/broken (old Safari/Android)
+  try {
+    if (typeof CompressionStream !== "undefined") {
+      const stream = new Blob([json]).stream().pipeThrough(new CompressionStream("gzip"));
+      const blob = await new Response(stream).blob();
+      return { blob, ext: "json.gz", contentType: "application/gzip" };
+    }
+  } catch (e) {
+    console.warn("[rrweb] gzip failed, falling back to raw JSON:", e);
+  }
+  return {
+    blob: new Blob([json], { type: "application/json" }),
+    ext: "json",
+    contentType: "application/json",
+  };
 }
 
 export function useRrwebRecorder({ resultId, enabled }: Options) {
@@ -45,17 +64,17 @@ export function useRrwebRecorder({ resultId, enabled }: Options) {
     }
     bufferRef.current = [];
     const idx = chunkIndexRef.current++;
-    const fileName = `chunk-${String(idx).padStart(4, "0")}.json.gz`;
-    const path = `${rid}/${fileName}`;
 
     const uploadPromise = (async () => {
       try {
-        const gz = await gzipJson(events);
-        console.log(`[rrweb] uploading ${path} (${events.length} events, ${gz.size}b)`);
+        const encoded = await encodeJson(events);
+        const fileName = `chunk-${String(idx).padStart(4, "0")}.${encoded.ext}`;
+        const path = `${rid}/${fileName}`;
+        console.log(`[rrweb] uploading ${path} (${events.length} events, ${encoded.blob.size}b, ${encoded.ext})`);
         const { error } = await supabase.storage
           .from("rrweb-sessions")
-          .upload(path, gz, {
-            contentType: "application/gzip",
+          .upload(path, encoded.blob, {
+            contentType: encoded.contentType,
             upsert: true,
           });
         if (error) {
@@ -159,6 +178,19 @@ export function useRrwebRecorder({ resultId, enabled }: Options) {
     console.log(`[rrweb] finalize done. uploaded chunks: ${uploaded}`);
     if (uploaded === 0) {
       console.error("[rrweb] PRODUCED NO CHUNKS — recording was not saved");
+      // Алерт учителю в Telegram, чтобы знать о провале сразу
+      try {
+        await supabase.functions.invoke("notify-copy-attempt", {
+          body: {
+            studentName: "(система)",
+            grade: "?",
+            subject: "informatics",
+            event: `⚠️ Запись экрана не сохранилась (0 чанков). resultId=${rid ?? "?"}, UA=${navigator.userAgent.slice(0, 80)}`,
+          },
+        });
+      } catch (e) {
+        console.error("[rrweb] failed to send no-chunks alert:", e);
+      }
       return;
     }
     if (!rid) return;
