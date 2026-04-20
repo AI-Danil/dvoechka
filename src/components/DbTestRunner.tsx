@@ -67,7 +67,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
         });
       } else {
         // written → отправляем как обычный test_result через ту же edge-функцию (она не считает баллы)
-        const { error } = await supabase.functions.invoke("grade-quiz-submission", {
+        const { data, error } = await supabase.functions.invoke("grade-quiz-submission", {
           body: {
             test_id: test.id,
             student_name: studentName.trim(),
@@ -77,7 +77,8 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
             cheat_log: [],
           },
         });
-        if (error) throw error;
+        if (error) throw new Error((data as any)?.error ?? error.message);
+        if (!(data as any)?.ok) throw new Error((data as any)?.error ?? "Ошибка отправки");
         toast({ title: "Сдано", description: "Работа отправлена учителю на проверку" });
       }
       setPhase("done");
