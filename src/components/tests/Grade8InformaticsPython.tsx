@@ -1,13 +1,10 @@
-import { useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import FileAttach from "@/components/FileAttach";
 import type { QuizQuestion } from "@/components/Quiz";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-
-const NOTIFY_COOLDOWN_MS = 10_000;
+import { useAntiCheatNotify } from "@/hooks/useAntiCheatNotify";
 
 export const PYTHON_HERO_QUIZ_QUESTIONS: QuizQuestion[] = [
   {
@@ -92,28 +89,11 @@ const Grade8InformaticsPython = ({
   studentName,
 }: Grade8InformaticsPythonProps) => {
   const { toast } = useToast();
-  const lastNotifyAtRef = useRef<number>(0);
-  const pendingCountRef = useRef<number>(0);
-
-  const notifyPaste = async (event: string) => {
-    pendingCountRef.current += 1;
-    const now = Date.now();
-    if (now - lastNotifyAtRef.current < NOTIFY_COOLDOWN_MS) {
-      // дебаунс: тихо копим попытки, в Telegram не шлём
-      return;
-    }
-    const count = pendingCountRef.current;
-    lastNotifyAtRef.current = now;
-    pendingCountRef.current = 0;
-    const eventWithCount = count > 1 ? `${event} (всего попыток за период: ${count})` : event;
-    try {
-      await supabase.functions.invoke("notify-copy-attempt", {
-        body: { studentName, grade: "8", subject: "informatics", event: eventWithCount },
-      });
-    } catch (e) {
-      console.error("Failed to notify paste attempt:", e);
-    }
-  };
+  const notifyPaste = useAntiCheatNotify({
+    studentName,
+    grade: "8",
+    subject: "informatics",
+  });
 
   const blockPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
