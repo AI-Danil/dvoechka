@@ -192,6 +192,38 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                   {" · "}тип: {detail.test_type ?? "—"}
                 </p>
               </div>
+              {Array.isArray(detail.answers?.per_question) && detail.answers.per_question.length > 0 && (
+                <div>
+                  <p className="font-medium mb-1">Время по вопросам</p>
+                  <div className="rounded border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>№</TableHead>
+                          <TableHead>Выбран</TableHead>
+                          <TableHead>Правильный</TableHead>
+                          <TableHead>Время, с</TableHead>
+                          <TableHead>Таймаут</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {detail.answers.per_question.map((pq: any, i: number) => {
+                          const br = detail.answers?.breakdown?.[i];
+                          return (
+                            <TableRow key={i}>
+                              <TableCell>{(pq.position ?? i) + 1}</TableCell>
+                              <TableCell>{br?.user_answer ?? "—"}</TableCell>
+                              <TableCell>{br?.correct ?? "—"}</TableCell>
+                              <TableCell>{pq.time_spent ?? "—"}</TableCell>
+                              <TableCell>{pq.timed_out ? "да" : "нет"}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
               <div>
                 <p className="font-medium mb-1">Ответы</p>
                 <pre className="bg-muted p-2 rounded text-xs whitespace-pre-wrap break-words max-h-64 overflow-auto">
