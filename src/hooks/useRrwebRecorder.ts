@@ -11,10 +11,29 @@ interface Options {
   enabled: boolean;
 }
 
-async function gzipJson(obj: unknown): Promise<Blob> {
+interface EncodedChunk {
+  blob: Blob;
+  ext: "json.gz" | "json";
+  contentType: string;
+}
+
+async function encodeJson(obj: unknown): Promise<EncodedChunk> {
   const json = JSON.stringify(obj);
-  const stream = new Blob([json]).stream().pipeThrough(new CompressionStream("gzip"));
-  return new Response(stream).blob();
+  // Try gzip; fallback to raw JSON if CompressionStream missing/broken (old Safari/Android)
+  try {
+    if (typeof CompressionStream !== "undefined") {
+      const stream = new Blob([json]).stream().pipeThrough(new CompressionStream("gzip"));
+      const blob = await new Response(stream).blob();
+      return { blob, ext: "json.gz", contentType: "application/gzip" };
+    }
+  } catch (e) {
+    console.warn("[rrweb] gzip failed, falling back to raw JSON:", e);
+  }
+  return {
+    blob: new Blob([json], { type: "application/json" }),
+    ext: "json",
+    contentType: "application/json",
+  };
 }
 
 export function useRrwebRecorder({ resultId, enabled }: Options) {
