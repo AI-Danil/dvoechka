@@ -37,8 +37,23 @@ function AdminInner() {
       const { data, error: invokeErr } = await supabase.functions.invoke("list-results", {
         headers: { "x-teacher-token": token || "" },
       });
-      if (invokeErr) throw invokeErr;
-      if (data?.error) throw new Error(data.error);
+      if (invokeErr) {
+        const msg = String((invokeErr as Error)?.message || invokeErr);
+        if (msg.includes("401") || msg.toLowerCase().includes("unauthorized") || msg.includes("non-2xx")) {
+          setError("Сессия истекла. Войдите заново.");
+          logout();
+          return;
+        }
+        throw invokeErr;
+      }
+      if (data?.error) {
+        if (String(data.error).toLowerCase().includes("unauthorized")) {
+          setError("Сессия истекла. Войдите заново.");
+          logout();
+          return;
+        }
+        throw new Error(data.error);
+      }
       setRows(data?.results || []);
     } catch (e) {
       console.error(e);
