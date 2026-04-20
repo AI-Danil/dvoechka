@@ -3,19 +3,29 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const json = (body: unknown) =>
+  new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+const ok = (body: Record<string, unknown>) => json({ ok: true, ...body });
+const fail = (error: string) => json({ ok: false, error });
+
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const { test_id, student_name, answers, time_spent, attempt = 1, cheat_log = [] } =
       await req.json();
     if (!test_id || !student_name || !answers)
-      return json({ error: "test_id, student_name, answers обязательны" }, 400);
+      return fail("test_id, student_name, answers обязательны");
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
@@ -24,7 +34,7 @@ Deno.serve(async (req) => {
       .select("id, title, kind, status, subject_id, subjects:subject_id(name)")
       .eq("id", test_id)
       .maybeSingle();
-    if (!test || test.status !== "published") return json({ error: "Тест недоступен" }, 404);
+    if (!test || test.status !== "published") return fail("Тест недоступен");
 
     const { data: questions } = await admin
       .from("test_questions")
@@ -74,16 +84,10 @@ Deno.serve(async (req) => {
       })
       .select("id")
       .single();
-    if (error) return json({ error: error.message }, 500);
+    if (error) return fail(error.message);
 
-    return json({ ok: true, result_id: row.id, grade, total });
+    return ok({ result_id: row.id, grade, total });
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : "unknown" }, 500);
+    return fail(e instanceof Error ? e.message : "unknown");
   }
 });
-function json(b: unknown, s = 200) {
-  return new Response(JSON.stringify(b), {
-    status: s,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
