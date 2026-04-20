@@ -101,16 +101,21 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
       toast({ title: "Ошибка", description: "Введите имя и фамилию русскими буквами (Иван Иванов)", variant: "destructive" });
       return;
     }
+    setStartedAt(Date.now());
+    toast({
+      title: "Внимание: запись экрана включена",
+      description: "F12, Ctrl+U, Ctrl+S, ПКМ и копирование заблокированы. Любые попытки фиксируются и отправляются учителю.",
+    });
     setPhase(test.kind === "quiz" ? "intro" : "written");
   };
 
   const submit = async (
     rawAnswers: Record<number, number | string>,
-    _quizResults?: QuizResults,
+    quizResults?: QuizResults,
   ) => {
     setPhase("submitting");
     try {
-      const time_spent = Math.round((Date.now() - startedAt) / 1000);
+      const time_spent = Math.round((Date.now() - (startedAt ?? Date.now())) / 1000);
 
       // Финализируем запись rrweb перед отправкой
       try { await finalize(); } catch (e) { console.error("finalize failed:", e); }
