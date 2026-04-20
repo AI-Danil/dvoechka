@@ -26,7 +26,7 @@ async function gzipJson(obj: unknown): Promise<Blob> {
  */
 export function useRrwebRecorder({ resultId, enabled }: Options) {
   const stopFnRef = useRef<(() => void) | null>(null);
-  const bufferRef = useRef<eventWithTime[]>([]);
+  const bufferRef = useRef<RrwebEvent[]>([]);
   const chunkIndexRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const resultIdRef = useRef<string | null>(null);
