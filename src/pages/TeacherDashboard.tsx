@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { LogOut, BookOpen, Users } from "lucide-react";
 import CreateTestForm from "@/components/CreateTestForm";
 import MyTestsList from "@/components/MyTestsList";
+import TestResultsList from "@/components/TestResultsList";
 
 interface Assignment {
   id: string;
@@ -79,6 +80,7 @@ export default function TeacherDashboard() {
 
         <CreateTestForm onCreated={() => setBump((x) => x + 1)} />
         <MyTestsList refreshKey={bump} />
+        <TestResultsList />
       </div>
     </div>
   );

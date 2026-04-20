@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, GraduationCap, BookOpen, ClipboardList, LogOut, ShieldCheck } from "lucide-react";
 import CreateTestForm from "@/components/CreateTestForm";
 import MyTestsList from "@/components/MyTestsList";
+import TestResultsList from "@/components/TestResultsList";
 
 export default function AdminDashboard() {
   const { signOut, user, roles, refreshRoles } = useAuth();
@@ -119,6 +120,7 @@ export default function AdminDashboard() {
 
         <CreateTestForm isAdmin onCreated={() => {}} />
         <MyTestsList isAdmin />
+        <TestResultsList isAdmin />
       </div>
     </div>
   );

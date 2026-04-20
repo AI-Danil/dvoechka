@@ -1,5 +1,5 @@
 // Полноэкранный раннер для тестов из БД (квиз и письменная самостоятельная).
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadTestQuestions, type DbTestSummary, type DbTestQuestion } from "@/lib/dbTests";
 import Quiz, { QuizIntro, type QuizResults } from "@/components/Quiz";
 import { ArrowLeft } from "lucide-react";
+import { useAntiCheatNotify } from "@/hooks/useAntiCheatNotify";
+import { useDevToolsBlock } from "@/hooks/useDevToolsBlock";
+import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
 
 interface Props {
   test: DbTestSummary;
@@ -19,6 +22,12 @@ interface Props {
 
 const RUSSIAN_NAME_REGEX = /^[А-ЯЁа-яё]+\s+[А-ЯЁа-яё]+(?:\s+(\d+))?$/;
 
+interface CheatEvent {
+  type: string;
+  timestamp: number;
+  details?: string;
+}
+
 export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<DbTestQuestion[] | null>(null);
@@ -26,10 +35,64 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const [phase, setPhase] = useState<"intake" | "intro" | "quiz" | "written" | "submitting" | "done">("intake");
   const [writtenAnswers, setWrittenAnswers] = useState<Record<number, string>>({});
   const [startedAt] = useState<number>(() => Date.now());
+  const cheatLogRef = useRef<CheatEvent[]>([]);
+  const [resultId] = useState<string>(() => crypto.randomUUID());
+
+  const isActive = phase === "quiz" || phase === "written" || phase === "intro";
+
+  const notify = useAntiCheatNotify({
+    studentName: studentName || "(аноним)",
+    grade: "?",
+    subject: test.title,
+  });
+
+  useDevToolsBlock({ enabled: isActive, notify });
+
+  const { finalize } = useRrwebRecorder({
+    resultId: isActive ? resultId : null,
+    enabled: isActive,
+  });
 
   useEffect(() => {
     loadTestQuestions(test.id).then(setQuestions);
   }, [test.id]);
+
+  // Сбор cheat events
+  useEffect(() => {
+    if (!isActive) return;
+
+    const log = (type: string, details?: string) => {
+      cheatLogRef.current.push({ type, timestamp: Date.now(), details });
+    };
+
+    const onCopy = () => { log("copy"); notify("Попытка копирования (Ctrl+C)"); };
+    const onPaste = () => { log("paste"); notify("Попытка вставки (Ctrl+V)"); };
+    const onCut = () => { log("cut"); notify("Попытка вырезания (Ctrl+X)"); };
+    const onContext = () => { log("contextmenu"); };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        log("tab_hidden");
+        notify("Переключение вкладки/окна");
+      }
+    };
+    const onBlur = () => { log("window_blur"); notify("Уход с окна теста"); };
+
+    document.addEventListener("copy", onCopy);
+    document.addEventListener("paste", onPaste);
+    document.addEventListener("cut", onCut);
+    document.addEventListener("contextmenu", onContext);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onBlur);
+
+    return () => {
+      document.removeEventListener("copy", onCopy);
+      document.removeEventListener("paste", onPaste);
+      document.removeEventListener("cut", onCut);
+      document.removeEventListener("contextmenu", onContext);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, [isActive, notify]);
 
   const startTest = () => {
     const m = studentName.trim().match(RUSSIAN_NAME_REGEX);
@@ -42,43 +105,38 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
 
   const submit = async (
     rawAnswers: Record<number, number | string>,
-    quizResults?: QuizResults,
+    _quizResults?: QuizResults,
   ) => {
     setPhase("submitting");
     try {
       const time_spent = Math.round((Date.now() - startedAt) / 1000);
 
+      // Финализируем запись rrweb перед отправкой
+      try { await finalize(); } catch (e) { console.error("finalize failed:", e); }
+
+      const replay_url = `${resultId}/`;
+
+      const { data, error } = await supabase.functions.invoke("grade-quiz-submission", {
+        body: {
+          test_id: test.id,
+          student_name: studentName.trim(),
+          answers: rawAnswers,
+          time_spent,
+          attempt: 1,
+          cheat_log: cheatLogRef.current,
+          result_id: resultId,
+          replay_url,
+        },
+      });
+      if (error) throw new Error((data as any)?.error ?? error.message);
+      if (!(data as any)?.ok) throw new Error((data as any)?.error ?? "Ошибка отправки");
+
       if (test.kind === "quiz") {
-        const { data, error } = await supabase.functions.invoke("grade-quiz-submission", {
-          body: {
-            test_id: test.id,
-            student_name: studentName.trim(),
-            answers: rawAnswers,
-            time_spent,
-            attempt: 1,
-            cheat_log: [],
-          },
-        });
-        if (error) throw new Error((data as any)?.error ?? error.message);
-        if (!(data as any)?.ok) throw new Error((data as any)?.error ?? "Ошибка отправки");
         toast({
           title: "Готово!",
           description: `Балл: ${(data as any).grade}/${(data as any).total}`,
         });
       } else {
-        // written → отправляем как обычный test_result через ту же edge-функцию (она не считает баллы)
-        const { data, error } = await supabase.functions.invoke("grade-quiz-submission", {
-          body: {
-            test_id: test.id,
-            student_name: studentName.trim(),
-            answers: rawAnswers,
-            time_spent,
-            attempt: 1,
-            cheat_log: [],
-          },
-        });
-        if (error) throw new Error((data as any)?.error ?? error.message);
-        if (!(data as any)?.ok) throw new Error((data as any)?.error ?? "Ошибка отправки");
         toast({ title: "Сдано", description: "Работа отправлена учителю на проверку" });
       }
       setPhase("done");
@@ -140,7 +198,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
         q.options[2] ?? "",
         q.options[3] ?? "",
       ] as [string, string, string, string],
-      correct: -1, // не передаём правильный ответ на клиент
+      correct: -1,
       seconds: test.time_per_question_sec,
     }));
     return (
@@ -149,9 +207,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
         secondsPerQuestion={test.time_per_question_sec}
         onFinish={(results) => {
           const ans: Record<number, number> = {};
-          results.answers.forEach((a, i) => {
-            ans[i] = a;
-          });
+          results.answers.forEach((a, i) => { ans[i] = a; });
           submit(ans, results);
         }}
       />

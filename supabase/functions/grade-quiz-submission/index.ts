@@ -9,6 +9,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const TG_GATEWAY = "https://connector-gateway.lovable.dev/telegram";
 
 const json = (body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -19,11 +20,43 @@ const json = (body: unknown) =>
 const ok = (body: Record<string, unknown>) => json({ ok: true, ...body });
 const fail = (error: string) => json({ ok: false, error });
 
+async function notifyTelegram(text: string) {
+  try {
+    const lovable = Deno.env.get("LOVABLE_API_KEY");
+    const tgKey = Deno.env.get("TELEGRAM_API_KEY");
+    const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
+    if (!lovable || !tgKey || !chatId) {
+      console.log("Telegram secrets missing, skipping notification");
+      return;
+    }
+    const r = await fetch(`${TG_GATEWAY}/sendMessage`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${lovable}`,
+        "X-Connection-Api-Key": tgKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ chat_id: chatId, text }),
+    });
+    if (!r.ok) console.error("Telegram send failed:", await r.text());
+  } catch (e) {
+    console.error("Telegram notify error:", e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
-    const { test_id, student_name, answers, time_spent, attempt = 1, cheat_log = [] } =
-      await req.json();
+    const {
+      test_id,
+      student_name,
+      answers,
+      time_spent,
+      attempt = 1,
+      cheat_log = [],
+      result_id,
+      replay_url,
+    } = await req.json();
     if (!test_id || !student_name || !answers)
       return fail("test_id, student_name, answers обязательны");
 
@@ -61,7 +94,6 @@ Deno.serve(async (req) => {
         });
       }
     } else {
-      // written: ставим 0 (учитель проверит вручную), но answers сохраняем
       for (const q of questions ?? []) {
         total += q.points || 1;
         breakdown.push({ position: q.position, user_answer: answers[q.position] ?? "" });
@@ -70,21 +102,43 @@ Deno.serve(async (req) => {
 
     const subjectName = (test as any).subjects?.name ?? "—";
 
+    const insertPayload: Record<string, unknown> = {
+      student_name,
+      subject: subjectName,
+      grade,
+      answers: { test_id, breakdown, raw: answers, total_points: total },
+      cheat_log,
+      time_spent: time_spent ?? null,
+      attempt,
+      test_type: `db:${test_id}`,
+      replay_url: replay_url ?? null,
+    };
+    if (result_id && typeof result_id === "string" && /^[0-9a-f-]{36}$/i.test(result_id)) {
+      insertPayload.id = result_id;
+    }
+
     const { data: row, error } = await admin
       .from("test_results")
-      .insert({
-        student_name,
-        subject: subjectName,
-        grade,
-        answers: { test_id, breakdown, raw: answers, total_points: total },
-        cheat_log,
-        time_spent: time_spent ?? null,
-        attempt,
-        test_type: `db:${test_id}`,
-      })
+      .insert(insertPayload)
       .select("id")
       .single();
     if (error) return fail(error.message);
+
+    // Telegram-уведомление
+    const cheatCount = Array.isArray(cheat_log) ? cheat_log.length : 0;
+    const mins = time_spent ? Math.floor(time_spent / 60) : 0;
+    const secs = time_spent ? time_spent % 60 : 0;
+    const msg =
+      `🚀 Новый результат\n` +
+      `👤 ${student_name}\n` +
+      `📚 ${subjectName}\n` +
+      `📋 ${(test as any).title}\n` +
+      `🎯 Балл: ${grade}/${total}\n` +
+      `⏱ Время: ${mins}м ${secs}с\n` +
+      `🔄 Попытка: ${attempt}\n` +
+      (cheatCount > 0 ? `⚠️ Нарушений: ${cheatCount}\n` : "") +
+      (replay_url ? `🎬 Запись: ${replay_url}` : "");
+    void notifyTelegram(msg);
 
     return ok({ result_id: row.id, grade, total });
   } catch (e) {
