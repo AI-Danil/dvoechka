@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { record, type eventWithTime } from "rrweb";
+import { record } from "rrweb";
+type RrwebEvent = Record<string, unknown>;
 import { supabase } from "@/integrations/supabase/client";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
