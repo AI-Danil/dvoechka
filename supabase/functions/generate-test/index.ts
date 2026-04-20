@@ -1,4 +1,5 @@
-// generate-test: парсит сырой текст вопросов через Lovable AI и сохраняет черновик теста
+// generate-test: парсит сырой текст вопросов через Lovable AI и сохраняет черновик теста.
+// Поддерживает kind: 'quiz' | 'written' | 'hybrid' (смешанный: квиз + письменная часть в одном файле).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 
 const corsHeaders = {
@@ -49,7 +50,7 @@ Deno.serve(async (req) => {
     if (!raw_text || typeof raw_text !== "string" || raw_text.length > 20000) {
       return fail("raw_text обязателен (до 20000 символов)");
     }
-    if (!["quiz", "written"].includes(kind)) return fail("kind: quiz|written");
+    if (!["quiz", "written", "hybrid"].includes(kind)) return fail("kind: quiz|written|hybrid");
     if (!class_id || !subject_id) return fail("class_id и subject_id обязательны");
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
@@ -100,7 +101,7 @@ Deno.serve(async (req) => {
                 properties: {
                   question_text: { type: "string" },
                   options: { type: "array", items: { type: "string" }, minItems: 2, maxItems: 6 },
-                  correct_index: { type: "integer", description: "0-based индекс правильного варианта; null если неизвестно" },
+                  correct_index: { type: "integer" },
                 },
                 required: ["question_text", "options"],
                 additionalProperties: false,
@@ -129,6 +130,7 @@ Deno.serve(async (req) => {
                 properties: {
                   question_text: { type: "string" },
                   points: { type: "integer", minimum: 1, maximum: 20 },
+                  expected_answer: { type: "string" },
                 },
                 required: ["question_text", "points"],
                 additionalProperties: false,
@@ -141,11 +143,58 @@ Deno.serve(async (req) => {
       },
     };
 
-    const tool = kind === "quiz" ? quizTool : writtenTool;
-    const systemPrompt =
-      kind === "quiz"
-        ? "Ты помощник учителя. Из сырого текста извлеки вопросы для квиза (с вариантами). Если правильный вариант помечен (✅, *, [+], 'правильный', 'верно'), укажи его в correct_index. Если непонятно — верни null. Сохраняй формулировки на исходном языке."
-        : "Ты помощник учителя. Из сырого текста извлеки задачи для самостоятельной работы. Если у задачи указаны баллы — поставь их, иначе по умолчанию 1.";
+    const hybridTool = {
+      type: "function",
+      function: {
+        name: "extract_hybrid",
+        description:
+          "Извлекает смешанный тест: блоки с квиз-вопросами (короткий ответ из вариантов) и письменные задачи (развёрнутый ответ). Использует ключи учителя для correct_index у quiz и expected_answer у written.",
+        parameters: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  response_kind: { type: "string", enum: ["quiz", "written"] },
+                  block_title: { type: "string" },
+                  question_text: { type: "string" },
+                  options: { type: "array", items: { type: "string" } },
+                  correct_index: { type: "integer" },
+                  expected_answer: { type: "string" },
+                  points: { type: "integer", minimum: 1, maximum: 20 },
+                },
+                required: ["response_kind", "question_text"],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ["title", "items"],
+          additionalProperties: false,
+        },
+      },
+    };
+
+    let tool, systemPrompt;
+    if (kind === "quiz") {
+      tool = quizTool;
+      systemPrompt =
+        "Ты помощник учителя. Из сырого текста извлеки вопросы для квиза (с вариантами). Если правильный вариант помечен (✅, *, [+], 'правильный', 'верно'), укажи его в correct_index. Сохраняй формулировки на исходном языке.";
+    } else if (kind === "written") {
+      tool = writtenTool;
+      systemPrompt =
+        "Ты помощник учителя. Из сырого текста извлеки задачи для самостоятельной работы. Если у задачи указаны баллы — поставь их, иначе по умолчанию 1. Если в тексте есть секция 'ключи' / 'ответы для учителя' — сопоставь expected_answer с задачами по номерам.";
+    } else {
+      tool = hybridTool;
+      systemPrompt =
+        "Ты помощник учителя. Тебе дан смешанный материал: блиц-квиз (короткие ответы) + письменные задачи (развёрнутые), и в конце секция с ключами для учителя. " +
+        "Раздели всё на массив items в исходном порядке. Для коротких вопросов с вариантами или односложным ответом ставь response_kind='quiz' и сгенерируй 4 варианта options (включая правильный) + correct_index из ключей учителя. " +
+        "Для развёрнутых задач (где требуется решение, объяснение, формула) — response_kind='written', укажи points (по сложности 1–5) и expected_answer из ключей. " +
+        "block_title указывай по заголовку блока в тексте (например 'Блок 1. Блиц-опрос', 'Блок 2. Поисковые запросы'). " +
+        "Сами ключи учителя НЕ включай как отдельные items — используй их только как источник правильных ответов. Сохраняй язык оригинала.";
+    }
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -154,7 +203,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: raw_text },
@@ -186,8 +235,58 @@ Deno.serve(async (req) => {
     }
 
     const title = (titleIn?.trim() || parsed.title || "Без названия").slice(0, 200);
-    const items = kind === "quiz" ? parsed.questions ?? [] : parsed.tasks ?? [];
-    if (!Array.isArray(items) || items.length === 0) return fail("AI не извлёк ни одного вопроса");
+
+    let rows: any[] = [];
+    if (kind === "quiz") {
+      const items = parsed.questions ?? [];
+      if (!Array.isArray(items) || items.length === 0) return fail("AI не извлёк ни одного вопроса");
+      rows = items.map((q: any, i: number) => ({
+        test_id: "",
+        position: i,
+        question_text: String(q.question_text ?? "").slice(0, 2000),
+        options: Array.isArray(q.options) ? q.options.slice(0, 6).map(String) : [],
+        correct_index:
+          typeof q.correct_index === "number" && q.correct_index >= 0 ? q.correct_index : null,
+        points: 1,
+        response_kind: "quiz",
+        block_title: null,
+        expected_answer: null,
+      }));
+    } else if (kind === "written") {
+      const items = parsed.tasks ?? [];
+      if (!Array.isArray(items) || items.length === 0) return fail("AI не извлёк ни одной задачи");
+      rows = items.map((q: any, i: number) => ({
+        test_id: "",
+        position: i,
+        question_text: String(q.question_text ?? "").slice(0, 4000),
+        options: [],
+        correct_index: null,
+        points: typeof q.points === "number" && q.points > 0 ? q.points : 1,
+        response_kind: "written",
+        block_title: null,
+        expected_answer: q.expected_answer ? String(q.expected_answer).slice(0, 2000) : null,
+      }));
+    } else {
+      const items = parsed.items ?? [];
+      if (!Array.isArray(items) || items.length === 0) return fail("AI не извлёк ни одного элемента");
+      rows = items.map((q: any, i: number) => {
+        const isQuiz = q.response_kind === "quiz";
+        return {
+          test_id: "",
+          position: i,
+          question_text: String(q.question_text ?? "").slice(0, 4000),
+          options: isQuiz && Array.isArray(q.options) ? q.options.slice(0, 6).map(String) : [],
+          correct_index:
+            isQuiz && typeof q.correct_index === "number" && q.correct_index >= 0
+              ? q.correct_index
+              : null,
+          points: typeof q.points === "number" && q.points > 0 ? q.points : 1,
+          response_kind: isQuiz ? "quiz" : "written",
+          block_title: q.block_title ? String(q.block_title).slice(0, 200) : null,
+          expected_answer: q.expected_answer ? String(q.expected_answer).slice(0, 2000) : null,
+        };
+      });
+    }
 
     const { data: testRow, error: te } = await admin
       .from("tests")
@@ -205,34 +304,14 @@ Deno.serve(async (req) => {
       .single();
     if (te) return fail(te.message);
 
-    const rows = items.map((q: any, i: number) =>
-      kind === "quiz"
-        ? {
-            test_id: testRow.id,
-            position: i,
-            question_text: String(q.question_text ?? "").slice(0, 2000),
-            options: Array.isArray(q.options) ? q.options.slice(0, 6).map(String) : [],
-            correct_index:
-              typeof q.correct_index === "number" && q.correct_index >= 0 ? q.correct_index : null,
-            points: 1,
-          }
-        : {
-            test_id: testRow.id,
-            position: i,
-            question_text: String(q.question_text ?? "").slice(0, 4000),
-            options: [],
-            correct_index: null,
-            points: typeof q.points === "number" && q.points > 0 ? q.points : 1,
-          },
-    );
-
-    const { error: qe } = await admin.from("test_questions").insert(rows);
+    const finalRows = rows.map((r) => ({ ...r, test_id: testRow.id }));
+    const { error: qe } = await admin.from("test_questions").insert(finalRows);
     if (qe) {
       await admin.from("tests").delete().eq("id", testRow.id);
       return fail(qe.message);
     }
 
-    return ok({ test_id: testRow.id, title, kind, count: rows.length });
+    return ok({ test_id: testRow.id, title, kind, count: finalRows.length });
   } catch (e) {
     console.error(e);
     return fail(e instanceof Error ? e.message : "unknown");
