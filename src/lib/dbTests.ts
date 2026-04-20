@@ -54,7 +54,7 @@ export async function loadPublishedTestsForGradeSubject(
     console.error("loadPublishedTests error", error);
     return [];
   }
-  return (data ?? []) as DbTestSummary[];
+  return ((data ?? []) as unknown) as DbTestSummary[];
 }
 
 export async function loadTestQuestions(testId: string): Promise<DbTestQuestion[]> {
