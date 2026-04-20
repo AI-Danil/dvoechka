@@ -894,6 +894,19 @@ const Index = () => {
 
   const handleSubmit = () => doSubmit();
 
+  // ============ DB-backed test (created by teacher) ============
+  if (activeDbTest) {
+    return (
+      <DbTestRunner
+        test={activeDbTest}
+        onBack={() => setActiveDbTest(null)}
+        onSubmitted={() => {
+          setActiveDbTest(null);
+        }}
+      />
+    );
+  }
+
   // ============ LOGIN SCREEN (multi-step) ============
   if (screen === "login") {
     const cardWrap = (children: React.ReactNode, title: string, subtitle?: string, back?: () => void) => (
