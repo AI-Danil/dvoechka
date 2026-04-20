@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import * as rrweb from "rrweb";
+import { record as rrwebRecord } from "rrweb";
 type RrwebEvent = Record<string, unknown>;
 import { supabase } from "@/integrations/supabase/client";
 
@@ -82,11 +82,11 @@ export function useRrwebRecorder({ resultId, enabled }: Options) {
     uploadedChunksRef.current = 0;
     pendingUploadsRef.current = [];
 
-    console.log("[rrweb] starting recorder for resultId:", resultId, "record type:", typeof rrweb.record);
+    console.log("[rrweb] starting recorder for resultId:", resultId, "record type:", typeof rrwebRecord);
 
     let stop: (() => void) | undefined;
     try {
-      stop = rrweb.record({
+      stop = rrwebRecord({
         emit(event) {
           bufferRef.current.push(event);
         },
