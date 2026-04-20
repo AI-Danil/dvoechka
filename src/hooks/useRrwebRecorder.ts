@@ -84,17 +84,28 @@ export function useRrwebRecorder({ resultId, enabled }: Options) {
 
     console.log("[rrweb] starting recorder for resultId:", resultId, "record type:", typeof rrwebRecord);
 
+    // Sentinel upload — проверяет storage с anon клиента
+    void (async () => {
+      try {
+        const sentinelPath = `${resultId}/sentinel.txt`;
+        const { error } = await supabase.storage
+          .from("rrweb-sessions")
+          .upload(sentinelPath, new Blob(["ok"], { type: "text/plain" }), { upsert: true });
+        if (error) console.error("[rrweb] SENTINEL upload failed:", error);
+        else console.log("[rrweb] sentinel uploaded OK ->", sentinelPath);
+      } catch (e) {
+        console.error("[rrweb] sentinel exception:", e);
+      }
+    })();
+
     let stop: (() => void) | undefined;
     try {
       stop = rrwebRecord({
         emit(event) {
           bufferRef.current.push(event);
+          if (bufferRef.current.length === 1) console.log("[rrweb] first event captured");
         },
-        sampling: {
-          mousemove: 100,
-          scroll: 200,
-          input: "last",
-        },
+        sampling: { mousemove: 100, scroll: 200, input: "last" },
         blockClass: "rr-block",
         maskAllInputs: false,
         recordCanvas: false,
