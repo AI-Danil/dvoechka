@@ -38,7 +38,7 @@ const App = () => (
             />
             <Route
               path="/teacher/live"
-              element={<RequireRole role="teacher"><TeacherLive /></RequireRole>}
+              element={<RequireRole role={["teacher", "admin"]}><TeacherLive /></RequireRole>}
             />
             <Route path="/live" element={<LiveStudent />} />
             <Route

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
+// Админу показываем все опубликованные тесты, учителю — только свои.
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Play, Square, Copy, Plus } from "lucide-react";
@@ -38,7 +39,8 @@ interface Participant {
 }
 
 export default function TeacherLive() {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const isAdmin = roles.includes("admin");
   const { toast } = useToast();
 
   const [tests, setTests] = useState<Test[]>([]);
@@ -60,16 +62,18 @@ export default function TeacherLive() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("tests")
         .select("id, title, kind, status")
-        .eq("author_user_id", user.id)
         .eq("status", "published")
         .order("created_at", { ascending: false });
+      // Учитель видит только свои тесты, админ — все опубликованные.
+      if (!isAdmin) q = q.eq("author_user_id", user.id);
+      const { data } = await q;
       setTests((data ?? []) as Test[]);
       if (data && data.length > 0) setSelectedTestId(data[0].id);
     })();
-  }, [user]);
+  }, [user, isAdmin]);
 
   // Realtime подписки на сессию и участников
   const sessionChanRef = useRef<any>(null);

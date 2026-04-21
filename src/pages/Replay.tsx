@@ -35,9 +35,48 @@ interface AnswersPayload {
   // legacy / non-quiz tests могут хранить просто массив строк
 }
 
+const CHEAT_TYPE_LABELS: Record<string, string> = {
+  copy: "📋 Копирование",
+  paste: "📥 Вставка",
+  cut: "✂️ Вырезание",
+  contextmenu: "🖱 Правый клик",
+  blur: "👁 Уход с вкладки",
+  visibility_hidden: "🙈 Скрыта вкладка",
+  devtools: "🛠 DevTools",
+  fullscreen_exit: "🔳 Выход из fullscreen",
+  keyboard_shortcut: "⌨️ Запрещённое сочетание",
+};
+
+function formatCheatType(t: string): string {
+  return CHEAT_TYPE_LABELS[t] ?? `⚠ ${t}`;
+}
+
 function parseCheatLog(log: unknown): CheatEntry[] {
   if (!Array.isArray(log)) return [];
   return log.map((line) => {
+    // объектный формат (DB-тесты): {type, ts, detail}
+    if (line && typeof line === "object" && !Array.isArray(line)) {
+      const obj = line as Record<string, unknown>;
+      const type = String(obj.type ?? obj.event ?? "unknown");
+      const ts = obj.ts ?? obj.timestamp ?? obj.time;
+      let timeStr = "";
+      if (ts !== undefined && ts !== null) {
+        const d = new Date(typeof ts === "number" ? ts : String(ts));
+        if (!isNaN(d.getTime())) {
+          timeStr = d.toLocaleTimeString("ru-RU", { hour12: false });
+        }
+      }
+      const detail = obj.detail ?? obj.details;
+      const detailStr = detail
+        ? typeof detail === "object"
+          ? JSON.stringify(detail)
+          : String(detail)
+        : "";
+      const label = formatCheatType(type);
+      const text = detailStr ? `${label} — ${detailStr}` : label;
+      return { raw: JSON.stringify(obj), timeStr, text };
+    }
+    // строковый формат (хардкод-тесты)
     const s = String(line);
     const m = s.match(/^\[(\d{2}:\d{2}:\d{2})\]\s*(.*)$/);
     if (m) return { raw: s, timeStr: m[1], text: m[2] };
