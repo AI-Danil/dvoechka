@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { LogOut, BookOpen, Users } from "lucide-react";
+import { LogOut, BookOpen, Users, Radio } from "lucide-react";
+import { Link } from "react-router-dom";
 import CreateTestForm from "@/components/CreateTestForm";
 import MyTestsList from "@/components/MyTestsList";
 import TestResultsList from "@/components/TestResultsList";
@@ -50,9 +51,16 @@ export default function TeacherDashboard() {
             <h1 className="text-2xl font-semibold">Кабинет учителя</h1>
             <p className="text-sm text-muted-foreground">{profile?.full_name ?? user?.email}</p>
           </div>
-          <Button variant="outline" onClick={signOut}>
-            <LogOut className="h-4 w-4 mr-2" /> Выйти
-          </Button>
+          <div className="flex gap-2">
+            <Link to="/teacher/live">
+              <Button variant="default">
+                <Radio className="h-4 w-4 mr-2" /> Live-сессии
+              </Button>
+            </Link>
+            <Button variant="outline" onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-2" /> Выйти
+            </Button>
+          </div>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
