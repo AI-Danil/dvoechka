@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { loadTestQuestions, type DbTestSummary, type DbTestQuestion } from "@/lib/dbTests";
 import Quiz, { QuizIntro, type QuizResults } from "@/components/Quiz";
+import FileAttach from "@/components/FileAttach";
 import { ArrowLeft } from "lucide-react";
 import { useAntiCheatNotify } from "@/hooks/useAntiCheatNotify";
 import { useDevToolsBlock } from "@/hooks/useDevToolsBlock";
@@ -40,6 +41,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const [studentName, setStudentName] = useState("");
   const [phase, setPhase] = useState<Phase>("intake");
   const [writtenAnswers, setWrittenAnswers] = useState<Record<number, string>>({});
+  const [writtenFiles, setWrittenFiles] = useState<Record<number, File | null>>({});
   const [quizPrefilled, setQuizPrefilled] = useState<Record<number, number> | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const cheatLogRef = useRef<CheatEvent[]>([]);
@@ -245,6 +247,26 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
         timed_out: p.timedOut,
       }));
 
+      // Загружаем прикреплённые файлы (письменная часть)
+      const attachments: Record<number, { url: string; name: string; size: number; type: string }> = {};
+      const sanitize = (s: string) =>
+        s.normalize("NFKD").replace(/[^\x20-\x7E]/g, "_").replace(/\s+/g, "_");
+      for (const [posStr, file] of Object.entries(writtenFiles)) {
+        if (!file) continue;
+        const pos = Number(posStr);
+        const safeName = sanitize(file.name);
+        const path = `${resultId}/q${pos}_${Date.now()}_${safeName}`;
+        const { error: upErr } = await supabase.storage
+          .from("test-attachments")
+          .upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
+        if (upErr) {
+          console.error("upload failed:", upErr);
+          continue;
+        }
+        const { data: pub } = supabase.storage.from("test-attachments").getPublicUrl(path);
+        attachments[pos] = { url: pub.publicUrl, name: file.name, size: file.size, type: file.type };
+      }
+
       const { data, error } = await supabase.functions.invoke("grade-quiz-submission", {
         body: {
           test_id: test.id,
@@ -257,6 +279,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
           replay_url,
           per_question,
           attempt_id: attemptIdRef.current,
+          attachments,
         },
       });
       if (error) throw new Error((data as any)?.error ?? error.message);
@@ -431,6 +454,12 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
                       setWrittenAnswers((p) => ({ ...p, [q.position]: e.target.value }))
                     }
                     placeholder="Ваш ответ…"
+                  />
+                  <FileAttach
+                    file={writtenFiles[q.position] ?? null}
+                    onFileChange={(f) =>
+                      setWrittenFiles((p) => ({ ...p, [q.position]: f }))
+                    }
                   />
                 </CardContent>
               </Card>

@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
       replay_url,
       per_question,
       attempt_id,
+      attachments,
     } = await req.json();
     if (!test_id || !student_name || !answers)
       return fail("test_id, student_name, answers обязательны");
@@ -150,6 +151,7 @@ Deno.serve(async (req) => {
       attempt: finalAttempt,
       test_type: `db:${test_id}`,
       replay_url: replay_url ?? null,
+      attachments: attachments ?? {},
     };
     if (result_id && typeof result_id === "string" && /^[0-9a-f-]{36}$/i.test(result_id)) {
       insertPayload.id = result_id;
@@ -180,6 +182,12 @@ Deno.serve(async (req) => {
     const secs = time_spent ? time_spent % 60 : 0;
     const kindLabel =
       test.kind === "hybrid" ? "Смешанный" : test.kind === "quiz" ? "Квиз" : "Самостоятельная";
+    const attachCount = attachments && typeof attachments === "object"
+      ? Object.keys(attachments).length : 0;
+    const attachLinks = attachCount > 0
+      ? "\n📎 Файлы:\n" + Object.entries(attachments as Record<string, any>)
+          .map(([pos, a]) => `  • Задача ${Number(pos) + 1}: ${a.url}`).join("\n")
+      : "";
     const msg =
       `🚀 Новый результат (${kindLabel})\n` +
       `👤 ${student_name}\n` +
@@ -190,7 +198,8 @@ Deno.serve(async (req) => {
       `\n⏱ Время: ${mins}м ${secs}с\n` +
       `🔄 Попытка: ${finalAttempt}\n` +
       (cheatCount > 0 ? `⚠️ Нарушений: ${cheatCount}\n` : "") +
-      (replay_url ? `🎬 Запись: ${replay_url}` : "");
+      (replay_url ? `🎬 Запись: ${replay_url}` : "") +
+      attachLinks;
     void notifyTelegram(msg);
 
     return ok({ result_id: row.id, grade, total });
