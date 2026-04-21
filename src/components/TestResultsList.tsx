@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Eye, Film, RefreshCw } from "lucide-react";
+import { Eye, Film, RefreshCw, Paperclip } from "lucide-react";
 
 interface Result {
   id: string;
@@ -20,12 +20,28 @@ interface Result {
   time_spent: number | null;
   cheat_log: any;
   answers: any;
+  attachments: any;
   replay_url: string | null;
   test_type: string | null;
 }
 
 interface Props {
   isAdmin?: boolean;
+}
+
+function formatCheatType(t: string): string {
+  const map: Record<string, string> = {
+    copy: "📋 Копирование",
+    paste: "📥 Вставка",
+    cut: "✂️ Вырезание",
+    contextmenu: "🖱 Правый клик",
+    blur: "👁 Уход с вкладки",
+    visibility_hidden: "🙈 Скрыта вкладка",
+    devtools: "🛠 DevTools",
+    keyboard_shortcut: "⌨️ Шорткат",
+    selectstart: "🔤 Выделение текста",
+  };
+  return map[t] ?? t;
 }
 
 export default function TestResultsList({ isAdmin = false }: Props) {
@@ -55,7 +71,6 @@ export default function TestResultsList({ isAdmin = false }: Props) {
     return () => clearInterval(id);
   }, []);
 
-  // Для учителя — узнаём предметы из назначений
   useEffect(() => {
     if (isAdmin || !user) {
       setAllowedSubjects(null);
@@ -91,6 +106,22 @@ export default function TestResultsList({ isAdmin = false }: Props) {
       return true;
     });
   }, [rows, allowedSubjects, subjectFilter, search, onlyCheats]);
+
+  // --- helpers for the detail dialog ---
+  const detailBreakdown: any[] = useMemo(
+    () => (detail && Array.isArray(detail.answers?.breakdown) ? detail.answers.breakdown : []),
+    [detail],
+  );
+  const quizItems = detailBreakdown.filter((b) => b.response_kind === "quiz");
+  const writtenItems = detailBreakdown.filter((b) => b.response_kind === "written");
+  const score = useMemo(() => {
+    const correct = quizItems.filter((q) => q.is_correct).length;
+    return { correct, total: quizItems.length };
+  }, [quizItems]);
+
+  const cheatList: any[] = Array.isArray(detail?.cheat_log) ? detail!.cheat_log : [];
+  const attachments: Record<string, any> =
+    detail?.attachments && typeof detail.attachments === "object" ? detail.attachments : {};
 
   return (
     <Card>
@@ -130,7 +161,7 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                 <TableHead>Дата</TableHead>
                 <TableHead>Ученик</TableHead>
                 <TableHead>Предмет</TableHead>
-                <TableHead>Балл</TableHead>
+                <TableHead>Класс</TableHead>
                 <TableHead>Поп.</TableHead>
                 <TableHead>Время, c</TableHead>
                 <TableHead>Наруш.</TableHead>
@@ -179,66 +210,152 @@ export default function TestResultsList({ isAdmin = false }: Props) {
       </CardContent>
 
       <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{detail?.student_name} — {detail?.subject}</DialogTitle>
           </DialogHeader>
           {detail && (
-            <div className="space-y-4 text-sm">
-              <div>
-                <p className="font-medium mb-1">Балл: {detail.grade}</p>
-                <p className="text-muted-foreground text-xs">
+            <div className="space-y-5 text-sm">
+              <div className="flex flex-wrap gap-3 items-center">
+                <Badge variant="secondary">Класс: {detail.grade}</Badge>
+                {quizItems.length > 0 && (
+                  <Badge>Квиз: {score.correct}/{score.total}</Badge>
+                )}
+                {detail.time_spent != null && (
+                  <Badge variant="outline">⏱ {Math.floor(detail.time_spent / 60)}м {detail.time_spent % 60}с</Badge>
+                )}
+                <span className="text-xs text-muted-foreground">
                   {detail.created_at ? new Date(detail.created_at).toLocaleString("ru-RU") : ""}
                   {" · "}тип: {detail.test_type ?? "—"}
-                </p>
+                </span>
               </div>
-              {Array.isArray(detail.answers?.per_question) && detail.answers.per_question.length > 0 && (
+
+              {quizItems.length > 0 && (
                 <div>
-                  <p className="font-medium mb-1">Время по вопросам</p>
+                  <p className="font-semibold mb-2">📋 Квиз</p>
                   <div className="rounded border overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>№</TableHead>
-                          <TableHead>Выбран</TableHead>
+                          <TableHead className="w-12">№</TableHead>
+                          <TableHead>Выбрано</TableHead>
                           <TableHead>Правильный</TableHead>
-                          <TableHead>Время, с</TableHead>
-                          <TableHead>Таймаут</TableHead>
+                          <TableHead className="w-24">Итог</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {detail.answers.per_question.map((pq: any, i: number) => {
-                          const br = detail.answers?.breakdown?.[i];
+                        {quizItems.map((q: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell>{q.position}</TableCell>
+                            <TableCell>{String(q.user_answer ?? "—")}</TableCell>
+                            <TableCell>{String(q.correct ?? "—")}</TableCell>
+                            <TableCell>
+                              {q.is_correct ? (
+                                <Badge variant="secondary">✓</Badge>
+                              ) : (
+                                <Badge variant="destructive">✗</Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {writtenItems.length > 0 && (
+                <div>
+                  <p className="font-semibold mb-2">✍ Развёрнутые ответы</p>
+                  <div className="space-y-3">
+                    {writtenItems.map((w: any, i: number) => {
+                      const att = attachments[String(w.position)] ?? attachments[w.position];
+                      return (
+                        <div key={i} className="rounded border p-3 bg-muted/30">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium">Задание №{w.position}</span>
+                            {att?.url && (
+                              <a
+                                href={att.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-primary text-xs inline-flex items-center gap-1 underline"
+                              >
+                                <Paperclip className="h-3 w-3" /> {att.name ?? "файл"}
+                              </a>
+                            )}
+                          </div>
+                          <pre className="whitespace-pre-wrap break-words text-sm font-sans">
+{w.user_answer || <span className="text-muted-foreground">— пусто —</span>}
+                          </pre>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {Object.keys(attachments).length > 0 && writtenItems.length === 0 && (
+                <div>
+                  <p className="font-semibold mb-2">📎 Файлы</p>
+                  <ul className="space-y-1">
+                    {Object.entries(attachments).map(([pos, a]: any) => (
+                      <li key={pos}>
+                        <a href={a?.url} target="_blank" rel="noreferrer" className="text-primary underline text-sm">
+                          Задание №{pos}: {a?.name ?? a?.url}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div>
+                <p className="font-semibold mb-2">⚠ Нарушения ({cheatList.length})</p>
+                {cheatList.length === 0 ? (
+                  <p className="text-muted-foreground text-xs">Нет</p>
+                ) : (
+                  <div className="rounded border overflow-hidden max-h-64 overflow-y-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-32">Время</TableHead>
+                          <TableHead>Тип</TableHead>
+                          <TableHead>Детали</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {cheatList.map((ev: any, i: number) => {
+                          const ts = ev.ts ?? ev.timestamp ?? ev.time;
+                          const date = ts ? new Date(typeof ts === "number" ? ts : ts).toLocaleTimeString("ru-RU") : "—";
+                          const type = ev.type ?? ev.event ?? ev.kind ?? "—";
+                          const details = ev.detail ?? ev.details ?? ev.text ?? ev.key ?? "";
                           return (
                             <TableRow key={i}>
-                              <TableCell>{(pq.position ?? i) + 1}</TableCell>
-                              <TableCell>{br?.user_answer ?? "—"}</TableCell>
-                              <TableCell>{br?.correct ?? "—"}</TableCell>
-                              <TableCell>{pq.time_spent ?? "—"}</TableCell>
-                              <TableCell>{pq.timed_out ? "да" : "нет"}</TableCell>
+                              <TableCell className="text-xs">{date}</TableCell>
+                              <TableCell className="text-xs">{formatCheatType(String(type))}</TableCell>
+                              <TableCell className="text-xs break-words max-w-xs">
+                                {typeof details === "object" ? JSON.stringify(details) : String(details)}
+                              </TableCell>
                             </TableRow>
                           );
                         })}
                       </TableBody>
                     </Table>
                   </div>
-                </div>
-              )}
-              <div>
-                <p className="font-medium mb-1">Ответы</p>
-                <pre className="bg-muted p-2 rounded text-xs whitespace-pre-wrap break-words max-h-64 overflow-auto">
-{JSON.stringify(detail.answers, null, 2)}
-                </pre>
+                )}
               </div>
-              <div>
-                <p className="font-medium mb-1">Нарушения ({Array.isArray(detail.cheat_log) ? detail.cheat_log.length : 0})</p>
-                <pre className="bg-muted p-2 rounded text-xs whitespace-pre-wrap break-words max-h-64 overflow-auto">
-{JSON.stringify(detail.cheat_log ?? [], null, 2)}
+
+              <details className="text-xs">
+                <summary className="cursor-pointer text-muted-foreground">Показать сырой JSON</summary>
+                <pre className="bg-muted p-2 rounded mt-2 whitespace-pre-wrap break-words max-h-64 overflow-auto">
+{JSON.stringify({ answers: detail.answers, cheat_log: detail.cheat_log, attachments: detail.attachments }, null, 2)}
                 </pre>
-              </div>
+              </details>
+
               {detail.replay_url && (
-                <a href={detail.replay_url} target="_blank" rel="noreferrer" className="text-primary underline text-sm">
-                  Открыть запись сессии ↗
+                <a href={detail.replay_url} target="_blank" rel="noreferrer" className="text-primary underline text-sm block">
+                  🎬 Открыть запись сессии ↗
                 </a>
               )}
             </div>
