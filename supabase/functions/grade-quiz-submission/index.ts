@@ -151,6 +151,7 @@ Deno.serve(async (req) => {
       attempt: finalAttempt,
       test_type: `db:${test_id}`,
       replay_url: replay_url ?? null,
+      attachments: attachments ?? {},
     };
     if (result_id && typeof result_id === "string" && /^[0-9a-f-]{36}$/i.test(result_id)) {
       insertPayload.id = result_id;
