@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
       .eq("id", session_id)
       .maybeSingle();
     if (!s) return json({ ok: false, error: "Сессия не найдена" });
-    if (s.teacher_user_id !== u.user.id) return json({ ok: false, error: "Это не ваша сессия" }, 403);
+    if (s.teacher_user_id !== u.user.id) return json({ ok: false, error: "Это не ваша сессия" });
 
     const nowIso = new Date().toISOString();
     await admin
