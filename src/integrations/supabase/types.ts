@@ -413,28 +413,6 @@ export type Database = {
           seconds_override: number | null
           test_id: string | null
         }
-        Insert: {
-          block_title?: string | null
-          id?: string | null
-          options?: Json | null
-          points?: number | null
-          position?: number | null
-          question_text?: string | null
-          response_kind?: string | null
-          seconds_override?: number | null
-          test_id?: string | null
-        }
-        Update: {
-          block_title?: string | null
-          id?: string | null
-          options?: Json | null
-          points?: number | null
-          position?: number | null
-          question_text?: string | null
-          response_kind?: string | null
-          seconds_override?: number | null
-          test_id?: string | null
-        }
         Relationships: [
           {
             foreignKeyName: "test_questions_test_id_fkey"
@@ -455,30 +433,15 @@ export type Database = {
       public_tests: {
         Row: {
           class_id: string | null
+          class_name: string | null
+          class_year: number | null
           created_at: string | null
           id: string | null
           kind: Database["public"]["Enums"]["test_kind"] | null
           subject_id: string | null
+          subject_name: string | null
           time_per_question_sec: number | null
           title: string | null
-        }
-        Insert: {
-          class_id?: string | null
-          created_at?: string | null
-          id?: string | null
-          kind?: Database["public"]["Enums"]["test_kind"] | null
-          subject_id?: string | null
-          time_per_question_sec?: number | null
-          title?: string | null
-        }
-        Update: {
-          class_id?: string | null
-          created_at?: string | null
-          id?: string | null
-          kind?: Database["public"]["Enums"]["test_kind"] | null
-          subject_id?: string | null
-          time_per_question_sec?: number | null
-          title?: string | null
         }
         Relationships: [
           {
