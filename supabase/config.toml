@@ -33,3 +33,14 @@ verify_jwt = false
 [functions.grade-quiz-submission]
 verify_jwt = false
 
+[functions.create-session]
+verify_jwt = true
+
+[functions.start-session]
+verify_jwt = true
+
+[functions.stop-session]
+verify_jwt = true
+
+[functions.join-session]
+verify_jwt = false
