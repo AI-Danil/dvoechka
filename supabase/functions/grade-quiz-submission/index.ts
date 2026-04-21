@@ -21,28 +21,54 @@ const json = (body: unknown) =>
 const ok = (body: Record<string, unknown>) => json({ ok: true, ...body });
 const fail = (error: string) => json({ ok: false, error });
 
+async function tgSend(text: string) {
+  const lovable = Deno.env.get("LOVABLE_API_KEY");
+  const tgKey = Deno.env.get("TELEGRAM_API_KEY");
+  const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
+  if (!lovable || !tgKey || !chatId) {
+    console.log("Telegram secrets missing, skipping notification");
+    return;
+  }
+  const r = await fetch(`${TG_GATEWAY}/sendMessage`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${lovable}`,
+      "X-Connection-Api-Key": tgKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ chat_id: chatId, text }),
+  });
+  if (!r.ok) console.error("Telegram send failed:", await r.text());
+}
+
 async function notifyTelegram(text: string) {
   try {
-    const lovable = Deno.env.get("LOVABLE_API_KEY");
-    const tgKey = Deno.env.get("TELEGRAM_API_KEY");
-    const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
-    if (!lovable || !tgKey || !chatId) {
-      console.log("Telegram secrets missing, skipping notification");
+    // chunk by ~3500 chars at line boundaries
+    const MAX = 3500;
+    if (text.length <= MAX) {
+      await tgSend(text);
       return;
     }
-    const r = await fetch(`${TG_GATEWAY}/sendMessage`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${lovable}`,
-        "X-Connection-Api-Key": tgKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ chat_id: chatId, text }),
-    });
-    if (!r.ok) console.error("Telegram send failed:", await r.text());
+    const lines = text.split("\n");
+    let buf = "";
+    for (const line of lines) {
+      if ((buf + "\n" + line).length > MAX) {
+        await tgSend(buf);
+        buf = line;
+      } else {
+        buf = buf ? buf + "\n" + line : line;
+      }
+    }
+    if (buf) await tgSend(buf);
   } catch (e) {
     console.error("Telegram notify error:", e);
   }
+}
+
+function parseClassNumber(name: string | undefined | null): number | null {
+  if (!name) return null;
+  const m = String(name).match(/(\d+)/);
+  return m ? Number(m[1]) : null;
 }
 
 Deno.serve(async (req) => {
@@ -68,25 +94,21 @@ Deno.serve(async (req) => {
 
     const { data: test } = await admin
       .from("tests")
-      .select("id, title, kind, status, subject_id, subjects:subject_id(name)")
+      .select("id, title, kind, status, subject_id, class_id, subjects:subject_id(name), classes:class_id(name, year)")
       .eq("id", test_id)
       .maybeSingle();
     if (!test || test.status !== "published") return fail("Тест недоступен");
 
     const { data: questions } = await admin
       .from("test_questions")
-      .select("id, position, correct_index, points, options, response_kind")
+      .select("id, position, correct_index, points, options, response_kind, question_text, block_title")
       .eq("test_id", test_id)
       .order("position");
 
-    let grade = 0;
+    let score = 0;
     let total = 0;
     const breakdown: any[] = [];
 
-    // answers structure:
-    // - quiz: { [position]: number }
-    // - written: { [position]: string }
-    // - hybrid: { quiz: {...}, written: {...} }
     const isHybrid = test.kind === "hybrid";
     const quizAns = isHybrid ? (answers?.quiz ?? {}) : (test.kind === "quiz" ? answers : {});
     const writtenAns = isHybrid ? (answers?.written ?? {}) : (test.kind === "written" ? answers : {});
@@ -98,10 +120,12 @@ Deno.serve(async (req) => {
         const userAns = quizAns[q.position];
         const isCorrect =
           typeof q.correct_index === "number" && Number(userAns) === q.correct_index;
-        if (isCorrect) grade += q.points || 1;
+        if (isCorrect) score += q.points || 1;
         breakdown.push({
           position: q.position,
           response_kind: "quiz",
+          question_text: q.question_text,
+          options: q.options,
           user_answer: userAns,
           correct: q.correct_index,
           is_correct: isCorrect,
@@ -110,6 +134,8 @@ Deno.serve(async (req) => {
         breakdown.push({
           position: q.position,
           response_kind: "written",
+          question_text: q.question_text,
+          block_title: q.block_title,
           user_answer: writtenAns[q.position] ?? "",
           pending_review: true,
         });
@@ -117,8 +143,10 @@ Deno.serve(async (req) => {
     }
 
     const subjectName = (test as any).subjects?.name ?? "—";
+    const className = (test as any).classes?.name ?? "";
+    const classNumber = parseClassNumber(className) ?? 0;
 
-    // Мерджим cheat_log из попытки (накопленный сервером) и из клиента (этой сессии)
+    // Merge cheat_log from attempt + client
     let mergedCheatLog: any[] = Array.isArray(cheat_log) ? [...cheat_log] : [];
     let attemptRow: any = null;
     if (attempt_id) {
@@ -137,7 +165,7 @@ Deno.serve(async (req) => {
     const insertPayload: Record<string, unknown> = {
       student_name,
       subject: subjectName,
-      grade,
+      grade: classNumber, // class number — matches hardcoded-tests convention
       answers: {
         test_id,
         breakdown,
@@ -145,6 +173,9 @@ Deno.serve(async (req) => {
         total_points: total,
         per_question: per_question ?? null,
         kind: test.kind,
+        class_name: className,
+        score: { correct: score, total },
+        written: writtenAns,
       },
       cheat_log: mergedCheatLog,
       time_spent: time_spent ?? null,
@@ -164,7 +195,6 @@ Deno.serve(async (req) => {
       .single();
     if (error) return fail(error.message);
 
-    // Закрываем попытку
     if (attempt_id) {
       await admin
         .from("test_attempts")
@@ -176,33 +206,58 @@ Deno.serve(async (req) => {
         .eq("id", attempt_id);
     }
 
-    // Telegram-уведомление
+    // ---- Telegram notification ----
     const cheatCount = mergedCheatLog.length;
     const mins = time_spent ? Math.floor(time_spent / 60) : 0;
     const secs = time_spent ? time_spent % 60 : 0;
     const kindLabel =
       test.kind === "hybrid" ? "Смешанный" : test.kind === "quiz" ? "Квиз" : "Самостоятельная";
-    const attachCount = attachments && typeof attachments === "object"
-      ? Object.keys(attachments).length : 0;
-    const attachLinks = attachCount > 0
-      ? "\n📎 Файлы:\n" + Object.entries(attachments as Record<string, any>)
-          .map(([pos, a]) => `  • Задача ${Number(pos) + 1}: ${a.url}`).join("\n")
-      : "";
-    const msg =
+
+    const quizBd = breakdown.filter((b) => b.response_kind === "quiz");
+    const writtenBd = breakdown.filter((b) => b.response_kind === "written");
+
+    let msg =
       `🚀 Новый результат (${kindLabel})\n` +
       `👤 ${student_name}\n` +
+      `🎓 Класс: ${className || classNumber}\n` +
       `📚 ${subjectName}\n` +
       `📋 ${(test as any).title}\n` +
-      `🎯 Балл: ${grade}/${total}` +
+      `🎯 Балл за квиз: ${score}/${total}` +
       (test.kind !== "quiz" ? " (письм. часть требует проверки)" : "") +
       `\n⏱ Время: ${mins}м ${secs}с\n` +
-      `🔄 Попытка: ${finalAttempt}\n` +
-      (cheatCount > 0 ? `⚠️ Нарушений: ${cheatCount}\n` : "") +
-      (replay_url ? `🎬 Запись: ${replay_url}` : "") +
-      attachLinks;
+      `🔄 Попытка: ${finalAttempt}\n`;
+
+    if (cheatCount > 0) msg += `⚠️ Нарушений: ${cheatCount}\n`;
+    if (replay_url) msg += `🎬 Запись: ${replay_url}\n`;
+
+    if (quizBd.length > 0) {
+      msg += `\n📋 Квиз:\n`;
+      for (const q of quizBd) {
+        const mark = q.is_correct ? "✅" : "❌";
+        msg += `  ${q.position}) выбран ${q.user_answer ?? "—"}, верный ${q.correct ?? "—"} ${mark}\n`;
+      }
+    }
+
+    if (writtenBd.length > 0) {
+      msg += `\n✍ Развёрнутые ответы:\n`;
+      for (const w of writtenBd) {
+        const txt = String(w.user_answer ?? "").slice(0, 400);
+        msg += `\n— Задание ${w.position}${w.block_title ? ` (${w.block_title})` : ""}:\n${txt || "(пусто)"}\n`;
+      }
+    }
+
+    const attachCount = attachments && typeof attachments === "object"
+      ? Object.keys(attachments).length : 0;
+    if (attachCount > 0) {
+      msg += `\n📎 Файлы:\n`;
+      for (const [pos, a] of Object.entries(attachments as Record<string, any>)) {
+        msg += `  • Задание ${pos}: ${a?.url ?? "—"}\n`;
+      }
+    }
+
     void notifyTelegram(msg);
 
-    return ok({ result_id: row.id, grade, total });
+    return ok({ result_id: row.id, grade: score, total, class_number: classNumber });
   } catch (e) {
     return fail(e instanceof Error ? e.message : "unknown");
   }
