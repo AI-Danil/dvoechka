@@ -33,25 +33,12 @@ export async function loadPublishedTestsForGradeSubject(
   const subjectName = SUBJECT_NAME_BY_KEY[subjectKey];
   if (!subjectName) return [];
 
-  const { data: classes } = await supabase
-    .from("classes")
-    .select("id, name, year")
-    .eq("year", 2025);
-  const classRow = classes?.find((c) => c.name.startsWith(grade));
-  if (!classRow) return [];
-
-  const { data: subj } = await supabase
-    .from("subjects")
-    .select("id, name")
-    .eq("name", subjectName)
-    .maybeSingle();
-  if (!subj) return [];
-
   const { data, error } = await supabase
     .from("public_tests" as any)
-    .select("id, title, kind, time_per_question_sec, class_id, subject_id")
-    .eq("class_id", classRow.id)
-    .eq("subject_id", subj.id);
+    .select("id, title, kind, time_per_question_sec, class_id, subject_id, class_name, class_year, subject_name")
+    .eq("class_year", 2025)
+    .eq("subject_name", subjectName)
+    .like("class_name", `${grade}%`);
   if (error) {
     console.error("loadPublishedTests error", error);
     return [];
