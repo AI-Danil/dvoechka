@@ -26,11 +26,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const auth = req.headers.get("Authorization");
-    if (!auth) return json({ ok: false, error: "no auth" }, 401);
+    if (!auth) return json({ ok: false, error: "no auth" });
 
     const userClient = createClient(SUPABASE_URL, ANON, { global: { headers: { Authorization: auth } } });
     const { data: u } = await userClient.auth.getUser();
-    if (!u?.user) return json({ ok: false, error: "unauthorized" }, 401);
+    if (!u?.user) return json({ ok: false, error: "unauthorized" });
 
     const { test_id, duration_min } = await req.json();
     if (!test_id) return json({ ok: false, error: "test_id обязателен" });

@@ -34,13 +34,13 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.create-session]
-verify_jwt = true
+verify_jwt = false
 
 [functions.start-session]
-verify_jwt = true
+verify_jwt = false
 
 [functions.stop-session]
-verify_jwt = true
+verify_jwt = false
 
 [functions.join-session]
 verify_jwt = false

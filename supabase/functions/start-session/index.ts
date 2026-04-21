@@ -18,11 +18,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
     const auth = req.headers.get("Authorization");
-    if (!auth) return json({ ok: false, error: "no auth" }, 401);
+    if (!auth) return json({ ok: false, error: "no auth" });
 
     const userClient = createClient(SUPABASE_URL, ANON, { global: { headers: { Authorization: auth } } });
     const { data: u } = await userClient.auth.getUser();
-    if (!u?.user) return json({ ok: false, error: "unauthorized" }, 401);
+    if (!u?.user) return json({ ok: false, error: "unauthorized" });
 
     const { session_id } = await req.json();
     if (!session_id) return json({ ok: false, error: "session_id обязателен" });
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
       .eq("id", session_id)
       .maybeSingle();
     if (!s) return json({ ok: false, error: "Сессия не найдена" });
-    if (s.teacher_user_id !== u.user.id) return json({ ok: false, error: "Это не ваша сессия" }, 403);
+    if (s.teacher_user_id !== u.user.id) return json({ ok: false, error: "Это не ваша сессия" });
     if (s.status !== "waiting") return json({ ok: false, error: "Сессию уже стартовали или закрыли" });
 
     const startedAt = new Date();
