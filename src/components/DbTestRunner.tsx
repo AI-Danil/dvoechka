@@ -455,6 +455,12 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
                     }
                     placeholder="Ваш ответ…"
                   />
+                  <FileAttach
+                    file={writtenFiles[q.position] ?? null}
+                    onFileChange={(f) =>
+                      setWrittenFiles((p) => ({ ...p, [q.position]: f }))
+                    }
+                  />
                 </CardContent>
               </Card>
             ))}
