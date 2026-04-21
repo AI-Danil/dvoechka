@@ -27,26 +27,43 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    // Поиск активной сессии по коду
+    // 1. Поиск активной сессии по коду — без эмбедов (FK не задекларированы).
     const codeUp = String(code).trim().toUpperCase();
-    const { data: session } = await admin
+    const { data: session, error: sErr } = await admin
       .from("test_sessions")
-      .select("*, tests:test_id(id, title, kind, status, subject_id, class_id, subjects:subject_id(name), classes:class_id(name))")
+      .select("*")
       .eq("code", codeUp)
       .in("status", ["waiting", "running", "finished"])
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    if (sErr) return json({ ok: false, error: `session lookup: ${sErr.message}` });
     if (!session) return json({ ok: false, error: "Код не найден или сессия закрыта" });
     if (session.status === "finished") return json({ ok: false, error: "Сессия уже завершена" });
 
-    // Создаём/находим участника
-    const { data: existingPart } = await admin
+    // 2. Подгружаем тест отдельно.
+    const { data: test, error: tErr } = await admin
+      .from("tests")
+      .select("id, title, kind, subject_id, class_id")
+      .eq("id", session.test_id)
+      .maybeSingle();
+    if (tErr) return json({ ok: false, error: `test lookup: ${tErr.message}` });
+    if (!test) return json({ ok: false, error: "Тест сессии не найден" });
+
+    // 3. Имена предмета и класса.
+    const [{ data: subj }, { data: cls }] = await Promise.all([
+      admin.from("subjects").select("name").eq("id", test.subject_id).maybeSingle(),
+      admin.from("classes").select("name").eq("id", test.class_id).maybeSingle(),
+    ]);
+
+    // 4. Создаём/находим участника
+    const { data: existingPart, error: pSelErr } = await admin
       .from("test_session_participants")
       .select("*")
       .eq("session_id", session.id)
       .ilike("student_name", nameNorm)
       .maybeSingle();
+    if (pSelErr) return json({ ok: false, error: `participant lookup: ${pSelErr.message}` });
 
     let participant = existingPart;
     if (!participant) {
@@ -55,7 +72,7 @@ Deno.serve(async (req) => {
         .insert({ session_id: session.id, student_name: nameNorm })
         .select("*")
         .single();
-      if (pErr) return json({ ok: false, error: pErr.message });
+      if (pErr) return json({ ok: false, error: `participant insert: ${pErr.message}` });
       participant = created;
     }
 
@@ -64,10 +81,9 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "Вы уже сдали этот тест", code: "already_submitted" });
     }
 
-    // Если сессия running — создаём (или возобновляем) attempt
+    // 5. Если сессия running — создаём (или возобновляем) attempt
     let attempt: any = null;
     if (session.status === "running") {
-      // Уже есть attempt у участника?
       if (participant.attempt_id) {
         const { data: a } = await admin
           .from("test_attempts")
@@ -77,7 +93,7 @@ Deno.serve(async (req) => {
         attempt = a;
       }
       if (!attempt) {
-        const initialPhase = session.tests?.kind === "written" ? "written" : "quiz";
+        const initialPhase = test.kind === "written" ? "written" : "quiz";
         const { data: created, error: aErr } = await admin
           .from("test_attempts")
           .insert({
@@ -93,7 +109,7 @@ Deno.serve(async (req) => {
           })
           .select("*")
           .single();
-        if (aErr) return json({ ok: false, error: aErr.message });
+        if (aErr) return json({ ok: false, error: `attempt insert: ${aErr.message}` });
         attempt = created;
         await admin
           .from("test_session_participants")
@@ -111,10 +127,10 @@ Deno.serve(async (req) => {
         duration_sec: session.duration_sec,
         started_at: session.started_at,
         ends_at: session.ends_at,
-        test_title: session.tests?.title ?? "",
-        test_kind: session.tests?.kind ?? "quiz",
-        subject_name: session.tests?.subjects?.name ?? "",
-        class_name: session.tests?.classes?.name ?? "",
+        test_title: test.title ?? "",
+        test_kind: test.kind ?? "quiz",
+        subject_name: subj?.name ?? "",
+        class_name: cls?.name ?? "",
       },
       participant: { id: participant.id, student_name: participant.student_name },
       attempt: attempt

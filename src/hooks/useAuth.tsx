@@ -34,19 +34,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    let currentUid: string | undefined;
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
-      setUser(s?.user ?? null);
-      setLoading(true);
-      // defer to avoid deadlock
-      setTimeout(() => {
-        loadRoles(s?.user?.id).finally(() => setLoading(false));
-      }, 0);
+      const newUid = s?.user?.id;
+      // На TOKEN_REFRESHED / USER_UPDATED не пересоздаём user-объект и не показываем loading,
+      // иначе все потребители useAuth перерендерятся при возврате во вкладку и зависимые
+      // эффекты (загрузка тестов, подписки) перезапустятся — выглядит как «перезагрузка».
+      if (newUid !== currentUid) {
+        currentUid = newUid;
+        setUser(s?.user ?? null);
+        setLoading(true);
+        setTimeout(() => {
+          loadRoles(newUid).finally(() => setLoading(false));
+        }, 0);
+      }
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
+      currentUid = data.session?.user?.id;
       setUser(data.session?.user ?? null);
-      loadRoles(data.session?.user?.id).finally(() => setLoading(false));
+      loadRoles(currentUid).finally(() => setLoading(false));
     });
     return () => sub.subscription.unsubscribe();
   }, []);
