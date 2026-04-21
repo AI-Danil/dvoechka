@@ -52,8 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
+      currentUid = data.session?.user?.id;
       setUser(data.session?.user ?? null);
-      loadRoles(data.session?.user?.id).finally(() => setLoading(false));
+      loadRoles(currentUid).finally(() => setLoading(false));
     });
     return () => sub.subscription.unsubscribe();
   }, []);
