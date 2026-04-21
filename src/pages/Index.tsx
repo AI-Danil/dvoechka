@@ -1035,7 +1035,7 @@ const Index = () => {
                 <span className="flex flex-col items-start gap-1 w-full">
                   <span>{t.title}</span>
                   <span className="text-xs font-bold text-primary bg-primary/15 px-2 py-0.5 rounded">
-                    {t.kind === "quiz" ? "🎯 Квиз от учителя" : "📝 Самостоятельная от учителя"}
+                    {t.kind === "quiz" ? "🎯 Квиз от учителя" : t.kind === "hybrid" ? "🧩 Смешанный тест от учителя" : "📝 Самостоятельная от учителя"}
                   </span>
                 </span>
               </Button>
