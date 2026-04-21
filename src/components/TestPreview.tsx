@@ -20,6 +20,7 @@ interface Question {
   response_kind: "quiz" | "written";
   block_title: string | null;
   expected_answer: string | null;
+  seconds_override: number | null;
 }
 
 interface TestRow {
@@ -27,6 +28,7 @@ interface TestRow {
   title: string;
   kind: "quiz" | "written" | "hybrid";
   status: "draft" | "published";
+  time_per_question_sec: number;
 }
 
 export default function TestPreview({
@@ -44,10 +46,10 @@ export default function TestPreview({
 
   const load = async () => {
     const [{ data: t }, { data: q }] = await Promise.all([
-      supabase.from("tests").select("id, title, kind, status").eq("id", testId).maybeSingle(),
+      supabase.from("tests").select("id, title, kind, status, time_per_question_sec").eq("id", testId).maybeSingle(),
       supabase
         .from("test_questions")
-        .select("id, position, question_text, options, correct_index, points, response_kind, block_title, expected_answer")
+        .select("id, position, question_text, options, correct_index, points, response_kind, block_title, expected_answer, seconds_override")
         .eq("test_id", testId)
         .order("position"),
     ]);
@@ -58,12 +60,24 @@ export default function TestPreview({
       response_kind: x.response_kind ?? (((t as any)?.kind === "written") ? "written" : "quiz"),
       block_title: x.block_title ?? null,
       expected_answer: x.expected_answer ?? null,
+      seconds_override: x.seconds_override ?? null,
     })));
   };
 
   useEffect(() => {
     load();
   }, [testId]);
+
+  const updateGlobalTime = async (sec: number) => {
+    if (!test) return;
+    const clamped = Math.max(5, Math.min(300, sec));
+    setTest({ ...test, time_per_question_sec: clamped });
+    const { error } = await supabase
+      .from("tests")
+      .update({ time_per_question_sec: clamped })
+      .eq("id", test.id);
+    if (error) toast({ title: "Не сохранилось", description: error.message, variant: "destructive" });
+  };
 
   const saveQuestion = async (q: Question) => {
     setSavingId(q.id);
@@ -77,6 +91,7 @@ export default function TestPreview({
         response_kind: q.response_kind,
         block_title: q.block_title,
         expected_answer: q.expected_answer,
+        seconds_override: q.seconds_override,
       } as any)
       .eq("id", q.id);
     setSavingId(null);
@@ -103,7 +118,7 @@ export default function TestPreview({
         points: 1,
         response_kind: forKind,
       } as any)
-      .select("id, position, question_text, options, correct_index, points, response_kind, block_title, expected_answer")
+      .select("id, position, question_text, options, correct_index, points, response_kind, block_title, expected_answer, seconds_override")
       .single();
     if (error) return toast({ title: "Ошибка", description: error.message, variant: "destructive" });
     setQs((p) => [...p, { ...(data as any), options: (data as any).options ?? [] }]);
@@ -205,6 +220,25 @@ export default function TestPreview({
             {q.correct_index === null && (
               <p className="text-xs text-destructive">⚠ Отметьте правильный вариант</p>
             )}
+            <div className="flex items-center gap-2 pt-1">
+              <Label className="text-xs">Время на этот вопрос (сек):</Label>
+              <Input
+                type="number"
+                min={5}
+                max={300}
+                className="w-24 h-8"
+                placeholder={String(test.time_per_question_sec)}
+                value={q.seconds_override ?? ""}
+                onChange={(e) => {
+                  const v = e.target.value === "" ? null : Number(e.target.value);
+                  setQs((p) => p.map((x) => (x.id === q.id ? { ...x, seconds_override: v } : x)));
+                }}
+                onBlur={() => saveQuestion(q)}
+              />
+              <span className="text-xs text-muted-foreground">
+                пусто = общее ({test.time_per_question_sec} сек)
+              </span>
+            </div>
           </>
         ) : (
           <div className="space-y-2">
@@ -253,6 +287,19 @@ export default function TestPreview({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-md">
+          <Label className="text-sm font-medium">⏱ Время на вопрос квиза по умолчанию (сек):</Label>
+          <Input
+            type="number"
+            min={5}
+            max={300}
+            className="w-24 h-8"
+            value={test.time_per_question_sec}
+            onChange={(e) => setTest({ ...test, time_per_question_sec: Number(e.target.value) || 30 })}
+            onBlur={() => updateGlobalTime(test.time_per_question_sec)}
+          />
+          <span className="text-xs text-muted-foreground">5–300; можно переопределить для каждого вопроса</span>
+        </div>
         {test.kind === "hybrid" ? (
           grouped.map(([blockTitle, items]) => (
             <div key={blockTitle} className="space-y-2">

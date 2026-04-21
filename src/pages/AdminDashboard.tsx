@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Users, GraduationCap, BookOpen, ClipboardList, LogOut, ShieldCheck } from "lucide-react";
+import { Users, GraduationCap, BookOpen, ClipboardList, LogOut, ShieldCheck, Radio } from "lucide-react";
 import CreateTestForm from "@/components/CreateTestForm";
 import MyTestsList from "@/components/MyTestsList";
 import TestResultsList from "@/components/TestResultsList";
@@ -79,9 +79,16 @@ export default function AdminDashboard() {
             <h1 className="text-2xl font-semibold">Панель администратора</h1>
             <p className="text-sm text-muted-foreground">{user?.email}</p>
           </div>
-          <Button variant="outline" onClick={signOut}>
-            <LogOut className="h-4 w-4 mr-2" /> Выйти
-          </Button>
+          <div className="flex gap-2">
+            <Button asChild variant="default">
+              <Link to="/teacher/live">
+                <Radio className="h-4 w-4 mr-2" /> Live-сессии
+              </Link>
+            </Button>
+            <Button variant="outline" onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-2" /> Выйти
+            </Button>
+          </div>
         </header>
 
         {!isAdmin && adminCount === 0 && (
