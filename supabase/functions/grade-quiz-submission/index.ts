@@ -182,6 +182,12 @@ Deno.serve(async (req) => {
     const secs = time_spent ? time_spent % 60 : 0;
     const kindLabel =
       test.kind === "hybrid" ? "Смешанный" : test.kind === "quiz" ? "Квиз" : "Самостоятельная";
+    const attachCount = attachments && typeof attachments === "object"
+      ? Object.keys(attachments).length : 0;
+    const attachLinks = attachCount > 0
+      ? "\n📎 Файлы:\n" + Object.entries(attachments as Record<string, any>)
+          .map(([pos, a]) => `  • Задача ${Number(pos) + 1}: ${a.url}`).join("\n")
+      : "";
     const msg =
       `🚀 Новый результат (${kindLabel})\n` +
       `👤 ${student_name}\n` +
@@ -192,7 +198,8 @@ Deno.serve(async (req) => {
       `\n⏱ Время: ${mins}м ${secs}с\n` +
       `🔄 Попытка: ${finalAttempt}\n` +
       (cheatCount > 0 ? `⚠️ Нарушений: ${cheatCount}\n` : "") +
-      (replay_url ? `🎬 Запись: ${replay_url}` : "");
+      (replay_url ? `🎬 Запись: ${replay_url}` : "") +
+      attachLinks;
     void notifyTelegram(msg);
 
     return ok({ result_id: row.id, grade, total });
