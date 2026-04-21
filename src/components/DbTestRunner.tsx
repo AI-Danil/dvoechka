@@ -41,6 +41,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const [studentName, setStudentName] = useState("");
   const [phase, setPhase] = useState<Phase>("intake");
   const [writtenAnswers, setWrittenAnswers] = useState<Record<number, string>>({});
+  const [writtenFiles, setWrittenFiles] = useState<Record<number, File | null>>({});
   const [quizPrefilled, setQuizPrefilled] = useState<Record<number, number> | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const cheatLogRef = useRef<CheatEvent[]>([]);
