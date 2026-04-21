@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { loadTestQuestions, type DbTestSummary, type DbTestQuestion } from "@/lib/dbTests";
 import Quiz, { QuizIntro, type QuizResults } from "@/components/Quiz";
+import FileAttach from "@/components/FileAttach";
 import { ArrowLeft } from "lucide-react";
 import { useAntiCheatNotify } from "@/hooks/useAntiCheatNotify";
 import { useDevToolsBlock } from "@/hooks/useDevToolsBlock";
