@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
       replay_url,
       per_question,
       attempt_id,
+      attachments,
     } = await req.json();
     if (!test_id || !student_name || !answers)
       return fail("test_id, student_name, answers обязательны");
