@@ -944,6 +944,17 @@ const Index = () => {
               {g} класс
             </Button>
           ))}
+          <div className="relative my-2">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t" /></div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-card px-2 text-muted-foreground">или</span>
+            </div>
+          </div>
+          <a href="/live" className="block">
+            <Button variant="default" size="lg" className="h-14 text-lg w-full">
+              🎟 Войти по коду класса
+            </Button>
+          </a>
         </div>,
         "Шаг 1. Выберите класс",
         "Итоговая аттестация за 3-ю четверть",

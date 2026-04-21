@@ -314,6 +314,80 @@ export type Database = {
         }
         Relationships: []
       }
+      test_session_participants: {
+        Row: {
+          attempt_id: string | null
+          id: string
+          joined_at: string
+          session_id: string
+          student_name: string
+          submitted_at: string | null
+        }
+        Insert: {
+          attempt_id?: string | null
+          id?: string
+          joined_at?: string
+          session_id: string
+          student_name: string
+          submitted_at?: string | null
+        }
+        Update: {
+          attempt_id?: string | null
+          id?: string
+          joined_at?: string
+          session_id?: string
+          student_name?: string
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_session_participants_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "test_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_sessions: {
+        Row: {
+          code: string
+          created_at: string
+          duration_sec: number
+          ends_at: string | null
+          id: string
+          started_at: string | null
+          status: string
+          teacher_user_id: string
+          test_id: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          duration_sec?: number
+          ends_at?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          teacher_user_id: string
+          test_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          duration_sec?: number
+          ends_at?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          teacher_user_id?: string
+          test_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tests: {
         Row: {
           author_user_id: string
@@ -462,6 +536,21 @@ export type Database = {
       }
     }
     Functions: {
+      get_session_by_code: {
+        Args: { _code: string }
+        Returns: {
+          class_name: string
+          duration_sec: number
+          ends_at: string
+          id: string
+          started_at: string
+          status: string
+          subject_name: string
+          test_id: string
+          test_kind: Database["public"]["Enums"]["test_kind"]
+          test_title: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

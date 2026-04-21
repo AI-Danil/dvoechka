@@ -14,6 +14,8 @@ import AdminDashboard from "./pages/AdminDashboard.tsx";
 import TeacherDashboard from "./pages/TeacherDashboard.tsx";
 import StudentDashboard from "./pages/StudentDashboard.tsx";
 import Account from "./pages/Account.tsx";
+import TeacherLive from "./pages/TeacherLive.tsx";
+import LiveStudent from "./pages/LiveStudent.tsx";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +36,11 @@ const App = () => (
               path="/teacher/dashboard"
               element={<RequireRole role="teacher"><TeacherDashboard /></RequireRole>}
             />
+            <Route
+              path="/teacher/live"
+              element={<RequireRole role="teacher"><TeacherLive /></RequireRole>}
+            />
+            <Route path="/live" element={<LiveStudent />} />
             <Route
               path="/student/dashboard"
               element={<RequireRole role="student"><StudentDashboard /></RequireRole>}
