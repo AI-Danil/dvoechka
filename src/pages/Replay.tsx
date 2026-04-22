@@ -4,6 +4,8 @@ import rrwebPlayer from "rrweb-player";
 import "rrweb-player/dist/style.css";
 import TeacherLoginGate from "@/components/TeacherLoginGate";
 import { useTeacherAuth } from "@/hooks/useTeacherAuth";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
