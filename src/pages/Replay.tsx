@@ -311,13 +311,13 @@ function ReplayInner() {
               <div className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{result.student_name}</span>
                 {" · "}{result.grade} класс · {result.subject}
-                {quizResults && (
+                {(quizResults || score) && (
                   <>
                     {" · "}
                     <span className="font-medium text-foreground">
-                      {quizResults.correct} / {quizResults.total}
+                      {quizResults ? `${quizResults.correct} / ${quizResults.total}` : `${score!.correct} / ${score!.total}`}
                     </span>
-                    {" "}({Math.round((quizResults.correct / quizResults.total) * 100)}%)
+                    {" "}({Math.round(((quizResults?.correct ?? score!.correct) / (quizResults?.total ?? score!.total)) * 100)}%)
                   </>
                 )}
                 {" · "}{new Date(result.created_at).toLocaleString("ru-RU")}
