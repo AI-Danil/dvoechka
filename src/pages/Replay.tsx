@@ -282,6 +282,15 @@ function ReplayInner() {
 
   const openTextAnswers: string[] = answersPayload?.answers ?? legacyAnswersArray ?? [];
   const quizResults = answersPayload?.quizResults ?? null;
+  const breakdown: BreakdownItem[] = Array.isArray(answersPayload?.breakdown)
+    ? answersPayload!.breakdown!
+    : [];
+  const breakdownQuiz = breakdown.filter((b) => b.response_kind === "quiz");
+  const breakdownWritten = breakdown.filter((b) => b.response_kind === "written");
+  const score = answersPayload?.score
+    ?? (breakdownQuiz.length > 0
+      ? { correct: breakdownQuiz.filter((b) => b.is_correct).length, total: breakdownQuiz.length }
+      : null);
 
   const quizQuestions = getQuizQuestionsForTestType(
     answersPayload?.type ?? result?.test_type ?? null
