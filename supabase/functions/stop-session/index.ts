@@ -42,6 +42,20 @@ Deno.serve(async (req) => {
       .update({ status: "finished", ends_at: nowIso })
       .eq("id", session_id);
 
+    // Broadcast — мгновенная доставка ученикам, обходит RLS
+    try {
+      const ch = admin.channel("live-broadcast");
+      await ch.subscribe();
+      await ch.send({
+        type: "broadcast",
+        event: "session_finished",
+        payload: { code: s.code, session_id },
+      });
+      await admin.removeChannel(ch);
+    } catch (_e) {
+      /* best-effort */
+    }
+
     return json({ ok: true });
   } catch (e) {
     return json({ ok: false, error: e instanceof Error ? e.message : "unknown" });

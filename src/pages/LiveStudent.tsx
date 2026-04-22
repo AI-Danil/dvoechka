@@ -44,8 +44,34 @@ export default function LiveStudent() {
   const [attempt, setAttempt] = useState<JoinedAttempt | null>(null);
 
   const channelRef = useRef<any>(null);
+  const broadcastRef = useRef<any>(null);
+  const pollRef = useRef<any>(null);
 
-  // Realtime подписка на сессию
+  // Перепроверка статуса через join-session (используется и поллингом, и broadcast'ом)
+  const recheck = async () => {
+    const codeTrim = code.trim().toUpperCase();
+    if (!codeTrim || !name.trim()) return;
+    try {
+      const { data } = await supabase.functions.invoke("join-session", {
+        body: { code: codeTrim, student_name: name.trim() },
+      });
+      const r = data as any;
+      if (!r?.ok) return;
+      if (r.session) {
+        setSession((prev) => (prev ? { ...prev, ...r.session } : r.session));
+        if (r.session.status === "running" && r.attempt) {
+          setAttempt(r.attempt);
+          setPhase("running");
+        } else if (r.session.status === "finished") {
+          setPhase("finished");
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // Realtime подписка на сессию (быстрый путь, может не сработать из-за RLS — это ок)
   useEffect(() => {
     if (!session) return;
     const ch = supabase
@@ -58,15 +84,7 @@ export default function LiveStudent() {
           if (!ns) return;
           setSession((prev) => (prev ? { ...prev, ...ns } : prev));
           if (ns.status === "running" && phase === "waiting") {
-            // Получим attempt через join-session повторно
-            const { data } = await supabase.functions.invoke("join-session", {
-              body: { code, student_name: name.trim() },
-            });
-            const r = data as any;
-            if (r?.ok && r.attempt) {
-              setAttempt(r.attempt);
-              setPhase("running");
-            }
+            await recheck();
           }
           if (ns.status === "finished") {
             setPhase("finished");
@@ -78,7 +96,46 @@ export default function LiveStudent() {
     return () => {
       supabase.removeChannel(ch);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, phase, code, name]);
+
+  // Broadcast канал — без RLS, мгновенная доставка start/stop по коду
+  useEffect(() => {
+    if (phase !== "waiting") return;
+    const codeTrim = code.trim().toUpperCase();
+    if (!codeTrim) return;
+    const ch = supabase
+      .channel("live-broadcast", { config: { broadcast: { self: false } } })
+      .on("broadcast", { event: "session_started" }, (msg: any) => {
+        if (msg?.payload?.code === codeTrim) {
+          recheck();
+        }
+      })
+      .on("broadcast", { event: "session_finished" }, (msg: any) => {
+        if (msg?.payload?.code === codeTrim) {
+          setPhase("finished");
+        }
+      })
+      .subscribe();
+    broadcastRef.current = ch;
+    return () => {
+      supabase.removeChannel(ch);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, code, name]);
+
+  // Фолбэк-поллинг — каждые 3 сек, пока ждём
+  useEffect(() => {
+    if (phase !== "waiting") return;
+    pollRef.current = setInterval(() => {
+      recheck();
+    }, 3000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, code, name]);
 
   const join = async () => {
     const codeTrim = code.trim().toUpperCase();
