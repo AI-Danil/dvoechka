@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Eye, Film, RefreshCw, Paperclip } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Eye, Film, FileText, RefreshCw, Paperclip } from "lucide-react";
 
 interface Result {
   id: string;
@@ -192,14 +193,15 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                       {cheats > 0 ? <Badge variant="destructive">{cheats}</Badge> : <span className="text-muted-foreground">0</span>}
                     </TableCell>
                     <TableCell className="text-right space-x-1">
-                      <Button size="sm" variant="ghost" onClick={() => setDetail(r)}>
+                      <Button size="sm" variant="ghost" onClick={() => setDetail(r)} title="Подробнее">
                         <Eye className="h-4 w-4" />
                       </Button>
-                      {r.replay_url && (
-                        <Button size="sm" variant="ghost" asChild>
-                          <a href={r.replay_url} target="_blank" rel="noreferrer"><Film className="h-4 w-4" /></a>
-                        </Button>
-                      )}
+                      <Button size="sm" variant="ghost" asChild title="Запись экрана">
+                        <Link to={`/replay/${r.id}`}><Film className="h-4 w-4" /></Link>
+                      </Button>
+                      <Button size="sm" variant="ghost" asChild title="Лог событий">
+                        <Link to={`/replay/${r.id}?tab=log`}><FileText className="h-4 w-4" /></Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
