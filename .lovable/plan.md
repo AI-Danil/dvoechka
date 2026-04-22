@@ -1,69 +1,51 @@
 
 
-## Чиню четыре проблемы записей и ответов
+## Чиню «у учителя тест начался, у учеников всё ещё ожидание»
 
-### 1. `LiveSessionRunner` теряет хвост записи (письменную часть)
-**Корень:** `useRrwebRecorder` запускается, но **`finalize()` нигде не вызывается** в `LiveSessionRunner`. Поэтому:
-- последний буфер событий (часть письменного блока) остаётся в памяти и не загружается;
-- `update-replay-url` не вызывается → `replay_url` в БД ставится только если успели сработать периодические flush'и.
-- `notify-copy-attempt` тоже не получает финальный сигнал.
+### Корень
+- На странице ученика `LiveStudent.tsx` подписка на `postgres_changes` для `test_sessions` создаётся **анонимным supabase-клиентом**.
+- На таблице `test_sessions` есть RLS-политики только для `authenticated` (admin/teacher). Anon ничего не видит.
+- Supabase Realtime для `postgres_changes` доставляет клиенту **только те строки, которые проходят его RLS**. → Событие `UPDATE status=running` ученику просто не приходит, экран остаётся в «комнате ожидания» вечно.
+- На стороне учителя всё работает, потому что у него валидный JWT с ролью `admin`/`teacher`, и его RLS пропускает.
 
-**Фикс:** в `LiveSessionRunner.tsx`:
-- получать `finalize` из `useRrwebRecorder({...})`;
-- вызывать `await finalize()` **внутри `submit()`** перед `grade-quiz-submission` (как это сделано в `DbTestRunner`);
-- так вся запись (квиз + письменная) гарантированно сохранится.
+Дополнительно: даже после старта, когда мы вручную пробуем обновить состояние, мы делаем это **только из realtime-обработчика** — нет фолбэка, поэтому полагаться нечем.
 
-### 2. Кнопка просмотра записи в `AdminDashboard` ведёт в никуда
-**Корень:** в `TestResultsList.tsx` кнопка с иконкой `Film` открывает `r.replay_url` как внешнюю ссылку:
-```
-<a href={r.replay_url} target="_blank">
-```
-Но `replay_url` — это **относительный путь к папке в storage** (`<result-id>/`), а не URL. Соответственно — 404.
+### Фикс (без правок RLS — таблица должна оставаться приватной)
 
-**Фикс:** заменить `Film`-кнопку на `<Link to={\`/replay/${r.id}\`}>` — вести на тот же экран, что и из старой админки. Также добавить вторую кнопку «Лог» → `/replay/<id>?tab=log`, чтобы поведение было идентично `/admin`.
+**1. Фолбэк-поллинг на странице ученика (главное)**
+В `src/pages/LiveStudent.tsx`:
+- Когда `phase === "waiting"`, помимо realtime запускать `setInterval` каждые 3 секунды:
+  - Вызывать edge `join-session` повторно с тем же `code` + `name`.
+  - Если в ответе `session.status === "running"` и есть `attempt` → переходить в `phase="running"`, заполнять `session`/`attempt`.
+  - Если `session.status === "finished"` → `phase="finished"`.
+- Поллинг останавливать, как только перешли из `waiting`.
+- Realtime-подписку оставить как «быстрый путь» — если сработает, сработает быстрее поллинга. Но не зависим от неё.
 
-### 3. Во вкладке «Ответы» (`Replay.tsx`) для DB/hybrid-тестов пусто
-**Корень:** `Replay.tsx` ищет `answers.quizResults` и/или массив строк `answers.answers`. А `grade-quiz-submission` сохраняет в БД новую структуру:
-```jsonc
-{
-  raw: {...}, kind, score: {correct,total},
-  breakdown: [{position, response_kind:'quiz', question_text, options, user_answer, correct, is_correct}, ...],
-  written: { "11": "..."}
-}
-```
-Поэтому вкладка не находит ничего и показывает «Ответы не найдены».
+Это закрывает проблему мгновенно и не зависит от RLS.
 
-**Фикс:** в `Replay.tsx` добавить ветку для нового формата:
-- если `answers.breakdown` есть → рендерить квиз-блок из `breakdown.filter(response_kind==='quiz')` (используя `question_text`/`options`/`user_answer`/`correct`/`is_correct` прямо из payload — не надо тянуть `quizRegistry`);
-- развёрнутые ответы → из `breakdown.filter(response_kind==='written')` с показом `user_answer` и `block_title`;
-- показать общий балл `score.correct/score.total`;
-- старую логику (`quizResults`, legacy массив) оставить как fallback для хардкод-тестов.
+**2. Лёгкий «pulse» при старте сессии (быстрая доставка)**
+Чтобы не ждать до 3 секунд после нажатия учителем «▶ Старт», в `start-session/index.ts` после `update tests_sessions ... status='running'` дополнительно сделать `update` повторно через 200мс **или** разослать событие через `supabase.channel('live-broadcast').send({type:'broadcast', event:'session_started', payload:{code}})`. Канал `broadcast` не упирается в RLS и доступен anon.
+Ученики в `LiveStudent` будут параллельно подписаны на broadcast-канал `live-broadcast` и при получении `session_started` с совпадающим кодом — сразу делают повторный `join-session`. Это даёт мгновенную реакцию без ослабления приватности БД.
 
-### 4. Доступность для учителя и админа
-**Текущее поведение:**
-- **Админ** (`role='admin'`): видит **все** результаты в `TestResultsList` (фильтр `allowedSubjects` отключён через `isAdmin`). RLS: `Teachers and admins can view results` — пропускает.
-- **Учитель** (`role='teacher'`): видит результаты, **отфильтрованные по своим предметам** из `teacher_assignments`. Сейчас у единственного учителя назначен только «Технология» → он увидит только результаты по Технологии (включая 6-кл хибрид). Результаты по Физике/Информатике ему не покажутся, пока ему не назначат эти предметы.
-- **Старая админка `/admin`** через `list-results` работает на service role + teacher-token (отдельный логин/пароль) — там **всегда видно всё**, без фильтра.
-
-**Что сделаю по доступности:**
-- ничего ломающего не трогаю — RLS уже корректные.
-- В `AdminDashboard` (где `TestResultsList isAdmin`) после фикса №2 кнопка «Запись» поведёт на `/replay/<id>`. Этот экран сейчас защищён `TeacherLoginGate` (требует teacher-логин/пароль). Чтобы админ мог открыть запись прямо из своей админки **без отдельного входа**, в `Replay.tsx` гейт смягчу: если пользователь авторизован как `admin` или `teacher` через основную auth — пропускать без `TeacherLoginGate`. Иначе — оставить старый гейт (для совместимости со «старой админкой»). Токен для `replay-signed-url` будем брать либо из `useTeacherAuth().token`, либо из supabase-сессии (`session.access_token`) — в edge-функции добавлю поддержку обоих способов: проверка teacher-токена ИЛИ user JWT с ролью admin/teacher.
+**3. Аналогично — на «Стоп»**
+В `stop-session` тоже отправлять broadcast `session_finished` с кодом, чтобы ученики ушли в финальный экран мгновенно.
 
 ### Файлы
-- `src/components/LiveSessionRunner.tsx` — взять `finalize` из хука, ждать его в `submit()`.
-- `src/components/TestResultsList.tsx` — заменить `<a href={replay_url}>` на `<Link to={`/replay/${id}`}>` + добавить «Лог».
-- `src/pages/Replay.tsx` — рендеринг новой структуры `breakdown`/`written`/`score`; смягчить гейт для авторизованного admin/teacher.
-- `supabase/functions/replay-signed-url/index.ts` — принимать **либо** teacher-токен, **либо** user JWT с ролью `admin`/`teacher` (через `userClient.auth.getUser()` + проверку `user_roles`). Передавать `Authorization: Bearer <session.access_token>` из фронта, если teacher-токена нет.
+- `src/pages/LiveStudent.tsx` — добавить:
+  - поллинг `join-session` каждые 3с в фазе `waiting`;
+  - подписку на broadcast-канал `live-broadcast` для мгновенной реакции;
+  - корректный cleanup интервалов и каналов.
+- `supabase/functions/start-session/index.ts` — после успешного апдейта статуса послать broadcast `session_started` с `code`.
+- `supabase/functions/stop-session/index.ts` — после остановки послать broadcast `session_finished` с `code`.
 
 ### Что НЕ трогаю
-- Схему БД и RLS — там всё корректно.
-- `grade-quiz-submission` — структура ответа правильная, просто фронт её не понимал.
-- Поток ученика, античит, edge create/start/stop/join-session.
-- `Admin.tsx` (старая страница) — продолжит работать как раньше.
+- RLS на `test_sessions`: оставляем приватной.
+- `join-session`, схему БД, поток учителя, античит.
+- Логику `LiveSessionRunner` после старта.
 
 ### Как проверишь
-1. Учеником в инкогнито: создашь сессию → пройдёшь и квиз, и хотя бы одно письменное задание → сабмитнешь. После сабмита в `test_results.replay_url` появится непустое значение, а в storage `rrweb-sessions/<id>/` будут чанки и от квиза, и от письменной части.
-2. В **админ-дашборде** (`/admin-dashboard`) → у нужной строки нажмёшь кнопку «Запись» (киноплёнка) → откроется `/replay/<id>` без требования отдельного teacher-логина → во вкладке «Ответы» увидишь и квиз с пометками ✓/✗, и развёрнутые ответы → во вкладке «Запись экрана» сможешь воспроизвести **обе** части.
-3. В **старой админке** (`/admin`) поведение не изменится: список + переход в `/replay/<id>` с teacher-логином работает как раньше.
-4. Учителем: войдёшь под `teatcher01@test.ru` → в его дашборде увидит только результаты по своим предметам (сейчас — Технология). Запись/ответы откроет тоже без проблем.
+1. В одной вкладке (учитель/админ) — создай новую сессию, открой её панель.
+2. В инкогнито — войди по коду как ученик, увидишь «Комната ожидания».
+3. Жми «▶ Старт» в учительской вкладке. У ученика максимум через 1–3 секунды экран сам сменится на квиз. Никаких ручных перезагрузок.
+4. Жми «⏹ Стоп» — у ученика сразу появится «Тест завершён».
 
