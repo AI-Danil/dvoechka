@@ -539,7 +539,7 @@ function ReplayInner() {
                     </div>
                   )}
 
-                  {!quizResults && openTextAnswers.length === 0 && (
+                  {!quizResults && breakdownQuiz.length === 0 && breakdownWritten.length === 0 && openTextAnswers.length === 0 && (
                     <p className="text-sm text-muted-foreground">Ответы не найдены.</p>
                   )}
                 </CardContent>
