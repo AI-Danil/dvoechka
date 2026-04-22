@@ -359,16 +359,109 @@ function ReplayInner() {
                 <CardHeader>
                   <CardTitle className="text-base">
                     Ответы ученика
-                    {quizResults && (
+                    {(quizResults || score) && (
                       <Badge variant="secondary" className="ml-2">
-                        Квиз: {quizResults.correct}/{quizResults.total}
+                        Квиз: {quizResults?.correct ?? score!.correct}/{quizResults?.total ?? score!.total}
                       </Badge>
                     )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Квиз */}
-                  {quizResults && (
+                  {/* НОВЫЙ ФОРМАТ — breakdown из grade-quiz-submission */}
+                  {breakdownQuiz.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-sm uppercase text-muted-foreground">Тестовая часть</h3>
+                      <ol className="space-y-3">
+                        {breakdownQuiz.map((q, i) => {
+                          const ua = q.user_answer;
+                          const ca = q.correct;
+                          const opts = Array.isArray(q.options) ? q.options : [];
+                          const renderChoice = (val: number | string | null | undefined) => {
+                            if (val === null || val === undefined || val === "" || val === -1) return null;
+                            const idx = typeof val === "number" ? val : Number(val);
+                            if (Number.isFinite(idx) && idx >= 0 && idx < opts.length) {
+                              return `${labels[idx] ?? idx + 1}) ${opts[idx]}`;
+                            }
+                            return String(val);
+                          };
+                          const uaText = renderChoice(ua);
+                          const caText = renderChoice(ca);
+                          return (
+                            <li key={i} className="border border-border rounded-md p-3 space-y-1.5">
+                              <div className="flex items-start gap-2">
+                                <span className="font-mono text-xs text-muted-foreground mt-1">{q.position}.</span>
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium">
+                                    {q.question_text ?? <span className="text-muted-foreground italic">[вопрос]</span>}
+                                  </div>
+                                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+                                    <div>
+                                      <span className="text-muted-foreground">Ответ ученика: </span>
+                                      {uaText ? (
+                                        <span className="font-medium">{uaText}</span>
+                                      ) : (
+                                        <span className="italic text-muted-foreground">пропущен</span>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Правильный: </span>
+                                      <span className="font-medium">{caText ?? "—"}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div>
+                                  {q.is_correct ? (
+                                    <Badge className="bg-primary text-primary-foreground hover:bg-primary">
+                                      <Check className="h-3 w-3" />
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="destructive">
+                                      <XIcon className="h-3 w-3" />
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  )}
+
+                  {breakdownWritten.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-sm uppercase text-muted-foreground">Развёрнутые ответы</h3>
+                      <ol className="space-y-3">
+                        {breakdownWritten.map((w, i) => (
+                          <li key={i} className="border border-border rounded-md p-3">
+                            <div className="text-xs text-muted-foreground mb-1">
+                              Задание {w.position}{w.block_title ? ` — ${w.block_title}` : ""}
+                            </div>
+                            {w.question_text && (
+                              <div className="text-sm font-medium mb-2 whitespace-pre-wrap">{w.question_text}</div>
+                            )}
+                            {String(w.user_answer ?? "").trim() ? (
+                              <div className="text-sm whitespace-pre-wrap">{String(w.user_answer)}</div>
+                            ) : (
+                              <div className="text-sm italic text-muted-foreground">— пусто —</div>
+                            )}
+                            {w.expected_answer && (
+                              <details className="mt-2 text-xs">
+                                <summary className="cursor-pointer text-muted-foreground">Эталон</summary>
+                                <div className="mt-1 whitespace-pre-wrap text-muted-foreground">{w.expected_answer}</div>
+                              </details>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                      <p className="text-xs text-muted-foreground italic">
+                        Развёрнутые ответы оцениваются учителем вручную.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* LEGACY — старый quizResults для хардкод-тестов */}
+                  {breakdownQuiz.length === 0 && quizResults && (
                     <div className="space-y-3">
                       <h3 className="font-semibold text-sm uppercase text-muted-foreground">Тестовая часть</h3>
                       <ol className="space-y-3">
