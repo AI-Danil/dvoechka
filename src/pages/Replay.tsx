@@ -151,13 +151,19 @@ function ReplayInner() {
       setError(null);
       try {
         const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/replay-signed-url`;
+        const headers: Record<string, string> = {
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          "Content-Type": "application/json",
+        };
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        } else if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+          headers["x-teacher-token"] = token;
+        }
         const resp = await fetch(url, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token || ""}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify({ resultId: id }),
         });
         if (resp.status === 401) throw new Error("Сессия истекла. Войдите заново.");
@@ -174,7 +180,7 @@ function ReplayInner() {
       }
     })();
     return () => { cancelled = true; };
-  }, [id, token]);
+  }, [id, token, session?.access_token]);
 
   // Загрузить и склеить чанки записи (только если они есть)
   useEffect(() => {
