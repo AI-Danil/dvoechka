@@ -119,6 +119,7 @@ function ReplayInner() {
   const [searchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as "replay" | "log" | "answers") || "answers";
   const { token } = useTeacherAuth();
+  const { session } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<"replay" | "log" | "answers">(
     initialTab === "log" || initialTab === "replay" || initialTab === "answers" ? initialTab : "answers"
