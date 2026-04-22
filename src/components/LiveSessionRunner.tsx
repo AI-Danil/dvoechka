@@ -154,6 +154,8 @@ export default function LiveSessionRunner({
       submittedRef.current = true;
       setPhase("submitting");
       try {
+        // Финализируем запись экрана: догружаем хвост и обновляем replay_url
+        try { await finalize(); } catch (e) { console.error("[live] finalize failed:", e); }
         const time_spent = Math.round((Date.now() - startedAtRef.current) / 1000);
         const per_question = quizResults?.perQuestion?.map((p, i) => ({
           position: i,
@@ -203,7 +205,7 @@ export default function LiveSessionRunner({
         setPhase(testKind === "quiz" ? "quiz" : "written");
       }
     },
-    [attemptId, onFinished, resultId, studentName, testId, testKind, toast, writtenFiles],
+    [attemptId, finalize, onFinished, resultId, studentName, testId, testKind, toast, writtenFiles],
   );
 
   // Авто-сабмит по истечении таймера
