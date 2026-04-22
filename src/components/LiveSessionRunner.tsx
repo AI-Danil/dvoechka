@@ -86,7 +86,7 @@ export default function LiveSessionRunner({
   });
 
   useDevToolsBlock({ enabled: isActive, notify });
-  useRrwebRecorder({ resultId: isActive ? resultId : null, enabled: isActive });
+  const { finalize } = useRrwebRecorder({ resultId: isActive ? resultId : null, enabled: isActive });
 
   useEffect(() => {
     loadTestQuestions(testId).then(setQuestions);
