@@ -4,6 +4,7 @@ import rrwebPlayer from "rrweb-player";
 import "rrweb-player/dist/style.css";
 import TeacherLoginGate from "@/components/TeacherLoginGate";
 import { useTeacherAuth } from "@/hooks/useTeacherAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,19 @@ interface PerQuestion {
   timedOut?: boolean;
 }
 
+interface BreakdownItem {
+  position: number;
+  response_kind: "quiz" | "written";
+  question_text?: string;
+  block_title?: string | null;
+  options?: string[];
+  user_answer?: number | string | null;
+  correct?: number | string | null;
+  is_correct?: boolean;
+  expected_answer?: string | null;
+  points?: number;
+}
+
 interface AnswersPayload {
   type?: string;
   answers?: string[];
@@ -32,7 +46,11 @@ interface AnswersPayload {
     total: number;
     perQuestion: PerQuestion[];
   };
-  // legacy / non-quiz tests могут хранить просто массив строк
+  // новый формат grade-quiz-submission
+  breakdown?: BreakdownItem[];
+  written?: Record<string, string>;
+  score?: { correct: number; total: number };
+  kind?: string;
 }
 
 const CHEAT_TYPE_LABELS: Record<string, string> = {
@@ -100,6 +118,7 @@ function ReplayInner() {
   const [searchParams] = useSearchParams();
   const initialTab = (searchParams.get("tab") as "replay" | "log" | "answers") || "answers";
   const { token } = useTeacherAuth();
+  const { session } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<"replay" | "log" | "answers">(
     initialTab === "log" || initialTab === "replay" || initialTab === "answers" ? initialTab : "answers"
@@ -131,13 +150,19 @@ function ReplayInner() {
       setError(null);
       try {
         const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/replay-signed-url`;
+        const headers: Record<string, string> = {
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          "Content-Type": "application/json",
+        };
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        } else if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+          headers["x-teacher-token"] = token;
+        }
         const resp = await fetch(url, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token || ""}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            "Content-Type": "application/json",
-          },
+          headers,
           body: JSON.stringify({ resultId: id }),
         });
         if (resp.status === 401) throw new Error("Сессия истекла. Войдите заново.");
@@ -154,7 +179,7 @@ function ReplayInner() {
       }
     })();
     return () => { cancelled = true; };
-  }, [id, token]);
+  }, [id, token, session?.access_token]);
 
   // Загрузить и склеить чанки записи (только если они есть)
   useEffect(() => {
@@ -256,6 +281,15 @@ function ReplayInner() {
 
   const openTextAnswers: string[] = answersPayload?.answers ?? legacyAnswersArray ?? [];
   const quizResults = answersPayload?.quizResults ?? null;
+  const breakdown: BreakdownItem[] = Array.isArray(answersPayload?.breakdown)
+    ? answersPayload!.breakdown!
+    : [];
+  const breakdownQuiz = breakdown.filter((b) => b.response_kind === "quiz");
+  const breakdownWritten = breakdown.filter((b) => b.response_kind === "written");
+  const score = answersPayload?.score
+    ?? (breakdownQuiz.length > 0
+      ? { correct: breakdownQuiz.filter((b) => b.is_correct).length, total: breakdownQuiz.length }
+      : null);
 
   const quizQuestions = getQuizQuestionsForTestType(
     answersPayload?.type ?? result?.test_type ?? null
@@ -276,13 +310,13 @@ function ReplayInner() {
               <div className="text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{result.student_name}</span>
                 {" · "}{result.grade} класс · {result.subject}
-                {quizResults && (
+                {(quizResults || score) && (
                   <>
                     {" · "}
                     <span className="font-medium text-foreground">
-                      {quizResults.correct} / {quizResults.total}
+                      {quizResults ? `${quizResults.correct} / ${quizResults.total}` : `${score!.correct} / ${score!.total}`}
                     </span>
-                    {" "}({Math.round((quizResults.correct / quizResults.total) * 100)}%)
+                    {" "}({Math.round(((quizResults?.correct ?? score!.correct) / (quizResults?.total ?? score!.total)) * 100)}%)
                   </>
                 )}
                 {" · "}{new Date(result.created_at).toLocaleString("ru-RU")}
@@ -324,16 +358,109 @@ function ReplayInner() {
                 <CardHeader>
                   <CardTitle className="text-base">
                     Ответы ученика
-                    {quizResults && (
+                    {(quizResults || score) && (
                       <Badge variant="secondary" className="ml-2">
-                        Квиз: {quizResults.correct}/{quizResults.total}
+                        Квиз: {quizResults?.correct ?? score!.correct}/{quizResults?.total ?? score!.total}
                       </Badge>
                     )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Квиз */}
-                  {quizResults && (
+                  {/* НОВЫЙ ФОРМАТ — breakdown из grade-quiz-submission */}
+                  {breakdownQuiz.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-sm uppercase text-muted-foreground">Тестовая часть</h3>
+                      <ol className="space-y-3">
+                        {breakdownQuiz.map((q, i) => {
+                          const ua = q.user_answer;
+                          const ca = q.correct;
+                          const opts = Array.isArray(q.options) ? q.options : [];
+                          const renderChoice = (val: number | string | null | undefined) => {
+                            if (val === null || val === undefined || val === "" || val === -1) return null;
+                            const idx = typeof val === "number" ? val : Number(val);
+                            if (Number.isFinite(idx) && idx >= 0 && idx < opts.length) {
+                              return `${labels[idx] ?? idx + 1}) ${opts[idx]}`;
+                            }
+                            return String(val);
+                          };
+                          const uaText = renderChoice(ua);
+                          const caText = renderChoice(ca);
+                          return (
+                            <li key={i} className="border border-border rounded-md p-3 space-y-1.5">
+                              <div className="flex items-start gap-2">
+                                <span className="font-mono text-xs text-muted-foreground mt-1">{q.position}.</span>
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium">
+                                    {q.question_text ?? <span className="text-muted-foreground italic">[вопрос]</span>}
+                                  </div>
+                                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+                                    <div>
+                                      <span className="text-muted-foreground">Ответ ученика: </span>
+                                      {uaText ? (
+                                        <span className="font-medium">{uaText}</span>
+                                      ) : (
+                                        <span className="italic text-muted-foreground">пропущен</span>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Правильный: </span>
+                                      <span className="font-medium">{caText ?? "—"}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div>
+                                  {q.is_correct ? (
+                                    <Badge className="bg-primary text-primary-foreground hover:bg-primary">
+                                      <Check className="h-3 w-3" />
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="destructive">
+                                      <XIcon className="h-3 w-3" />
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  )}
+
+                  {breakdownWritten.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-sm uppercase text-muted-foreground">Развёрнутые ответы</h3>
+                      <ol className="space-y-3">
+                        {breakdownWritten.map((w, i) => (
+                          <li key={i} className="border border-border rounded-md p-3">
+                            <div className="text-xs text-muted-foreground mb-1">
+                              Задание {w.position}{w.block_title ? ` — ${w.block_title}` : ""}
+                            </div>
+                            {w.question_text && (
+                              <div className="text-sm font-medium mb-2 whitespace-pre-wrap">{w.question_text}</div>
+                            )}
+                            {String(w.user_answer ?? "").trim() ? (
+                              <div className="text-sm whitespace-pre-wrap">{String(w.user_answer)}</div>
+                            ) : (
+                              <div className="text-sm italic text-muted-foreground">— пусто —</div>
+                            )}
+                            {w.expected_answer && (
+                              <details className="mt-2 text-xs">
+                                <summary className="cursor-pointer text-muted-foreground">Эталон</summary>
+                                <div className="mt-1 whitespace-pre-wrap text-muted-foreground">{w.expected_answer}</div>
+                              </details>
+                            )}
+                          </li>
+                        ))}
+                      </ol>
+                      <p className="text-xs text-muted-foreground italic">
+                        Развёрнутые ответы оцениваются учителем вручную.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* LEGACY — старый quizResults для хардкод-тестов */}
+                  {breakdownQuiz.length === 0 && quizResults && (
                     <div className="space-y-3">
                       <h3 className="font-semibold text-sm uppercase text-muted-foreground">Тестовая часть</h3>
                       <ol className="space-y-3">
@@ -411,7 +538,7 @@ function ReplayInner() {
                     </div>
                   )}
 
-                  {!quizResults && openTextAnswers.length === 0 && (
+                  {!quizResults && breakdownQuiz.length === 0 && breakdownWritten.length === 0 && openTextAnswers.length === 0 && (
                     <p className="text-sm text-muted-foreground">Ответы не найдены.</p>
                   )}
                 </CardContent>
@@ -519,6 +646,16 @@ function ReplayInner() {
 }
 
 export default function Replay() {
+  const { roles, loading } = useAuth();
+  const isStaff = roles.includes("admin") || roles.includes("teacher");
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Загрузка…</p>
+      </div>
+    );
+  }
+  if (isStaff) return <ReplayInner />;
   return (
     <TeacherLoginGate>
       <ReplayInner />
