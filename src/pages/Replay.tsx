@@ -647,6 +647,16 @@ function ReplayInner() {
 }
 
 export default function Replay() {
+  const { roles, loading } = useAuth();
+  const isStaff = roles.includes("admin") || roles.includes("teacher");
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Загрузка…</p>
+      </div>
+    );
+  }
+  if (isStaff) return <ReplayInner />;
   return (
     <TeacherLoginGate>
       <ReplayInner />
