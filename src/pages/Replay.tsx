@@ -25,6 +25,19 @@ interface PerQuestion {
   timedOut?: boolean;
 }
 
+interface BreakdownItem {
+  position: number;
+  response_kind: "quiz" | "written";
+  question_text?: string;
+  block_title?: string | null;
+  options?: string[];
+  user_answer?: number | string | null;
+  correct?: number | string | null;
+  is_correct?: boolean;
+  expected_answer?: string | null;
+  points?: number;
+}
+
 interface AnswersPayload {
   type?: string;
   answers?: string[];
@@ -34,7 +47,11 @@ interface AnswersPayload {
     total: number;
     perQuestion: PerQuestion[];
   };
-  // legacy / non-quiz tests могут хранить просто массив строк
+  // новый формат grade-quiz-submission
+  breakdown?: BreakdownItem[];
+  written?: Record<string, string>;
+  score?: { correct: number; total: number };
+  kind?: string;
 }
 
 const CHEAT_TYPE_LABELS: Record<string, string> = {
