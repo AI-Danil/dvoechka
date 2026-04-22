@@ -356,9 +356,9 @@ export default function TestResultsList({ isAdmin = false }: Props) {
               </details>
 
               {detail.replay_url && (
-                <a href={detail.replay_url} target="_blank" rel="noreferrer" className="text-primary underline text-sm block">
+                <Link to={`/replay/${detail.id}`} className="text-primary underline text-sm block">
                   🎬 Открыть запись сессии ↗
-                </a>
+                </Link>
               )}
             </div>
           )}
