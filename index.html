@@ -25,7 +25,7 @@
 
   <body>
     <div id="root">
-      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;color:#5a6b62;background:#f4f7f6">
+      <div data-loading-fallback style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;color:#5a6b62;background:#f4f7f6;padding:20px">
         <div style="text-align:center">
           <div style="font-size:2rem;margin-bottom:0.5rem">📚</div>
           <div>Загружаем тест…</div>
@@ -33,6 +33,20 @@
         </div>
       </div>
     </div>
+    <noscript>
+      <div style="padding:20px;text-align:center;font-family:system-ui,-apple-system,sans-serif">
+        Для теста нужен включённый JavaScript. Откройте страницу в Chrome или Edge и включите JavaScript.
+      </div>
+    </noscript>
+    <script>
+      (function () {
+        window.setTimeout(function () {
+          var root = document.getElementById("root");
+          if (!root || !root.querySelector("[data-loading-fallback]")) return;
+          root.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;color:#1a2e22;background:#f4f7f6;padding:20px"><div style="max-width:520px;background:#fff;border:1px solid #d4d8d6;border-radius:12px;padding:24px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.08)"><div style="font-size:40px;margin-bottom:8px">⚠️</div><h1 style="font-size:20px;margin:0 0 12px">Страница не загрузилась</h1><p style="line-height:1.5;color:#5a6b62;margin:0 0 12px">Обновите страницу. Если не помогло, откройте адрес <b>https://dvoechka.lovable.app/live</b> в Chrome или Edge, отключите переводчик/блокировщик и режим экономии трафика.</p><button onclick="location.reload()" style="background:#167a4a;color:white;border:0;border-radius:8px;padding:12px 18px;font-weight:700">Обновить</button><p style="font-size:12px;color:#6b7a72;margin-top:14px">Сообщите учителю: скрипт сайта не запустился.</p></div></div>';
+        }, 15000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
