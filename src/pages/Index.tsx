@@ -34,6 +34,7 @@ import RecordingBadge from "@/components/RecordingBadge";
 import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
 import DbTestRunner from "@/components/DbTestRunner";
 import { loadPublishedTestsForGradeSubject, type DbTestSummary } from "@/lib/dbTests";
+import { safeRandomUUID } from "@/lib/safeRandomUUID";
 
 type Screen = "login" | "test" | "success";
 type LoginStep = "grade" | "subject" | "name" | "test-pick";
@@ -694,7 +695,7 @@ const Index = () => {
     }
     setTestId(chosenTestId);
     // Заранее генерируем UUID результата — он же путь для rrweb-записи
-    setResultId(crypto.randomUUID());
+    setResultId(safeRandomUUID());
     const hasQuiz = !!TESTS_WITH_QUIZ[quizKey(grade, subject, chosenTestId)];
     if (hasQuiz) {
       setQuizPhase("intro");

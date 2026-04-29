@@ -16,6 +16,7 @@ import { useAntiCheatNotify } from "@/hooks/useAntiCheatNotify";
 import { useDevToolsBlock } from "@/hooks/useDevToolsBlock";
 import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
 import RecordingBadge from "@/components/RecordingBadge";
+import { safeRandomUUID } from "@/lib/safeRandomUUID";
 
 interface Props {
   test: DbTestSummary;
@@ -45,7 +46,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const [quizPrefilled, setQuizPrefilled] = useState<Record<number, number> | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const cheatLogRef = useRef<CheatEvent[]>([]);
-  const [resultId] = useState<string>(() => crypto.randomUUID());
+  const [resultId] = useState<string>(() => safeRandomUUID());
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const attemptIdRef = useRef<string | null>(null);
 

@@ -14,6 +14,7 @@ import { useAntiCheatNotify } from "@/hooks/useAntiCheatNotify";
 import { useDevToolsBlock } from "@/hooks/useDevToolsBlock";
 import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
 import RecordingBadge from "@/components/RecordingBadge";
+import { safeRandomUUID } from "@/lib/safeRandomUUID";
 
 interface Props {
   testId: string;
@@ -56,7 +57,7 @@ export default function LiveSessionRunner({
   );
   const [now, setNow] = useState(Date.now());
   const cheatLogRef = useRef<CheatEvent[]>([]);
-  const [resultId] = useState(() => crypto.randomUUID());
+  const [resultId] = useState(() => safeRandomUUID());
   const startedAtRef = useRef<number>(Date.now());
   const submittedRef = useRef(false);
 
