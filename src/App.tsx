@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import RequireRole from "@/components/RequireRole";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -26,29 +27,31 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/account" element={<Account />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route
-              path="/teacher/dashboard"
-              element={<RequireRole role="teacher"><TeacherDashboard /></RequireRole>}
-            />
-            <Route
-              path="/teacher/live"
-              element={<RequireRole role={["teacher", "admin"]}><TeacherLive /></RequireRole>}
-            />
-            <Route path="/live" element={<LiveStudent />} />
-            <Route
-              path="/student/dashboard"
-              element={<RequireRole role="student"><StudentDashboard /></RequireRole>}
-            />
-            <Route path="/replay/:id" element={<Replay />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/account" element={<Account />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route
+                path="/teacher/dashboard"
+                element={<RequireRole role="teacher"><TeacherDashboard /></RequireRole>}
+              />
+              <Route
+                path="/teacher/live"
+                element={<RequireRole role={["teacher", "admin"]}><TeacherLive /></RequireRole>}
+              />
+              <Route path="/live" element={<LiveStudent />} />
+              <Route
+                path="/student/dashboard"
+                element={<RequireRole role="student"><StudentDashboard /></RequireRole>}
+              />
+              <Route path="/replay/:id" element={<Replay />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
