@@ -134,6 +134,16 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/c
 2. На [app.netlify.com/drop](https://app.netlify.com/drop) перетащите папку `dist`.
 3. Готово.
 
+**Environment variables на Netlify:**
+В дашборде Netlify: **Site configuration → Environment variables → Add a variable → Import from .env**, вставить значения из `.env.production` репо:
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY`
+- `VITE_SUPABASE_PROJECT_ID`
+
+Технически Vite подхватит `.env.production` из репо и без этого, но задать в дашборде надёжнее (можно ротировать без коммита). После добавления — **Deploys → Trigger deploy → Clear cache and deploy site**.
+
+**Если билд падает на `lockfile is frozen`** — это уже учтено в `netlify.toml` (install command = `bun install --no-frozen-lockfile && npm run build`).
+
 **Что работает на зеркале:**
 - Все тесты, античит, запись экрана (rrweb), Telegram-уведомления, загрузка файлов.
 - Те же данные, что и на основном `dvoechka.lovable.app`.
