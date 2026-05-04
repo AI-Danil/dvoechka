@@ -467,6 +467,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
     );
   }
 
+  if (phase === "intro" && (test.kind === "quiz" || test.kind === "hybrid")) {
     return (
       <>
         <RecordingBadge variant="full" />
