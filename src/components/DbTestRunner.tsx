@@ -17,6 +17,9 @@ import { useDevToolsBlock } from "@/hooks/useDevToolsBlock";
 import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
 import RecordingBadge from "@/components/RecordingBadge";
 import { safeRandomUUID } from "@/lib/safeRandomUUID";
+import { requiresStrictRules } from "@/lib/strictRules";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertTriangle } from "lucide-react";
 
 interface Props {
   test: DbTestSummary;
