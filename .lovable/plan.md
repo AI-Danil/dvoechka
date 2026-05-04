@@ -1,54 +1,104 @@
-## Цель
+## Проблема
 
-Починить деплой на Cloudflare. Уйти от автодетекта Vite-плагина (требует Vite 6) на assets-only режим через `wrangler.toml`.
+Cloudflare Workers Builds авто-определяет проект как `Framework: Vite` (по `vite` в `package.json`) и запускает Cloudflare Vite-плагин, который требует Vite ≥ 6. Наш `wrangler.toml` с `[assets]` он игнорирует на этапе авто-конфига.
 
-## Что меняем
+Лог:
+```
+Detected Project Settings:
+ - Framework: Vite           ← вот оно
+ - Build Command: bun run build
+ - Output Directory: dist
+✘ The version of Vite used in the project ("5.4.21") cannot be automatically configured.
+```
 
-### 1. Создать `wrangler.toml` в корне проекта
+## Решение
+
+Переопределить deploy так, чтобы Cloudflare НЕ запускал авто-конфиг Vite-плагина, а просто залил готовый `dist/` как статику.
+
+### 1. В Cloudflare Dashboard (делает Даниил руками)
+
+**Workers & Pages → dvoechka → Settings → Builds → Edit configuration:**
+
+- **Framework preset:** изменить с `Vite` на **`None`** (или `Static HTML`).
+- **Build command:** оставить `bun run build`.
+- **Deploy command:** заменить `npx wrangler deploy` на:
+  ```
+  npx wrangler deploy --no-bundle
+  ```
+  Флаг `--no-bundle` отключает попытку Cloudflare самому собрать через Vite-плагин и заставляет использовать `wrangler.toml` как есть.
+- **Output directory:** `dist` (как было).
+
+После сохранения — **Retry deployment**.
+
+### 2. Подстраховка в репо (делаю я)
+
+#### a. Уточнить `wrangler.toml`
+
+Добавить `main` поле явно отсутствующее (чтобы wrangler точно понял, что это assets-only Worker, а не Vite-приложение):
 
 ```toml
 name = "dvoechka"
 compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
 
 [assets]
 directory = "./dist"
 not_found_handling = "single-page-application"
 ```
 
-Этого достаточно: wrangler увидит конфиг и не полезет в авто-конфиг Vite-плагина. SPA-фоллбек (`not_found_handling`) даёт корректный роутинг для React Router при прямых заходах на `/admin`, `/test/...` и т.п.
+`compatibility_flags` не обязателен, но не помешает. Главное — отсутствие `main` и `[build]` секций означает «только статика».
 
-### 2. Обновить README
+#### b. Добавить npm-скрипт `deploy:cf`
 
-В секции «Cloudflare Pages» дописать, что теперь деплой идёт через `wrangler.toml` (assets-only), и почему: Cloudflare Vite-плагин требует Vite ≥ 6, а у нас 5.4 — поэтому используется простой статический режим.
+В `package.json` добавить:
 
-Проверить, что в Cloudflare Dashboard:
-- **Build command:** `bun run build` (или `npm run build`)
-- **Deploy command:** `npx wrangler deploy`
-- **Output directory:** `dist`
+```json
+"deploy:cf": "wrangler deploy --no-bundle"
+```
 
-### 3. Обновить мемори (`mem://infrastructure/build-config`)
+Чтобы можно было задать в Cloudflare Build configuration `Deploy command: bun run deploy:cf` — это надёжнее, чем держать команду в UI.
 
-Добавить пункт: «Cloudflare деплой — assets-only через `wrangler.toml`. НЕ апгрейдить Vite до 6 ради Cloudflare-плагина — это сломает `@vitejs/plugin-legacy` и потребует регрессионного тестирования.»
+#### c. Обновить README
+
+В секции «Cloudflare Pages / Workers» дописать:
+
+- Framework preset должен быть `None` (НЕ `Vite`).
+- Deploy command: `bun run deploy:cf` (или `npx wrangler deploy --no-bundle`).
+- Объяснить почему: иначе Cloudflare пытается запустить свой Vite-плагин, который требует Vite ≥ 6.
+
+#### d. Обновить `mem://infrastructure/build-config`
+
+Добавить правило: Cloudflare Workers Builds — **Framework preset = None** + `wrangler deploy --no-bundle`. Авто-детект `Framework: Vite` ломает деплой на Vite 5.
 
 ## Файлы
 
-- `wrangler.toml` — создать
-- `README.md` — отредактировать секцию Cloudflare Pages
-- `mem://infrastructure/build-config` — дописать правило
-- `mem://index.md` — обновить описание мемори, если поменялось
+- `wrangler.toml` — добавить `compatibility_flags`
+- `package.json` — добавить скрипт `deploy:cf`
+- `README.md` — обновить инструкцию по Cloudflare
+- `mem://infrastructure/build-config` — добавить правило про Framework preset
+- `.lovable/plan.md` — обновить (можно перезаписать этим планом)
 
 ## Что НЕ трогаем
 
-- `package.json`, `vite.config.ts`, `bun.lock` — без изменений
-- Netlify-конфиг — работает, не трогаем
-- Lovable / Supabase — без изменений
+- `vite.config.ts`, версию Vite — не апгрейдим (сломает legacy).
+- `bun.lock` — не трогаем.
+- Netlify, Lovable — без изменений.
 
-## Проверка после применения
+## Проверка
 
-Ты пушишь → Cloudflare триггерит билд → в логах должно быть:
+После пуша + изменения настроек в Cloudflare Dashboard в логах должно быть:
+
 ```
-Detected wrangler.toml
-Uploading assets from ./dist
+Detected Project Settings:
+ - Framework: None           ← вместо Vite
+ - Deploy Command: bun run deploy:cf
+...
+Uploaded N assets
 Deployed dvoechka...
 ```
-Без сообщения про «Vite version cannot be automatically configured».
+
+Без сообщения про Vite 6.
+
+## Если и это не сработает
+
+Запасной план — полностью убрать `vite` из `dependencies` (он только в `devDependencies`, проверю). Если он там есть — это могло триггерить детект. Но судя по `package.json`, vite только в devDependencies, так что детект скорее идёт по наличию `vite.config.ts` в корне. Тогда крайний вариант — переименовать `vite.config.ts` → `vite.config.js`... нет, это сломает локальную сборку. Реально единственный надёжный путь — Framework preset = None в дашборде.
