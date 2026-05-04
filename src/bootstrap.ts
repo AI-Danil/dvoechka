@@ -1,4 +1,16 @@
 // Must run before App/Supabase imports: some school browsers block Web Storage.
+
+// Beacon: JS bundle started executing. If TG sees html-js but not js-start,
+// the inline script ran but the module bundle didn't (legacy browser / proxy stripping type=module).
+try {
+  const img = new Image();
+  img.src =
+    "https://gbpqlzjtcuhijtouwrvn.supabase.co/functions/v1/page-beacon?stage=js-start&ua=" +
+    encodeURIComponent((navigator.userAgent || "").substring(0, 160));
+} catch {
+  /* ignore */
+}
+
 function createMemoryStorage(): Storage {
   const mem = new Map<string, string>();
   return {
