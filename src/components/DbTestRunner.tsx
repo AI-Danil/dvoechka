@@ -37,7 +37,7 @@ interface CheatEvent {
   details?: string;
 }
 
-type Phase = "intake" | "intro" | "quiz" | "written" | "submitting" | "done";
+type Phase = "intake" | "rules" | "intro" | "quiz" | "written" | "submitting" | "done";
 
 export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const { toast } = useToast();
