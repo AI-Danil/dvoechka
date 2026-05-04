@@ -1,64 +1,75 @@
-Понимаю раздражение. Это уже третья отдельная проблема в цепочке деплоя, и текущая ошибка понятная:
+## Что мы знаем
 
-```text
-Invalid _redirects configuration:
-Line 1: Infinite loop detected in this rule.
+- У меня лично сайт `https://dvoechka.lovable.app/` открывается нормально (проверил через браузер — рендерит «Шаг 1. Выберите класс»).
+- У детей — **полностью белая страница**, без эмодзи `📚 Загружаем тест…` и без сообщения «Страница не загрузилась».
+- В edge-функцию `notify-copy-attempt` **ни одного** лога вида «Белый экран» от детей не пришло.
+
+## Диагноз
+
+Если бы JS просто падал — сработал бы либо `window.addEventListener('error')` в `bootstrap.ts` (отправил бы лог в Telegram), либо HTML-fallback показал бы «📚 Загружаем тест…», либо через 15 сек — «⚠️ Страница не загрузилась». Не показывается **ничего**. Значит:
+
+1. Либо HTML до них вообще не доходит (DNS/блокировка домена в школьной сети).
+2. Либо HTML доходит, но у них **очень старый браузер**, в котором падает inline-`<script>` в `index.html` (например, на arrow-функциях, `const`, `let` в IE/старом Android WebView), и тогда даже fallback не успевает выполниться.
+3. Либо `<script type="module">` блокируется школьным прокси (некоторые корпоративные фильтры режут MIME `application/javascript` для `type="module"`).
+
+Мы не можем снаружи определить, какой из вариантов. Поэтому план — **сделать HTML максимально живучим и поставить пассивные «маячки»**, которые сами расскажут нам, что именно сломалось.
+
+## Что меняем
+
+### 1. `index.html` — переписываем все inline-скрипты на ES5
+
+Сейчас inline-скрипты используют `function () {}` и `var` (это уже ES5, ок), но проверю каждую строку. Цель: чтобы fallback гарантированно выполнялся даже в IE11/старом Android WebView. Никаких `const`/`let`/arrow в inline-блоках.
+
+### 2. `index.html` — добавляем «маячок жизни» (pixel beacon)
+
+Прямо в `<head>` ставим тег `<img src="...supabase.../functions/v1/page-beacon?stage=html&ua=..." width="1" height="1">`. Этот img грузится **браузером без JS** — если HTML дошёл до ребёнка, мы получим запрос. Если запросов нет — проблема в сети/DNS, а не в коде.
+
+### 3. Новая edge-функция `page-beacon`
+
+Принимает GET `?stage=html|js-start|js-fail&ua=…&grade=…`, шлёт в тот же телеграм-чат краткий лог: `🪧 beacon: stage=html UA=Mozilla/...`. Без авторизации (публичная), `verify_jwt = false`. Это даст нам полную картину, на какой стадии у конкретного ребёнка всё умирает:
+- пришёл `stage=html` но не пришёл `stage=js-start` → JS-бандл не запустился (старый браузер / прокси режет модули);
+- не пришёл даже `stage=html` → HTML не дошёл;
+- пришёл `stage=js-start` но потом ничего → React упал молча.
+
+### 4. `src/bootstrap.ts` — отправлять `stage=js-start` сразу при загрузке
+
+Самой первой строкой шлём beacon `js-start` (через `new Image()`, не fetch — `fetch` может не работать в старых браузерах). Если бэндл загрузился, но React не отрендерил — мы это увидим.
+
+### 5. Усиливаем `@vitejs/plugin-legacy`
+
+В `vite.config.ts` сейчас:
+```ts
+legacy({ targets: ["defaults", "Chrome >= 61", ...], modernPolyfills: true })
 ```
+Добавляем `renderLegacyChunks: true` (по умолчанию true, проверим), `polyfills: true`, и расширяем targets до `Chrome >= 49, Android >= 5, IE 11` — это покроет совсем древние школьные планшеты. Лагаси-чанк подгружается через `<script nomodule>`, что обходит проблему «прокси режет type=module».
 
-Cloudflare Wrangler при assets deploy подхватывает файл `public/_redirects`, который после сборки попадает в `dist/_redirects`. Для Cloudflare этот Netlify-style fallback:
+### 6. Fallback-сообщение делаем заметнее
 
-```text
-/* /index.html 200
-```
+Сейчас текст «📚 Загружаем тест…» — серый `#5a6b62` на светло-сером `#f4f7f6`. На некоторых школьных мониторах с убитой подсветкой это **визуально неотличимо от белого**. Меняем на чёрный текст `#1a2e22`, увеличиваем размер до 20px, добавляем явную рамку. Если ребёнок видит «белый экран» — пусть увидит хотя бы «📚 Загружаем тест…» жирно и контрастно, чтобы мы поняли «JS просто не запустился».
 
-конфликтует с `wrangler.toml`, где уже включён правильный SPA fallback:
+### 7. Сокращаем таймаут fallback с 15 до 8 секунд
 
-```toml
-[assets]
-not_found_handling = "single-page-application"
-```
-
-То есть `_redirects` здесь не нужен и ломает deploy.
-
-## План исправления
-
-1. **Удалить `public/_redirects`**
-   - Этот файл нужен только Netlify.
-   - Для Cloudflare он вызывает ошибку infinite loop.
-   - Для Lovable он вообще не используется.
-   - Для текущего Netlify-деплоя SPA fallback уже задан в `netlify.toml` через `[[redirects]]`, поэтому удаление `public/_redirects` не должно сломать Netlify.
-
-2. **Оставить `wrangler.toml` без изменений**
-   - Там уже есть корректная настройка:
-     ```toml
-     not_found_handling = "single-page-application"
-     ```
-   - Это правильный способ SPA fallback для Cloudflare Workers assets.
-
-3. **Обновить документацию**
-   - В `README.md` добавить предупреждение: не создавать `public/_redirects`, потому что Cloudflare Wrangler валидирует его и падает.
-   - Уточнить, что для Netlify fallback живёт в `netlify.toml`, а для Cloudflare — в `wrangler.toml`.
-
-4. **Обновить память проекта**
-   - В `mem://infrastructure/build-config` добавить правило: не возвращать `public/_redirects`; Cloudflare deploy ломается с ошибкой `Invalid _redirects configuration / Infinite loop detected`.
-
-5. **Обновить `.lovable/plan.md`**
-   - Зафиксировать текущую ошибку и финальное решение, чтобы дальше не ходить по кругу.
+15 секунд — слишком долго; ребёнок успеет психануть и закрыть вкладку, не увидев сообщение об ошибке. 8 секунд достаточно.
 
 ## Файлы, которые будут затронуты
 
-- `public/_redirects` — удалить
-- `README.md` — уточнить Cloudflare/Netlify SPA fallback
-- `mem://infrastructure/build-config` — добавить запрет на `public/_redirects`
-- `.lovable/plan.md` — обновить план/диагностику
+- `index.html` — inline-скрипты, beacon `<img>` в head, контрастный fallback, таймаут 8s
+- `src/bootstrap.ts` — beacon `js-start` первой строкой
+- `vite.config.ts` — расширенный legacy targets
+- `supabase/functions/page-beacon/index.ts` — **новая** edge-функция
+- `supabase/config.toml` — `[functions.page-beacon] verify_jwt = false`
+- `mem://infrastructure/build-config` — записать про legacy targets и beacon
 
-## Что не трогаем
+## Что НЕ трогаем
 
-- `package.json`
-- `bun.lock`
-- `wrangler.toml`
-- `netlify.toml`
-- Vite / React / сборку
-- настройки Cloudflare Dashboard
+- `wrangler.toml`, `netlify.toml`, `package.json`, бизнес-логику, базу, RLS.
 
-После этого в логах Cloudflare больше не должно быть ошибки про `_redirects`; deploy должен перейти к загрузке assets через Wrangler.
+## После деплоя
+
+1. Прошу попросить нескольких детей с белым экраном открыть сайт ещё раз.
+2. Смотрим в телеграм-чат:
+   - если приходит только `stage=html` — проблема в JS-бандле → доделываем legacy/полифиллы или хостим без `type=module`;
+   - если ничего не приходит — проблема в школьной сети → разбираемся с DNS/блокировкой;
+   - если приходит `stage=js-start` и потом ошибка — мы её прочитаем и точечно починим.
+
+Это **диагностический шаг**. Без данных от реальных детских устройств гадать вслепую можно бесконечно — мы это уже делали 2 раза.

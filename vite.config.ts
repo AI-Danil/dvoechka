@@ -16,11 +16,12 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === "production" && legacy({
-      targets: ["defaults", "Chrome >= 61", "Safari >= 12", "iOS >= 12", "Android >= 7"],
+      // Cover ancient school PCs and tablets: IE11, very old Android WebView, old Safari.
+      targets: ["defaults", "Chrome >= 49", "Safari >= 10", "iOS >= 10", "Android >= 5", "ie >= 11"],
       modernPolyfills: true,
     }),
     mode === "development" && componentTagger(),
-  ].filter(Boolean),
+  ].filter(Boolean) as any,
   build: {
     target: "es2018",
   },

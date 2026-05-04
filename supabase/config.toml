@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.join-session]
 verify_jwt = false
+
+[functions.page-beacon]
+verify_jwt = false

@@ -3,14 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
     <title>Контрольные работы</title>
     <meta name="description" content="Сайт с контрольными для TOP академии от Минкина Данила. Мой телеграм: @idgi1">
     <meta name="author" content="Lovable" />
 
-    <!-- TODO: Update og:title to match your application name -->
-    
-    
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4c958d6d-bd1d-49fb-b0b0-6ebe56d495a4/id-preview-c1c92059--f9c54977-d275-40df-b382-7cf19518156c.lovable.app-1773605362114.png">
 
@@ -18,33 +14,55 @@
     <meta name="twitter:site" content="@Lovable" />
     <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4c958d6d-bd1d-49fb-b0b0-6ebe56d495a4/id-preview-c1c92059--f9c54977-d275-40df-b382-7cf19518156c.lovable.app-1773605362114.png">
     <meta property="og:title" content="Контрольные работы">
-  <meta name="twitter:title" content="Контрольные работы">
-  <meta property="og:description" content="Сайт с контрольными для TOP академии от Минкина Данила. Мой телеграм: @idgi1">
-  <meta name="twitter:description" content="Сайт с контрольными для TOP академии от Минкина Данила. Мой телеграм: @idgi1">
-</head>
+    <meta name="twitter:title" content="Контрольные работы">
+    <meta property="og:description" content="Сайт с контрольными для TOP академии от Минкина Данила. Мой телеграм: @idgi1">
+    <meta name="twitter:description" content="Сайт с контрольными для TOP академии от Минкина Данила. Мой телеграм: @idgi1">
+  </head>
 
-  <body>
+  <body style="margin:0;background:#f4f7f6">
+    <!-- Diagnostic beacon: hits server BEFORE any JS runs. If we don't get this hit in TG, HTML never reached the kid. -->
+    <img
+      src="https://gbpqlzjtcuhijtouwrvn.supabase.co/functions/v1/page-beacon?stage=html"
+      width="1" height="1" alt="" aria-hidden="true"
+      style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+
     <div id="root">
-      <div data-loading-fallback style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;color:#5a6b62;background:#f4f7f6;padding:20px">
-        <div style="text-align:center">
-          <div style="font-size:2rem;margin-bottom:0.5rem">📚</div>
-          <div>Загружаем тест…</div>
-          <div style="font-size:0.8rem;margin-top:1rem;opacity:0.6">Если страница не открывается дольше 10 секунд — обновите её (Ctrl+R или потяните вниз).</div>
+      <div data-loading-fallback style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,Arial,sans-serif;color:#0f1f17;background:#f4f7f6;padding:20px">
+        <div style="text-align:center;background:#ffffff;border:2px solid #167a4a;border-radius:12px;padding:24px 28px;max-width:480px;box-shadow:0 4px 16px rgba(0,0,0,.08)">
+          <div style="font-size:2.4rem;margin-bottom:8px">📚</div>
+          <div style="font-size:20px;font-weight:700;color:#0f1f17">Загружаем тест…</div>
+          <div style="font-size:13px;margin-top:12px;color:#3a4a40">Если страница не открывается дольше 10 секунд — обновите её (Ctrl+R или потяните вниз).</div>
         </div>
       </div>
     </div>
     <noscript>
-      <div style="padding:20px;text-align:center;font-family:system-ui,-apple-system,sans-serif">
+      <div style="padding:20px;text-align:center;font-family:system-ui,-apple-system,Arial,sans-serif;color:#0f1f17">
         Для теста нужен включённый JavaScript. Откройте страницу в Chrome или Edge и включите JavaScript.
       </div>
     </noscript>
     <script>
+      // ES5 only! No const/let/arrow — must run on very old school browsers.
       (function () {
+        try {
+          // Beacon: HTML reached, inline JS executed.
+          var i = new Image();
+          i.src = "https://gbpqlzjtcuhijtouwrvn.supabase.co/functions/v1/page-beacon?stage=html-js&ua=" +
+            encodeURIComponent((navigator.userAgent || "").substring(0, 160));
+        } catch (e) { /* ignore */ }
+
         window.setTimeout(function () {
           var root = document.getElementById("root");
           if (!root || !root.querySelector("[data-loading-fallback]")) return;
-          root.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;color:#1a2e22;background:#f4f7f6;padding:20px"><div style="max-width:520px;background:#fff;border:1px solid #d4d8d6;border-radius:12px;padding:24px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.08)"><div style="font-size:40px;margin-bottom:8px">⚠️</div><h1 style="font-size:20px;margin:0 0 12px">Страница не загрузилась</h1><p style="line-height:1.5;color:#5a6b62;margin:0 0 12px">Обновите страницу. Если не помогло, откройте адрес <b>https://dvoechka.lovable.app/live</b> в Chrome или Edge, отключите переводчик/блокировщик и режим экономии трафика.</p><button onclick="location.reload()" style="background:#167a4a;color:white;border:0;border-radius:8px;padding:12px 18px;font-weight:700">Обновить</button><p style="font-size:12px;color:#6b7a72;margin-top:14px">Сообщите учителю: скрипт сайта не запустился.</p></div></div>';
-        }, 15000);
+
+          // Bundle never replaced #root → tell the server.
+          try {
+            var f = new Image();
+            f.src = "https://gbpqlzjtcuhijtouwrvn.supabase.co/functions/v1/page-beacon?stage=js-timeout&ua=" +
+              encodeURIComponent((navigator.userAgent || "").substring(0, 160));
+          } catch (e2) { /* ignore */ }
+
+          root.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,Arial,sans-serif;color:#0f1f17;background:#f4f7f6;padding:20px"><div style="max-width:520px;background:#fff;border:2px solid #c43d3d;border-radius:12px;padding:24px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.08)"><div style="font-size:40px;margin-bottom:8px">⚠️</div><h1 style="font-size:20px;margin:0 0 12px;color:#0f1f17">Страница не загрузилась</h1><p style="line-height:1.5;color:#3a4a40;margin:0 0 12px">Обновите страницу. Если не помогло — откройте <b>https://dvoechka.lovable.app/</b> в свежем Chrome или Edge, отключите переводчик/блокировщик и режим экономии трафика.</p><button onclick="location.reload()" style="background:#167a4a;color:white;border:0;border-radius:8px;padding:12px 18px;font-weight:700;font-size:15px;cursor:pointer">Обновить</button><p style="font-size:12px;color:#6b7a72;margin-top:14px">Сообщите учителю: скрипт сайта не запустился.</p></div></div>';
+        }, 8000);
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
