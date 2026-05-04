@@ -19,8 +19,6 @@ export default defineConfig(({ mode }) => ({
       // Cover ancient school PCs and tablets: IE11, very old Android WebView, old Safari.
       targets: ["defaults", "Chrome >= 49", "Safari >= 10", "iOS >= 10", "Android >= 5", "ie >= 11"],
       modernPolyfills: true,
-      polyfills: true,
-      renderLegacyChunks: true,
     }),
     mode === "development" && componentTagger(),
   ].filter(Boolean),
