@@ -97,7 +97,14 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
     };
 
     const onCopy = () => { log("copy"); notify("Попытка копирования (Ctrl+C)"); remoteLog("copy"); };
-    const onPaste = () => { log("paste"); notify("Попытка вставки (Ctrl+V)"); remoteLog("paste"); };
+    const onPasteOutside = (e: ClipboardEvent) => {
+      // Глобальный fallback: вставка вне полей ответа (например, в адресную строку или в служебный input)
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('[data-answer-field="1"]')) return; // обрабатывается локально с деталями
+      log("paste_outside_field");
+      notify("Попытка вставки вне поля ответа");
+      remoteLog("paste_outside_field");
+    };
     const onCut = () => { log("cut"); notify("Попытка вырезания (Ctrl+X)"); remoteLog("cut"); };
     const onContext = () => { log("contextmenu"); remoteLog("contextmenu"); };
     const onVisibility = () => {
