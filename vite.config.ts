@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => ({
       modernPolyfills: true,
     }),
     mode === "development" && componentTagger(),
-  ].filter(Boolean),
+  ].filter(Boolean) as any,
   build: {
     target: "es2018",
   },
