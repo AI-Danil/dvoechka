@@ -1,5 +1,7 @@
 [build]
-  command = "npm run build"
+  # bun install без --frozen-lockfile, чтобы lockfile перегенерировался
+  # после правок package.json (иначе CI падает на "lockfile is frozen").
+  command = "bun install --no-frozen-lockfile && npm run build"
   publish = "dist"
 
 [build.environment]
