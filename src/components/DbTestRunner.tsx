@@ -52,6 +52,8 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const [resultId] = useState<string>(() => safeRandomUUID());
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const attemptIdRef = useRef<string | null>(null);
+  const acceptRulesRef = useRef<Phase>("written");
+  const [rulesAccepted, setRulesAccepted] = useState(false);
 
   const isActive = phase === "quiz" || phase === "written" || phase === "intro";
 
