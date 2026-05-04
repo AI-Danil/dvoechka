@@ -1,104 +1,92 @@
-## Проблема
+## Прогресс
 
-Cloudflare Workers Builds авто-определяет проект как `Framework: Vite` (по `vite` в `package.json`) и запускает Cloudflare Vite-плагин, который требует Vite ≥ 6. Наш `wrangler.toml` с `[assets]` он игнорирует на этапе авто-конфига.
+Билд прошёл успешно (Vite 5 не ругается, Framework: None сработал, `dist/` собран). Теперь падает только deploy step:
 
-Лог:
 ```
-Detected Project Settings:
- - Framework: Vite           ← вот оно
- - Build Command: bun run build
- - Output Directory: dist
-✘ The version of Vite used in the project ("5.4.21") cannot be automatically configured.
+$ wrangler deploy --no-bundle
+/usr/bin/bash: line 1: wrangler: command not found
 ```
+
+`wrangler` не установлен — у нас его нет ни в deps, ни в devDeps, а Cloudflare Workers Builds в режиме `Framework: None` его не подкладывает автоматически (только для preset = Vite/Next/etc).
 
 ## Решение
 
-Переопределить deploy так, чтобы Cloudflare НЕ запускал авто-конфиг Vite-плагина, а просто залил готовый `dist/` как статику.
+Установить `wrangler` локально как devDependency и вызывать через `bunx`/`npx` — тогда Cloudflare использует ту же версию, что и мы локально, не зависит от глобального PATH.
 
-### 1. В Cloudflare Dashboard (делает Даниил руками)
+### Изменения
 
-**Workers & Pages → dvoechka → Settings → Builds → Edit configuration:**
+#### 1. `package.json`
 
-- **Framework preset:** изменить с `Vite` на **`None`** (или `Static HTML`).
-- **Build command:** оставить `bun run build`.
-- **Deploy command:** заменить `npx wrangler deploy` на:
+- Добавить в `devDependencies`:
+  ```json
+  "wrangler": "^3.90.0"
   ```
-  npx wrangler deploy --no-bundle
+  (последняя стабильная 3.x; 4.x требует Node 20+, но у нас и так Node 22 — можно и 4.x, возьму последнюю, какую bun подтянет)
+
+- Изменить скрипт `deploy:cf`:
+  ```json
+  "deploy:cf": "wrangler deploy --no-bundle"
   ```
-  Флаг `--no-bundle` отключает попытку Cloudflare самому собрать через Vite-плагин и заставляет использовать `wrangler.toml` как есть.
-- **Output directory:** `dist` (как было).
+  → оставить как есть. После добавления в devDeps `bun run deploy:cf` найдёт wrangler в `node_modules/.bin/`.
 
-После сохранения — **Retry deployment**.
+  Альтернатива (надёжнее, не зависит от PATH резолва bun): `"deploy:cf": "bunx wrangler deploy --no-bundle"`. Возьму этот вариант.
 
-### 2. Подстраховка в репо (делаю я)
+#### 2. `bun.lock`
 
-#### a. Уточнить `wrangler.toml`
+Обновится автоматически после `bun install`. На Cloudflare сейчас стоит `--frozen-lockfile`, так что коммит `bun.lock` обязателен — иначе install упадёт. Это сделает Lovable при сохранении изменений.
 
-Добавить `main` поле явно отсутствующее (чтобы wrangler точно понял, что это assets-only Worker, а не Vite-приложение):
+#### 3. `README.md`
 
-```toml
-name = "dvoechka"
-compatibility_date = "2025-01-01"
-compatibility_flags = ["nodejs_compat"]
+В секции Cloudflare добавить строчку:
+- `wrangler` теперь в devDependencies, не нужно ставить глобально.
+- Команда деплоя: `bun run deploy:cf` (внутри `bunx wrangler deploy --no-bundle`).
 
-[assets]
-directory = "./dist"
-not_found_handling = "single-page-application"
-```
+#### 4. `mem://infrastructure/build-config`
 
-`compatibility_flags` не обязателен, но не помешает. Главное — отсутствие `main` и `[build]` секций означает «только статика».
+Добавить заметку: «wrangler ставится как devDependency, вызывается через `bunx`, Cloudflare Workers Builds в режиме Framework=None не подкладывает wrangler автоматически».
 
-#### b. Добавить npm-скрипт `deploy:cf`
+#### 5. `.lovable/plan.md`
 
-В `package.json` добавить:
-
-```json
-"deploy:cf": "wrangler deploy --no-bundle"
-```
-
-Чтобы можно было задать в Cloudflare Build configuration `Deploy command: bun run deploy:cf` — это надёжнее, чем держать команду в UI.
-
-#### c. Обновить README
-
-В секции «Cloudflare Pages / Workers» дописать:
-
-- Framework preset должен быть `None` (НЕ `Vite`).
-- Deploy command: `bun run deploy:cf` (или `npx wrangler deploy --no-bundle`).
-- Объяснить почему: иначе Cloudflare пытается запустить свой Vite-плагин, который требует Vite ≥ 6.
-
-#### d. Обновить `mem://infrastructure/build-config`
-
-Добавить правило: Cloudflare Workers Builds — **Framework preset = None** + `wrangler deploy --no-bundle`. Авто-детект `Framework: Vite` ломает деплой на Vite 5.
+Перезаписать этим планом.
 
 ## Файлы
 
-- `wrangler.toml` — добавить `compatibility_flags`
-- `package.json` — добавить скрипт `deploy:cf`
-- `README.md` — обновить инструкцию по Cloudflare
-- `mem://infrastructure/build-config` — добавить правило про Framework preset
-- `.lovable/plan.md` — обновить (можно перезаписать этим планом)
+- `package.json` — добавить `wrangler` в devDeps + поправить скрипт `deploy:cf`
+- `bun.lock` — обновится автоматом
+- `README.md` — мелкое уточнение
+- `mem://infrastructure/build-config` — добавить правило
+- `.lovable/plan.md` — обновить
 
 ## Что НЕ трогаем
 
-- `vite.config.ts`, версию Vite — не апгрейдим (сломает legacy).
-- `bun.lock` — не трогаем.
-- Netlify, Lovable — без изменений.
+- `wrangler.toml` — он рабочий, билд это доказал
+- Cloudflare Dashboard — никаких ручных действий не нужно (Framework: None уже выставлен и работает)
+- Vite, vite.config.ts — не трогаем
 
 ## Проверка
 
-После пуша + изменения настроек в Cloudflare Dashboard в логах должно быть:
+После пуша:
 
 ```
-Detected Project Settings:
- - Framework: None           ← вместо Vite
- - Deploy Command: bun run deploy:cf
-...
+Installing project dependencies: bun install --frozen-lockfile
++ wrangler@...                        ← должен появиться
+Build command completed
+Executing user deploy command: bun run deploy:cf
+$ bunx wrangler deploy --no-bundle
+Total Upload: ...
 Uploaded N assets
-Deployed dvoechka...
+Deployed dvoechka triggers (...)
+  https://dvoechka.<account>.workers.dev
 ```
 
-Без сообщения про Vite 6.
+Без `command not found`.
 
-## Если и это не сработает
+## Если упадёт снова
 
-Запасной план — полностью убрать `vite` из `dependencies` (он только в `devDependencies`, проверю). Если он там есть — это могло триггерить детект. Но судя по `package.json`, vite только в devDependencies, так что детект скорее идёт по наличию `vite.config.ts` в корне. Тогда крайний вариант — переименовать `vite.config.ts` → `vite.config.js`... нет, это сломает локальную сборку. Реально единственный надёжный путь — Framework preset = None в дашборде.
+Возможные следующие проблемы (сразу для контекста):
+
+1. **`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` не заданы.** В Workers Builds (в отличие от ручного wrangler) они подкладываются автоматически из контекста проекта — обычно работает из коробки. Если нет — добавить в Settings → Variables and Secrets.
+
+2. **Wrangler потребует подтвердить создание Worker.** В non-interactive контексте должен сам согласиться, но если нет — добавить флаг `--keep-vars` или явно создать Worker один раз руками.
+
+3. **Размер ассетов.** `dist/` ~2.6MB — норм, лимит Cloudflare 25MB на один файл.
