@@ -12,7 +12,8 @@
     "preview:host": "vite preview --host 0.0.0.0 --port 4173",
     "tunnel": "cloudflared tunnel --url http://localhost:4173",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "deploy:cf": "wrangler deploy --no-bundle"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

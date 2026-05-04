@@ -41,16 +41,28 @@ caffeinate -dimsu
 
 ### Cloudflare Pages / Workers (постоянное зеркало)
 
-Настраивается один раз через https://dash.cloudflare.com → **Workers & Pages → Create → Connect to Git**:
+Настраивается один раз через https://dash.cloudflare.com → **Workers & Pages → Create → Connect to Git**.
 
-- **Build command:** `bun run build` (или `npm run build`)
-- **Deploy command:** `npx wrangler deploy`
+**Build configuration (важно!):**
+
+- **Framework preset:** `None` ⚠️ (НЕ `Vite`! авто-детект ломает деплой)
+- **Build command:** `bun run build`
+- **Deploy command:** `bun run deploy:cf` (это `wrangler deploy --no-bundle`)
 - **Build output directory:** `dist`
 - **Environment variables:** `NODE_VERSION=20`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID` (значения те же, что в Netlify)
 
 Деплой идёт через `wrangler.toml` в корне репо в режиме **assets-only** (статика из `dist/`). SPA-фоллбек включён через `not_found_handling = "single-page-application"` — прямые заходы на `/admin`, `/test/...` и refresh страницы работают.
 
-> **Почему не Cloudflare Vite-плагин?** Он требует Vite ≥ 6, а у нас Vite 5.4 + `@vitejs/plugin-legacy` (нужен для старых браузеров на школьных компах). Апгрейд Vite ради Cloudflare сломает legacy-сборку. Assets-only режим решает задачу без ломки.
+> **Почему `Framework preset = None` и `--no-bundle`?**  
+> Если оставить `Framework: Vite`, Cloudflare запустит свой Vite-плагин, который требует Vite ≥ 6. У нас Vite 5.4 + `@vitejs/plugin-legacy` (нужен для старых браузеров на школьных компах). Апгрейд Vite ради Cloudflare сломает legacy-сборку. `--no-bundle` отключает попытку Cloudflare пересобрать проект и просто загружает готовый `dist/` как статику.
+>
+> Симптом неправильной настройки в логах:
+> ```
+> Detected Project Settings:
+>  - Framework: Vite
+> ✘ The version of Vite used in the project ("5.4.21") cannot be automatically configured.
+> ```
+> Если видишь это — зайди в Settings → Builds → Edit configuration и поставь `Framework preset: None`.
 
 Дальше Cloudflare деплоит автоматически при каждом push в main.
 
