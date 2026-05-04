@@ -71,3 +71,25 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Зеркало на Netlify (для РФ)
+
+Проект готов к деплою на Netlify как «зеркало» — отдельный домен, тот же бэкенд (Supabase). Все результаты учеников падают в ту же БД, учитель видит всё в одной админке.
+
+**Способ 1 — через GitHub (рекомендую):**
+1. Откройте [app.netlify.com](https://app.netlify.com) → **Add new site → Import an existing project**.
+2. Выберите GitHub → этот репозиторий.
+3. Netlify автоматически подхватит `netlify.toml` (build command, publish dir, SPA-redirect). Ничего настраивать не надо.
+4. Жмите **Deploy**. Через ~2 минуты получите ссылку вида `https://random-name.netlify.app`.
+5. (Опционально) В **Site settings → Change site name** — задайте читабельный subdomain.
+
+**Способ 2 — Drag & Drop (без Git):**
+1. Локально: `npm install && npm run build` → получите папку `dist/`.
+2. На [app.netlify.com/drop](https://app.netlify.com/drop) перетащите папку `dist`.
+3. Готово.
+
+**Что работает на зеркале:**
+- Все тесты, античит, запись экрана (rrweb), Telegram-уведомления, загрузка файлов.
+- Те же данные, что и на основном `dvoechka.lovable.app`.
+
+**Если Netlify окажется недоступен из РФ** — те же файлы (`dist/`) подойдут для GitHub Pages, Cloudflare Pages, Vercel. Только `netlify.toml` заменить на их аналог.

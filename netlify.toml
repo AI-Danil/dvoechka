@@ -1,0 +1,12 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA fallback — иначе прямые URL (/live/ABC, /admin и т.д.) дают 404 при F5
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
