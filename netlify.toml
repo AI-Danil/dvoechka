@@ -1,8 +1,5 @@
 [build]
-  # Удаляем lock перед install: в репо залочен musl-вариант @swc/core
-  # (Lovable-песочница на Alpine), а Netlify собирает на glibc → EBADPLATFORM.
-  # Пересборка lock даёт npm подобрать правильные glibc-биндинги.
-  command = "rm -f package-lock.json && npm install && npm run build"
+  command = "npm run build"
   publish = "dist"
 
 [build.environment]
