@@ -53,6 +53,8 @@ caffeinate -dimsu
 
 Деплой идёт через `wrangler.toml` в корне репо в режиме **assets-only** (статика из `dist/`). SPA-фоллбек включён через `not_found_handling = "single-page-application"` — прямые заходы на `/admin`, `/test/...` и refresh страницы работают.
 
+> ⚠️ **НЕ создавать `public/_redirects`!** Это Netlify-специфичный файл. Cloudflare Wrangler валидирует его при деплое и падает с ошибкой `Invalid _redirects configuration / Line 1: Infinite loop detected` на стандартном правиле `/* /index.html 200`. Для Cloudflare SPA fallback уже обеспечен в `wrangler.toml`, для Netlify — в `netlify.toml` (`[[redirects]]`).
+
 > **Почему `Framework preset = None` и `--no-bundle`?**  
 > Если оставить `Framework: Vite`, Cloudflare запустит свой Vite-плагин, который требует Vite ≥ 6. У нас Vite 5.4 + `@vitejs/plugin-legacy` (нужен для старых браузеров на школьных компах). Апгрейд Vite ради Cloudflare сломает legacy-сборку. `--no-bundle` отключает попытку Cloudflare пересобрать проект и просто загружает готовый `dist/` как статику.
 >
