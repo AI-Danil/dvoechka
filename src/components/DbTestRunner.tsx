@@ -17,6 +17,9 @@ import { useDevToolsBlock } from "@/hooks/useDevToolsBlock";
 import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
 import RecordingBadge from "@/components/RecordingBadge";
 import { safeRandomUUID } from "@/lib/safeRandomUUID";
+import { requiresStrictRules } from "@/lib/strictRules";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertTriangle } from "lucide-react";
 
 interface Props {
   test: DbTestSummary;
@@ -34,7 +37,7 @@ interface CheatEvent {
   details?: string;
 }
 
-type Phase = "intake" | "intro" | "quiz" | "written" | "submitting" | "done";
+type Phase = "intake" | "rules" | "intro" | "quiz" | "written" | "submitting" | "done";
 
 export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const { toast } = useToast();
@@ -49,6 +52,8 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const [resultId] = useState<string>(() => safeRandomUUID());
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const attemptIdRef = useRef<string | null>(null);
+  const acceptRulesRef = useRef<Phase>("written");
+  const [rulesAccepted, setRulesAccepted] = useState(false);
 
   const isActive = phase === "quiz" || phase === "written" || phase === "intro";
 
@@ -94,7 +99,14 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
     };
 
     const onCopy = () => { log("copy"); notify("Попытка копирования (Ctrl+C)"); remoteLog("copy"); };
-    const onPaste = () => { log("paste"); notify("Попытка вставки (Ctrl+V)"); remoteLog("paste"); };
+    const onPasteOutside = (e: ClipboardEvent) => {
+      // Глобальный fallback: вставка вне полей ответа (например, в адресную строку или в служебный input)
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('[data-answer-field="1"]')) return; // обрабатывается локально с деталями
+      log("paste_outside_field");
+      notify("Попытка вставки вне поля ответа");
+      remoteLog("paste_outside_field");
+    };
     const onCut = () => { log("cut"); notify("Попытка вырезания (Ctrl+X)"); remoteLog("cut"); };
     const onContext = () => { log("contextmenu"); remoteLog("contextmenu"); };
     const onVisibility = () => {
@@ -136,7 +148,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
     };
 
     document.addEventListener("copy", onCopy);
-    document.addEventListener("paste", onPaste);
+    document.addEventListener("paste", onPasteOutside);
     document.addEventListener("cut", onCut);
     document.addEventListener("contextmenu", onContext);
     document.addEventListener("visibilitychange", onVisibility);
@@ -145,7 +157,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
 
     return () => {
       document.removeEventListener("copy", onCopy);
-      document.removeEventListener("paste", onPaste);
+      document.removeEventListener("paste", onPasteOutside);
       document.removeEventListener("cut", onCut);
       document.removeEventListener("contextmenu", onContext);
       document.removeEventListener("visibilitychange", onVisibility);
@@ -179,6 +191,40 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
     if (phase !== "written") return;
     scheduleSave({ written: writtenAnswers, quiz: quizPrefilled ?? undefined }, "written");
   }, [writtenAnswers, phase, scheduleSave, quizPrefilled]);
+
+  // Логирование вставки в конкретное поле ответа (с текстом и номером задачи)
+  const handleAnswerPaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+      const target = e.currentTarget;
+      const pos = target.dataset.questionPos ?? "?";
+      const title = target.dataset.questionTitle ?? "";
+      const text = e.clipboardData.getData("text/plain") ?? "";
+      const snippet = text.length > 500 ? text.slice(0, 500) + "…" : text;
+      const details = `Задача ${Number(pos) + 1}${title ? ` (${title})` : ""}: "${snippet}"`;
+      cheatLogRef.current.push({ type: "paste_into_answer", timestamp: Date.now(), details });
+      notify(`❗ Вставка в поле ответа. ${details}`);
+      if (attemptIdRef.current) {
+        void supabase.functions.invoke("log-cheat-event", {
+          body: {
+            attempt_id: attemptIdRef.current,
+            event: { type: "paste_into_answer", details, timestamp: Date.now() },
+          },
+        });
+      }
+      // НЕ блокируем вставку — текст должен попасть в поле и сохраниться.
+    },
+    [notify],
+  );
+
+  const acceptRules = async () => {
+    cheatLogRef.current.push({ type: "rules_accepted", timestamp: Date.now() });
+    if (attemptIdRef.current) {
+      void supabase.functions.invoke("log-cheat-event", {
+        body: { attempt_id: attemptIdRef.current, event: { type: "rules_accepted", timestamp: Date.now() } },
+      });
+    }
+    setPhase(acceptRulesRef.current);
+  };
 
   const startTest = async () => {
     const m = studentName.trim().match(RUSSIAN_NAME_REGEX);
@@ -218,13 +264,17 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
       });
 
       // Определяем стартовую фазу
-      const initialPhase: Phase =
+      const naturalPhase: Phase =
         r.resumed && r.current_phase === "written"
           ? "written"
           : test.kind === "written"
           ? "written"
           : "intro";
+      // Для контрольных — сначала экран правил (но не показываем повторно при resumed-возврате)
+      const initialPhase: Phase =
+        requiresStrictRules(test) && !r.resumed ? "rules" : naturalPhase;
       setPhase(initialPhase);
+      (acceptRulesRef as any).current = naturalPhase;
     } catch (e: any) {
       toast({ title: "Ошибка", description: e?.message ?? "сеть", variant: "destructive" });
     }
@@ -373,6 +423,50 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
     );
   }
 
+  if (phase === "rules") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-xl border-destructive/40">
+          <CardHeader>
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              <CardTitle>Правила контрольной работы</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">{test.title}</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-md border bg-muted/40 p-4 space-y-2 text-sm leading-relaxed">
+              <p>
+                <b>Копировать из других источников строго запрещено.</b>
+              </p>
+              <p>
+                <b>Вставлять текст в поля для ответов из других источников строго запрещено.</b>
+              </p>
+              <p>
+                Можно прикреплять свои файлы (фото тетради), если выполняете задачи в тетрадях.
+              </p>
+              <p className="text-xs text-muted-foreground pt-2 border-t">
+                Любая попытка вставки фиксируется — учитель видит сам вставленный текст и номер задания
+                в реальном времени.
+              </p>
+            </div>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <Checkbox
+                checked={rulesAccepted}
+                onCheckedChange={(v) => setRulesAccepted(v === true)}
+                className="mt-0.5"
+              />
+              <span className="text-sm">Я прочитал(а) и понял(а) правила, обязуюсь их соблюдать.</span>
+            </label>
+            <Button className="w-full" disabled={!rulesAccepted} onClick={acceptRules}>
+              Принять и начать
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (phase === "intro" && (test.kind === "quiz" || test.kind === "hybrid")) {
     return (
       <>
@@ -454,6 +548,10 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
                     onChange={(e) =>
                       setWrittenAnswers((p) => ({ ...p, [q.position]: e.target.value }))
                     }
+                    onPaste={handleAnswerPaste}
+                    data-answer-field="1"
+                    data-question-pos={q.position}
+                    data-question-title={q.block_title ?? ""}
                     placeholder="Ваш ответ…"
                   />
                   <FileAttach

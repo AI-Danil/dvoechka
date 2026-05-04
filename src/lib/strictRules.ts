@@ -1,0 +1,10 @@
+import type { DbTestSummary } from "@/lib/dbTests";
+
+/**
+ * Тесты со строгими правилами (контрольные работы).
+ * Перед стартом показывается экран с правилами и обязательным подтверждением.
+ */
+export function requiresStrictRules(test: Pick<DbTestSummary, "title">): boolean {
+  const t = (test.title ?? "").toLowerCase();
+  return t.startsWith("итоговая контрольная") || t.includes("контрольная работа");
+}
