@@ -228,13 +228,17 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
       });
 
       // Определяем стартовую фазу
-      const initialPhase: Phase =
+      const naturalPhase: Phase =
         r.resumed && r.current_phase === "written"
           ? "written"
           : test.kind === "written"
           ? "written"
           : "intro";
+      // Для контрольных — сначала экран правил (но не показываем повторно при resumed-возврате)
+      const initialPhase: Phase =
+        requiresStrictRules(test) && !r.resumed ? "rules" : naturalPhase;
       setPhase(initialPhase);
+      (acceptRulesRef as any).current = naturalPhase;
     } catch (e: any) {
       toast({ title: "Ошибка", description: e?.message ?? "сеть", variant: "destructive" });
     }
