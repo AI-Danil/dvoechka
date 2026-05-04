@@ -423,7 +423,50 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
     );
   }
 
-  if (phase === "intro" && (test.kind === "quiz" || test.kind === "hybrid")) {
+  if (phase === "rules") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-xl border-destructive/40">
+          <CardHeader>
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              <CardTitle>Правила контрольной работы</CardTitle>
+            </div>
+            <p className="text-sm text-muted-foreground">{test.title}</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-md border bg-muted/40 p-4 space-y-2 text-sm leading-relaxed">
+              <p>
+                <b>Копировать из других источников строго запрещено.</b>
+              </p>
+              <p>
+                <b>Вставлять текст в поля для ответов из других источников строго запрещено.</b>
+              </p>
+              <p>
+                Можно прикреплять свои файлы (фото тетради), если выполняете задачи в тетрадях.
+              </p>
+              <p className="text-xs text-muted-foreground pt-2 border-t">
+                Любая попытка вставки фиксируется — учитель видит сам вставленный текст и номер задания
+                в реальном времени.
+              </p>
+            </div>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <Checkbox
+                checked={rulesAccepted}
+                onCheckedChange={(v) => setRulesAccepted(v === true)}
+                className="mt-0.5"
+              />
+              <span className="text-sm">Я прочитал(а) и понял(а) правила, обязуюсь их соблюдать.</span>
+            </label>
+            <Button className="w-full" disabled={!rulesAccepted} onClick={acceptRules}>
+              Принять и начать
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
     return (
       <>
         <RecordingBadge variant="full" />
