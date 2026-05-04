@@ -135,41 +135,58 @@ serve(async (req) => {
     }
 
 
+    // Собираем answersData (нужен и для дедупа, и для записи в БД)
+    const answersData: Record<string, unknown> = { type: body.type };
+    if (body.type === "grade7" || body.type === "grade7technology") {
+      answersData.theory = body.theory;
+      answersData.practice = body.practice;
+    } else if (
+      body.type === "grade9" ||
+      body.type === "grade9physics" ||
+      body.type === "grade9technology" ||
+      body.type === "grade8physics" ||
+      body.type === "grade8physicsPower" ||
+      body.type === "grade7physics"
+    ) {
+      answersData.answers = body.answers;
+    } else if (
+      body.type === "grade9physicsAtom" ||
+      body.type === "grade7physicsWork" ||
+      body.type === "grade8informaticsPython"
+    ) {
+      answersData.answers = body.answers;
+      answersData.quizResults = body.quizResults;
+    } else {
+      answersData.blitz = body.blitz;
+      answersData.tasks = body.tasks;
+    }
+
+    // Дедуп: те же ответы от того же ученика за последние 5 минут
+    const dupSince = new Date(Date.now() - DUP_WINDOW_MS).toISOString();
+    const answersHash = await sha256Hex(JSON.stringify(answersData));
+    const { data: recent } = await supabaseAdmin
+      .from("test_results")
+      .select("answers")
+      .eq("student_name", studentName)
+      .eq("grade", gradeNum)
+      .eq("subject", subject)
+      .gte("created_at", dupSince)
+      .limit(20);
+    if (recent && recent.length > 0) {
+      for (const r of recent) {
+        const h = await sha256Hex(JSON.stringify(r.answers));
+        if (h === answersHash) {
+          console.warn("Rejected: duplicate", { studentName });
+          return jsonResponse({ error: "Эти ответы уже были отправлены." }, 409);
+        }
+      }
+    }
+
     // Save to database BEFORE sending to Telegram
     try {
-      const supabaseAdmin = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
-
-      const answersData: Record<string, unknown> = { type: body.type };
-      if (body.type === "grade7" || body.type === "grade7technology") {
-        answersData.theory = body.theory;
-        answersData.practice = body.practice;
-      } else if (
-        body.type === "grade9" ||
-        body.type === "grade9physics" ||
-        body.type === "grade9technology" ||
-        body.type === "grade8physics" ||
-        body.type === "grade8physicsPower" ||
-        body.type === "grade7physics"
-      ) {
-        answersData.answers = body.answers;
-      } else if (
-        body.type === "grade9physicsAtom" ||
-        body.type === "grade7physicsWork" ||
-        body.type === "grade8informaticsPython"
-      ) {
-        answersData.answers = body.answers;
-        answersData.quizResults = body.quizResults;
-      } else {
-        answersData.blitz = body.blitz;
-        answersData.tasks = body.tasks;
-      }
-
       const insertPayload: Record<string, unknown> = {
         student_name: studentName,
-        grade: Number(grade),
+        grade: gradeNum,
         subject,
         attempt: Number(attempt) || 1,
         test_type: body.type,
@@ -193,6 +210,7 @@ serve(async (req) => {
     } catch (dbErr) {
       console.error("DB save error:", dbErr);
     }
+
 
     const minutes = Math.floor(timeSpent / 60);
     const seconds = timeSpent % 60;
