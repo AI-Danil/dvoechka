@@ -47,7 +47,7 @@ caffeinate -dimsu
 
 - **Framework preset:** `None` ⚠️ (НЕ `Vite`! авто-детект ломает деплой)
 - **Build command:** `bun run build`
-- **Deploy command:** `bun run deploy:cf` (это `wrangler deploy --no-bundle`)
+- **Deploy command:** `bun run deploy:cf` (это `bunx wrangler deploy --no-bundle` — `wrangler` стоит локально в devDependencies, ставить глобально не нужно)
 - **Build output directory:** `dist`
 - **Environment variables:** `NODE_VERSION=20`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID` (значения те же, что в Netlify)
 
