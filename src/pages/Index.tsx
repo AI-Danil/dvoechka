@@ -305,6 +305,8 @@ const Index = () => {
         if (draft.tasks8) setTasks8(draft.tasks8);
       } else if (grade === "8" && subject === "physics" && testId === "power-joule") {
         if (draft.answers8physPower) setAnswers8physPower(draft.answers8physPower);
+      } else if (grade === "8" && subject === "physics" && testId === "final-q4") {
+        if (draft.answers8physFinalQ4) setAnswers8physFinalQ4(draft.answers8physFinalQ4);
       } else if (grade === "8" && subject === "physics") {
         if (draft.answers8phys) setAnswers8phys(draft.answers8phys);
       } else if (grade === "9" && subject === "physics" && testId === "atom") {
@@ -346,6 +348,8 @@ const Index = () => {
       data = { blitz8, tasks8 };
     } else if (grade === "8" && subject === "physics" && testId === "power-joule") {
       data = { answers8physPower };
+    } else if (grade === "8" && subject === "physics" && testId === "final-q4") {
+      data = { answers8physFinalQ4 };
     } else if (grade === "8" && subject === "physics") {
       data = { answers8phys };
     } else if (grade === "9" && subject === "physics" && testId === "atom") {
@@ -366,7 +370,7 @@ const Index = () => {
       data = { theory7, practice7 };
     }
     localStorage.setItem(key, JSON.stringify(data));
-  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   // --- Progress ---
   const { answered, total } = useMemo(() => {
@@ -378,6 +382,8 @@ const Index = () => {
       return { answered: blitzFilled + tasksFilled, total: 7 + 6 };
     } else if (grade === "8" && subject === "physics" && testId === "power-joule") {
       return { answered: answers8physPower.filter(Boolean).length, total: 6 };
+    } else if (grade === "8" && subject === "physics" && testId === "final-q4") {
+      return { answered: answers8physFinalQ4.filter(Boolean).length, total: 6 };
     } else if (grade === "8" && subject === "physics") {
       return { answered: answers8phys.filter(Boolean).length, total: 13 };
     } else if (grade === "9" && subject === "physics" && testId === "atom") {
@@ -402,7 +408,7 @@ const Index = () => {
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, subject, testId, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [grade, subject, testId, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
@@ -792,6 +798,13 @@ const Index = () => {
     } else if (g === "8" && s === "physics" && tid === "power-joule") {
       fileUrls = await uploadAttachments(attachments8physPowerRef.current);
       answers = { type: "grade8physicsPower", answers: answers8physPowerRef.current };
+    } else if (g === "8" && s === "physics" && tid === "final-q4") {
+      fileUrls = await uploadAttachments(attachments8physFinalQ4Ref.current);
+      answers = {
+        type: "grade8physicsFinalQ4",
+        answers: answers8physFinalQ4Ref.current,
+        quizResults: quizResultsRef.current,
+      };
     } else if (g === "8" && s === "physics") {
       fileUrls = await uploadAttachments(attachments8physRef.current);
       answers = { type: "grade8physics", answers: answers8physRef.current };
@@ -1195,7 +1208,22 @@ const Index = () => {
           />
         )}
 
-        {grade === "8" && subject === "physics" && testId !== "power-joule" && (
+        {grade === "8" && subject === "physics" && testId === "final-q4" && (
+          <Grade8PhysicsFinalQ4
+            answers={answers8physFinalQ4}
+            attachments={attachments8physFinalQ4}
+            onAnswerChange={(i, v) => {
+              setAnswers8physFinalQ4((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments8physFinalQ4((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "8" && subject === "physics" && testId !== "power-joule" && testId !== "final-q4" && (
           <Grade8Physics
             answers={answers8phys}
             attachments={attachments8phys}
