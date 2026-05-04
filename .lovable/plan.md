@@ -1,32 +1,54 @@
-## Цель
-Починить деплой на Netlify — обойти ошибку `EBADPLATFORM` для `@swc/core-linux-x64-musl`.
+Проблема теперь понятна: Netlify запускает свой этап `Installing dependencies` ДО нашей `build.command`. Поэтому `rm -f package-lock.json` из `netlify.toml` не успевает сработать — установка уже падает раньше.
 
-## Причина
-`package-lock.json` залочил musl-вариант SWC (Lovable песочница на Alpine). Netlify собирает на glibc → npm install падает.
+Дополнительно в проекте есть прямые зависимости, которых быть не должно:
 
-## Фикс
-Одна правка в `netlify.toml` — пересобирать lock под платформу Netlify:
+- `package.json`: `@swc/core`
+- `package.json`: `@swc/core-linux-x64-gnu`
+- `package.json`: `@swc/core-linux-x64-musl`
+- `package-lock.json`: ещё остался `@vitejs/plugin-react-swc`
+
+При этом `vite.config.ts` уже использует правильный плагин:
+
+```ts
+import react from "@vitejs/plugin-react";
+```
+
+То есть SWC для сборки не нужен.
+
+## План фикса
+
+1. В `package.json` удалить из `dependencies`:
+   - `@swc/core`
+   - `@swc/core-linux-x64-gnu`
+   - `@swc/core-linux-x64-musl`
+
+2. В `package-lock.json` убрать устаревшие SWC-записи, чтобы Netlify больше не пытался ставить musl-пакет на glibc.
+   - Также убрать оставшийся `@vitejs/plugin-react-swc` из lock-файла, потому что проект его не использует.
+
+3. Упростить `netlify.toml` обратно до нормальной команды:
 
 ```toml
 [build]
-  command = "rm -f package-lock.json && npm install && npm run build"
+  command = "npm run build"
   publish = "dist"
-
-[build.environment]
-  NODE_VERSION = "20"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
 ```
 
-## Что меняется
-- `netlify.toml` — команда сборки удаляет `package-lock.json` перед `npm install`, чтобы npm подобрал glibc-биндинги SWC.
+4. Оставить без изменений:
+   - `vite.config.ts`
+   - код приложения
+   - Lovable Cloud / backend
+   - `.env.production`
 
-## Что НЕ меняется
-- Сам `package-lock.json` в репо — остаётся как есть (нужен для Lovable-песочницы).
-- Код приложения, Supabase, edge functions — без изменений.
+## После правки
 
-## После применения
-Зайти на Netlify → Deploys → **Trigger deploy → Clear cache and deploy site**. Через ~2 минуты должно собраться.
+В Netlify нужно запустить:
+
+`Deploys → Trigger deploy → Clear cache and deploy site`
+
+Ожидаемый результат: этап `Installing dependencies` пройдёт, потому что в манифестах больше не будет прямой несовместимой зависимости `@swc/core-linux-x64-musl`.
+
+## Файлы, которые будут затронуты
+
+- `package.json`
+- `package-lock.json`
+- `netlify.toml`
