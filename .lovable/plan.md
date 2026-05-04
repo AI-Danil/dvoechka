@@ -1,61 +1,54 @@
-## Что на самом деле падает
+## Цель
 
-Да, понял: это билд из Cloudflare/Lovable Cloud, не Netlify. Причина в логах одна и та же:
+Починить деплой на Cloudflare. Уйти от автодетекта Vite-плагина (требует Vite 6) на assets-only режим через `wrangler.toml`.
 
-```text
-bun install --frozen-lockfile
-error: lockfile had changes, but lockfile is frozen
+## Что меняем
+
+### 1. Создать `wrangler.toml` в корне проекта
+
+```toml
+name = "dvoechka"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
 ```
 
-Это значит: `package.json` и `bun.lock` сейчас не совпадают. Cloud-сборщик запускает установку строго через `bun install --frozen-lockfile`, поэтому он не имеет права сам поправить lockfile и сразу падает.
+Этого достаточно: wrangler увидит конфиг и не полезет в авто-конфиг Vite-плагина. SPA-фоллбек (`not_found_handling`) даёт корректный роутинг для React Router при прямых заходах на `/admin`, `/test/...` и т.п.
 
-Я уже проверил файлы:
+### 2. Обновить README
 
-- `package.json` больше не содержит SWC-зависимостей.
-- `vite.config.ts` уже использует правильный `@vitejs/plugin-react`.
-- Но `bun.lock` всё ещё содержит старые `@swc/core...` записи.
-- Плюс `vitest.config.ts` всё ещё импортирует `@vitejs/plugin-react-swc`, хотя его уже нет в `package.json`.
+В секции «Cloudflare Pages» дописать, что теперь деплой идёт через `wrangler.toml` (assets-only), и почему: Cloudflare Vite-плагин требует Vite ≥ 6, а у нас 5.4 — поэтому используется простой статический режим.
 
-## План правки
+Проверить, что в Cloudflare Dashboard:
+- **Build command:** `bun run build` (или `npm run build`)
+- **Deploy command:** `npx wrangler deploy`
+- **Output directory:** `dist`
 
-1. **Исправить тестовый Vite/Vitest config**
-   - В `vitest.config.ts` заменить:
-     ```ts
-     import react from "@vitejs/plugin-react-swc";
-     ```
-     на:
-     ```ts
-     import react from "@vitejs/plugin-react";
-     ```
-   - Это соответствует проектной памяти: использовать только `@vitejs/plugin-react`, без SWC.
+### 3. Обновить мемори (`mem://infrastructure/build-config`)
 
-2. **Перегенерировать lockfile под текущий `package.json`**
-   - Запустить установку зависимостей так, чтобы `bun.lock` синхронизировался с `package.json`.
-   - Ожидаемый результат: из `bun.lock` уйдут старые прямые зависимости `@swc/core`, `@swc/core-linux-*`, и `bun install --frozen-lockfile` перестанет падать.
+Добавить пункт: «Cloudflare деплой — assets-only через `wrangler.toml`. НЕ апгрейдить Vite до 6 ради Cloudflare-плагина — это сломает `@vitejs/plugin-legacy` и потребует регрессионного тестирования.»
 
-3. **Проверить, что cloud-сценарий больше не упирается в frozen lockfile**
-   - Локально проверить именно команду, которую запускает cloud:
-     ```sh
-     bun install --frozen-lockfile
-     ```
-   - Если она проходит, Cloudflare/Lovable Cloud должен пройти этап dependencies install.
+## Файлы
 
-4. **При необходимости обновить README**
-   - Коротко добавить troubleshooting-блок для Cloudflare Pages/Lovable Cloud:
-     - если ошибка `lockfile had changes, but lockfile is frozen`, значит надо обновить и закоммитить `bun.lock` вместе с `package.json`.
+- `wrangler.toml` — создать
+- `README.md` — отредактировать секцию Cloudflare Pages
+- `mem://infrastructure/build-config` — дописать правило
+- `mem://index.md` — обновить описание мемори, если поменялось
 
-## Файлы, которые будут затронуты
+## Что НЕ трогаем
 
-- `vitest.config.ts`
-- `bun.lock`
-- возможно `README.md` — только если добавлю короткую заметку по этой ошибке.
+- `package.json`, `vite.config.ts`, `bun.lock` — без изменений
+- Netlify-конфиг — работает, не трогаем
+- Lovable / Supabase — без изменений
 
-## Что тебе сделать после применения
+## Проверка после применения
 
-После апрува и правки:
-
-1. Синхронизировать изменения в GitHub/репо, если нужно.
-2. В Cloudflare Pages запустить новый deploy.
-3. Желательно выбрать **Retry deployment** или **Clear cache and deploy**.
-
-Netlify трогать не надо — он уже работает.
+Ты пушишь → Cloudflare триггерит билд → в логах должно быть:
+```
+Detected wrangler.toml
+Uploading assets from ./dist
+Deployed dvoechka...
+```
+Без сообщения про «Vite version cannot be automatically configured».
