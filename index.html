@@ -41,6 +41,17 @@
       </div>
     </noscript>
     <script>
+      // SPA fallback for GitHub Pages: 404.html redirects /foo/bar → /?/foo/bar,
+      // here we restore the original path into history before React Router boots.
+      (function () {
+        var l = window.location;
+        if (l.search && l.search.indexOf("?/") === 0) {
+          var decoded = l.search.slice(2).split("&")[0].replace(/~and~/g, "&");
+          window.history.replaceState(null, "", l.pathname.slice(0, -1) + "/" + decoded + l.hash);
+        }
+      })();
+    </script>
+    <script>
       // ES5 only! No const/let/arrow — must run on very old school browsers.
       (function () {
         try {

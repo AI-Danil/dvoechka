@@ -1,0 +1,55 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install deps
+        run: bun install --no-frozen-lockfile
+
+      - name: Build
+        env:
+          # Public anon keys — safe to inline. Override via repo secrets if desired.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://gbpqlzjtcuhijtouwrvn.supabase.co' }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdicHFsemp0Y3VoaWp0b3V3cnZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDI5MDUsImV4cCI6MjA4OTE3ODkwNX0.mnKDomwOFmXejFqeL94qdUGsi4mxZ5NcuhACW53FcWQ' }}
+          VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID || 'gbpqlzjtcuhijtouwrvn' }}
+          # Tells vite.config.ts to set base="/<repo>/"
+          GITHUB_PAGES: 'true'
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bun run build
+
+      - name: SPA fallback (copy index.html → 404.html)
+        run: cp dist/index.html dist/404.html
+
+      - name: Disable Jekyll
+        run: touch dist/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

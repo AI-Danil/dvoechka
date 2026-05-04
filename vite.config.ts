@@ -5,7 +5,17 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
+// GitHub Pages project sites live under /<repo>/. The deploy workflow sets
+// GITHUB_PAGES=true and provides GITHUB_REPOSITORY=<owner>/<repo>.
+// All other hosts (Lovable, Netlify, Cloudflare) keep base="/".
+const ghPagesBase = (() => {
+  if (process.env.GITHUB_PAGES !== "true") return "/";
+  const repo = (process.env.GITHUB_REPOSITORY || "").split("/")[1];
+  return repo ? `/${repo}/` : "/";
+})();
+
 export default defineConfig(({ mode }) => ({
+  base: mode === "production" ? ghPagesBase : "/",
   server: {
     host: "::",
     port: 8080,
