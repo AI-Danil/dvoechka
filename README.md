@@ -13,17 +13,19 @@
 | Lovable | `https://dvoechka.lovable.app` | Основной публикуемый URL |
 | Netlify | `https://dvoechka.netlify.app` | Основной для учеников |
 | Cloudflare Pages | `https://<project>.pages.dev` | Запасной, лучше открывается из РФ |
-| Cloudflare Tunnel | `https://*.trycloudflare.com` | Аварийный, поднимается локально |
+| Cloudflare Tunnel | `https://*.trycloudflare.com` | Опционально, локально с ноута (требует рабочего DNS до Cloudflare) |
 
-### Cloudflare Tunnel (аварийный канал)
+### Cloudflare Tunnel (опциональный локальный канал)
 
-Если все хостинги недоступны, можно за минуту поднять туннель с локальной прод-сборки:
+> **Внимание:** на сетях с фильтрацией DNS (некоторые РФ-провайдеры, корпоративные Wi-Fi) `cloudflared` не поднимается — резолв `argotunnel.com` падает с `connection refused`. В этом случае используйте мобильный хотспот, Cloudflare WARP или просто опубликованные зеркала Lovable / Netlify / Pages.
+
+Если DNS до CF проходит, туннель поднимается за минуту:
 
 ```sh
 # 1. Установить cloudflared один раз
 brew install cloudflared
 
-# 2. Перед уроком, в первом терминале — собрать и поднять прод-превью
+# 2. В первом терминале — собрать и поднять прод-превью
 npm run build
 npm run preview:host
 
@@ -35,7 +37,7 @@ npm run tunnel
 caffeinate -dimsu
 ```
 
-Туннель живёт пока запущены оба процесса. URL новый при каждом запуске.
+Туннель живёт пока запущены оба процесса. URL новый при каждом запуске. Если падает с `connection refused` на DNS — это не лечится правкой репо, нужна другая сеть.
 
 ### Cloudflare Pages (постоянное зеркало)
 
