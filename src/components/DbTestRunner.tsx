@@ -192,6 +192,40 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
     scheduleSave({ written: writtenAnswers, quiz: quizPrefilled ?? undefined }, "written");
   }, [writtenAnswers, phase, scheduleSave, quizPrefilled]);
 
+  // Логирование вставки в конкретное поле ответа (с текстом и номером задачи)
+  const handleAnswerPaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+      const target = e.currentTarget;
+      const pos = target.dataset.questionPos ?? "?";
+      const title = target.dataset.questionTitle ?? "";
+      const text = e.clipboardData.getData("text/plain") ?? "";
+      const snippet = text.length > 500 ? text.slice(0, 500) + "…" : text;
+      const details = `Задача ${Number(pos) + 1}${title ? ` (${title})` : ""}: "${snippet}"`;
+      cheatLogRef.current.push({ type: "paste_into_answer", timestamp: Date.now(), details });
+      notify(`❗ Вставка в поле ответа. ${details}`);
+      if (attemptIdRef.current) {
+        void supabase.functions.invoke("log-cheat-event", {
+          body: {
+            attempt_id: attemptIdRef.current,
+            event: { type: "paste_into_answer", details, timestamp: Date.now() },
+          },
+        });
+      }
+      // НЕ блокируем вставку — текст должен попасть в поле и сохраниться.
+    },
+    [notify],
+  );
+
+  const acceptRules = async () => {
+    cheatLogRef.current.push({ type: "rules_accepted", timestamp: Date.now() });
+    if (attemptIdRef.current) {
+      void supabase.functions.invoke("log-cheat-event", {
+        body: { attempt_id: attemptIdRef.current, event: { type: "rules_accepted", timestamp: Date.now() } },
+      });
+    }
+    setPhase(acceptRulesRef.current);
+  };
+
   const startTest = async () => {
     const m = studentName.trim().match(RUSSIAN_NAME_REGEX);
     if (!m) {
