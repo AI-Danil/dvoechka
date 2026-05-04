@@ -25,6 +25,7 @@ import Grade9Technology from "@/components/tests/Grade9Technology";
 import Grade7Technology from "@/components/tests/Grade7Technology";
 import Grade8Physics from "@/components/tests/Grade8Physics";
 import Grade8PhysicsPower from "@/components/tests/Grade8PhysicsPower";
+import Grade8PhysicsFinalQ4, { FINAL_Q4_QUIZ_QUESTIONS } from "@/components/tests/Grade8PhysicsFinalQ4";
 import Grade7Physics from "@/components/tests/Grade7Physics";
 import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork";
 import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
@@ -77,6 +78,7 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
     physics: [
       { id: "electricity", title: "Контрольная №1. Электричество (3 четверть)" },
       { id: "power-joule", title: "Контрольная №2. Работа и мощность тока. Закон Джоуля—Ленца" },
+      { id: "final-q4", title: "Итоговая контрольная за 4 четверть (с квизом)" },
     ],
   },
   "9": {
@@ -98,6 +100,7 @@ const TESTS_WITH_QUIZ: Record<string, QuizConfig> = {
   "9_physics_atom": { questions: ATOM_QUIZ_QUESTIONS, secondsPerQuestion: 20 },
   "7_physics_work-power": { questions: WORK_POWER_QUIZ_QUESTIONS, secondsPerQuestion: 30 },
   "8_informatics_python-hero": { questions: PYTHON_HERO_QUIZ_QUESTIONS, secondsPerQuestion: 40 },
+  "8_physics_final-q4": { questions: FINAL_Q4_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
 };
 
 const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;
@@ -173,6 +176,10 @@ const Index = () => {
   const [answers8physPower, setAnswers8physPower] = useState<string[]>(Array(6).fill(""));
   const [attachments8physPower, setAttachments8physPower] = useState<Record<number, File | null>>({});
 
+  // Grade 8 physics FINAL Q4 answers (6 tasks; 15-question quiz lives separately)
+  const [answers8physFinalQ4, setAnswers8physFinalQ4] = useState<string[]>(Array(6).fill(""));
+  const [attachments8physFinalQ4, setAttachments8physFinalQ4] = useState<Record<number, File | null>>({});
+
   // Grade 7 physics answers
   const [answers7phys, setAnswers7phys] = useState<string[]>(Array(10).fill(""));
   const [attachments7phys, setAttachments7phys] = useState<Record<number, File | null>>({});
@@ -224,6 +231,8 @@ const Index = () => {
   const attachments8physRef = useRef(attachments8phys);
   const answers8physPowerRef = useRef(answers8physPower);
   const attachments8physPowerRef = useRef(attachments8physPower);
+  const answers8physFinalQ4Ref = useRef(answers8physFinalQ4);
+  const attachments8physFinalQ4Ref = useRef(attachments8physFinalQ4);
   const answers7physRef = useRef(answers7phys);
   const attachments7physRef = useRef(attachments7phys);
   const answers7physWorkRef = useRef(answers7physWork);
@@ -258,6 +267,8 @@ const Index = () => {
   useEffect(() => { attachments8physRef.current = attachments8phys; }, [attachments8phys]);
   useEffect(() => { answers8physPowerRef.current = answers8physPower; }, [answers8physPower]);
   useEffect(() => { attachments8physPowerRef.current = attachments8physPower; }, [attachments8physPower]);
+  useEffect(() => { answers8physFinalQ4Ref.current = answers8physFinalQ4; }, [answers8physFinalQ4]);
+  useEffect(() => { attachments8physFinalQ4Ref.current = attachments8physFinalQ4; }, [attachments8physFinalQ4]);
   useEffect(() => { answers7physRef.current = answers7phys; }, [answers7phys]);
   useEffect(() => { attachments7physRef.current = attachments7phys; }, [attachments7phys]);
   useEffect(() => { answers7physWorkRef.current = answers7physWork; }, [answers7physWork]);
