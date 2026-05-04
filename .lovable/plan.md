@@ -1,92 +1,64 @@
-## Прогресс
+Понимаю раздражение. Это уже третья отдельная проблема в цепочке деплоя, и текущая ошибка понятная:
 
-Билд прошёл успешно (Vite 5 не ругается, Framework: None сработал, `dist/` собран). Теперь падает только deploy step:
-
-```
-$ wrangler deploy --no-bundle
-/usr/bin/bash: line 1: wrangler: command not found
+```text
+Invalid _redirects configuration:
+Line 1: Infinite loop detected in this rule.
 ```
 
-`wrangler` не установлен — у нас его нет ни в deps, ни в devDeps, а Cloudflare Workers Builds в режиме `Framework: None` его не подкладывает автоматически (только для preset = Vite/Next/etc).
+Cloudflare Wrangler при assets deploy подхватывает файл `public/_redirects`, который после сборки попадает в `dist/_redirects`. Для Cloudflare этот Netlify-style fallback:
 
-## Решение
-
-Установить `wrangler` локально как devDependency и вызывать через `bunx`/`npx` — тогда Cloudflare использует ту же версию, что и мы локально, не зависит от глобального PATH.
-
-### Изменения
-
-#### 1. `package.json`
-
-- Добавить в `devDependencies`:
-  ```json
-  "wrangler": "^3.90.0"
-  ```
-  (последняя стабильная 3.x; 4.x требует Node 20+, но у нас и так Node 22 — можно и 4.x, возьму последнюю, какую bun подтянет)
-
-- Изменить скрипт `deploy:cf`:
-  ```json
-  "deploy:cf": "wrangler deploy --no-bundle"
-  ```
-  → оставить как есть. После добавления в devDeps `bun run deploy:cf` найдёт wrangler в `node_modules/.bin/`.
-
-  Альтернатива (надёжнее, не зависит от PATH резолва bun): `"deploy:cf": "bunx wrangler deploy --no-bundle"`. Возьму этот вариант.
-
-#### 2. `bun.lock`
-
-Обновится автоматически после `bun install`. На Cloudflare сейчас стоит `--frozen-lockfile`, так что коммит `bun.lock` обязателен — иначе install упадёт. Это сделает Lovable при сохранении изменений.
-
-#### 3. `README.md`
-
-В секции Cloudflare добавить строчку:
-- `wrangler` теперь в devDependencies, не нужно ставить глобально.
-- Команда деплоя: `bun run deploy:cf` (внутри `bunx wrangler deploy --no-bundle`).
-
-#### 4. `mem://infrastructure/build-config`
-
-Добавить заметку: «wrangler ставится как devDependency, вызывается через `bunx`, Cloudflare Workers Builds в режиме Framework=None не подкладывает wrangler автоматически».
-
-#### 5. `.lovable/plan.md`
-
-Перезаписать этим планом.
-
-## Файлы
-
-- `package.json` — добавить `wrangler` в devDeps + поправить скрипт `deploy:cf`
-- `bun.lock` — обновится автоматом
-- `README.md` — мелкое уточнение
-- `mem://infrastructure/build-config` — добавить правило
-- `.lovable/plan.md` — обновить
-
-## Что НЕ трогаем
-
-- `wrangler.toml` — он рабочий, билд это доказал
-- Cloudflare Dashboard — никаких ручных действий не нужно (Framework: None уже выставлен и работает)
-- Vite, vite.config.ts — не трогаем
-
-## Проверка
-
-После пуша:
-
-```
-Installing project dependencies: bun install --frozen-lockfile
-+ wrangler@...                        ← должен появиться
-Build command completed
-Executing user deploy command: bun run deploy:cf
-$ bunx wrangler deploy --no-bundle
-Total Upload: ...
-Uploaded N assets
-Deployed dvoechka triggers (...)
-  https://dvoechka.<account>.workers.dev
+```text
+/* /index.html 200
 ```
 
-Без `command not found`.
+конфликтует с `wrangler.toml`, где уже включён правильный SPA fallback:
 
-## Если упадёт снова
+```toml
+[assets]
+not_found_handling = "single-page-application"
+```
 
-Возможные следующие проблемы (сразу для контекста):
+То есть `_redirects` здесь не нужен и ломает deploy.
 
-1. **`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` не заданы.** В Workers Builds (в отличие от ручного wrangler) они подкладываются автоматически из контекста проекта — обычно работает из коробки. Если нет — добавить в Settings → Variables and Secrets.
+## План исправления
 
-2. **Wrangler потребует подтвердить создание Worker.** В non-interactive контексте должен сам согласиться, но если нет — добавить флаг `--keep-vars` или явно создать Worker один раз руками.
+1. **Удалить `public/_redirects`**
+   - Этот файл нужен только Netlify.
+   - Для Cloudflare он вызывает ошибку infinite loop.
+   - Для Lovable он вообще не используется.
+   - Для текущего Netlify-деплоя SPA fallback уже задан в `netlify.toml` через `[[redirects]]`, поэтому удаление `public/_redirects` не должно сломать Netlify.
 
-3. **Размер ассетов.** `dist/` ~2.6MB — норм, лимит Cloudflare 25MB на один файл.
+2. **Оставить `wrangler.toml` без изменений**
+   - Там уже есть корректная настройка:
+     ```toml
+     not_found_handling = "single-page-application"
+     ```
+   - Это правильный способ SPA fallback для Cloudflare Workers assets.
+
+3. **Обновить документацию**
+   - В `README.md` добавить предупреждение: не создавать `public/_redirects`, потому что Cloudflare Wrangler валидирует его и падает.
+   - Уточнить, что для Netlify fallback живёт в `netlify.toml`, а для Cloudflare — в `wrangler.toml`.
+
+4. **Обновить память проекта**
+   - В `mem://infrastructure/build-config` добавить правило: не возвращать `public/_redirects`; Cloudflare deploy ломается с ошибкой `Invalid _redirects configuration / Infinite loop detected`.
+
+5. **Обновить `.lovable/plan.md`**
+   - Зафиксировать текущую ошибку и финальное решение, чтобы дальше не ходить по кругу.
+
+## Файлы, которые будут затронуты
+
+- `public/_redirects` — удалить
+- `README.md` — уточнить Cloudflare/Netlify SPA fallback
+- `mem://infrastructure/build-config` — добавить запрет на `public/_redirects`
+- `.lovable/plan.md` — обновить план/диагностику
+
+## Что не трогаем
+
+- `package.json`
+- `bun.lock`
+- `wrangler.toml`
+- `netlify.toml`
+- Vite / React / сборку
+- настройки Cloudflare Dashboard
+
+После этого в логах Cloudflare больше не должно быть ошибки про `_redirects`; deploy должен перейти к загрузке assets через Wrangler.
