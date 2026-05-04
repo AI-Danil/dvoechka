@@ -1,54 +1,82 @@
-Проблема теперь понятна: Netlify запускает свой этап `Installing dependencies` ДО нашей `build.command`. Поэтому `rm -f package-lock.json` из `netlify.toml` не успевает сработать — установка уже падает раньше.
+## Защита `send-test-results` от ботов и дубликатов
 
-Дополнительно в проекте есть прямые зависимости, которых быть не должно:
+Одна правка — `supabase/functions/send-test-results/index.ts`. Никаких миграций, клиента не трогаем.
 
-- `package.json`: `@swc/core`
-- `package.json`: `@swc/core-linux-x64-gnu`
-- `package.json`: `@swc/core-linux-x64-musl`
-- `package-lock.json`: ещё остался `@vitejs/plugin-react-swc`
+В начало хендлера (после парсинга JSON, до записи в БД) добавляю 4 проверки. На любой fail — `400/409/429`, в БД и Telegram ничего не уходит.
 
-При этом `vite.config.ts` уже использует правильный плагин:
+### 1. Валидация имени
 
 ```ts
-import react from "@vitejs/plugin-react";
+const NAME_RE = /^[А-Яа-яЁё]{2,30}\s+[А-Яа-яЁё]{2,30}(\s+\d{1,3})?$/;
+if (typeof studentName !== "string" || !NAME_RE.test(studentName.trim())) {
+  return json({ error: "Bad name" }, 400);
+}
 ```
 
-То есть SWC для сборки не нужен.
+Режет `x`, `bruteforce`, `hacker`. Сохраняет твою фичу со скрытым ретейком (3-й токен — цифра).
 
-## План фикса
+### 2. Минимальное `time_spent`
 
-1. В `package.json` удалить из `dependencies`:
-   - `@swc/core`
-   - `@swc/core-linux-x64-gnu`
-   - `@swc/core-linux-x64-musl`
-
-2. В `package-lock.json` убрать устаревшие SWC-записи, чтобы Netlify больше не пытался ставить musl-пакет на glibc.
-   - Также убрать оставшийся `@vitejs/plugin-react-swc` из lock-файла, потому что проект его не использует.
-
-3. Упростить `netlify.toml` обратно до нормальной команды:
-
-```toml
-[build]
-  command = "npm run build"
-  publish = "dist"
+```ts
+if (typeof timeSpent !== "number" || timeSpent < 30) {
+  return json({ error: "Too fast" }, 400);
+}
 ```
 
-4. Оставить без изменений:
-   - `vite.config.ts`
-   - код приложения
-   - Lovable Cloud / backend
-   - `.env.production`
+Меньше 30 сек — отказ.
 
-## После правки
+### 3. Дедуп по содержимому за 5 минут
 
-В Netlify нужно запустить:
+```ts
+const answersHash = await sha256(JSON.stringify(answersData));
+const fiveMinAgo = new Date(Date.now() - 5*60*1000).toISOString();
+const { data: dup } = await supabaseAdmin
+  .from("test_results")
+  .select("id, answers")
+  .eq("student_name", studentName)
+  .eq("grade", Number(grade))
+  .eq("subject", subject)
+  .gte("created_at", fiveMinAgo)
+  .limit(20);
 
-`Deploys → Trigger deploy → Clear cache and deploy site`
+if (dup?.some(r => sha256Sync(JSON.stringify(r.answers)) === answersHash)) {
+  return json({ error: "Duplicate" }, 409);
+}
+```
 
-Ожидаемый результат: этап `Installing dependencies` пройдёт, потому что в манифестах больше не будет прямой несовместимой зависимости `@swc/core-linux-x64-musl`.
+Если ровно те же ответы от того же имени за 5 минут — отбой.
 
-## Файлы, которые будут затронуты
+### 4. Антифлуд по имени
 
-- `package.json`
-- `package-lock.json`
-- `netlify.toml`
+```ts
+const tenMinAgo = new Date(Date.now() - 10*60*1000).toISOString();
+const { count } = await supabaseAdmin
+  .from("test_results")
+  .select("id", { count: "exact", head: true })
+  .eq("student_name", studentName)
+  .gte("created_at", tenMinAgo);
+
+if ((count ?? 0) >= 3) {
+  return json({ error: "Rate limit" }, 429);
+}
+```
+
+Больше 3 отправок с одного имени за 10 мин → 429.
+
+### Дополнительно
+
+- `studentName = studentName.trim().replace(/\s+/g, " ")` — нормализация пробелов.
+- Хелпер `json(body, status)` — чтобы не плодить `new Response(...)` с CORS.
+- Все ошибки возвращают `corsHeaders` (иначе фронт увидит CORS-ошибку вместо понятного сообщения).
+
+### Что не делаю
+
+- Turnstile/капча — отдельной задачей если попросишь.
+- Правки в `LiveStudent.tsx` / `DbTestRunner.tsx` — там путь через ту же функцию, защита наследуется.
+- Миграции БД — не нужны.
+
+### Файлы
+
+- `supabase/functions/send-test-results/index.ts` — единственная правка.
+
+Edge-функции деплоятся автоматически после изменения. Тестируем потом curl'ом с именем `x` — должно вернуть 400.
