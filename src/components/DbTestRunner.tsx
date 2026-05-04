@@ -504,6 +504,10 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
                     onChange={(e) =>
                       setWrittenAnswers((p) => ({ ...p, [q.position]: e.target.value }))
                     }
+                    onPaste={handleAnswerPaste}
+                    data-answer-field="1"
+                    data-question-pos={q.position}
+                    data-question-title={q.block_title ?? ""}
                     placeholder="Ваш ответ…"
                   />
                   <FileAttach
