@@ -146,7 +146,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
     };
 
     document.addEventListener("copy", onCopy);
-    document.addEventListener("paste", onPaste);
+    document.addEventListener("paste", onPasteOutside);
     document.addEventListener("cut", onCut);
     document.addEventListener("contextmenu", onContext);
     document.addEventListener("visibilitychange", onVisibility);
@@ -155,7 +155,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
 
     return () => {
       document.removeEventListener("copy", onCopy);
-      document.removeEventListener("paste", onPaste);
+      document.removeEventListener("paste", onPasteOutside);
       document.removeEventListener("cut", onCut);
       document.removeEventListener("contextmenu", onContext);
       document.removeEventListener("visibilitychange", onVisibility);
