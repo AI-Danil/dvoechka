@@ -4,6 +4,50 @@
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
 
+## Deployments
+
+Приложение хостится в нескольких местах одновременно — все они смотрят в одну и ту же базу (Supabase), результаты учеников падают в общую таблицу.
+
+| Зеркало | URL | Когда использовать |
+|---|---|---|
+| Lovable | `https://dvoechka.lovable.app` | Основной публикуемый URL |
+| Netlify | `https://dvoechka.netlify.app` | Основной для учеников |
+| Cloudflare Pages | `https://<project>.pages.dev` | Запасной, лучше открывается из РФ |
+| Cloudflare Tunnel | `https://*.trycloudflare.com` | Аварийный, поднимается локально |
+
+### Cloudflare Tunnel (аварийный канал)
+
+Если все хостинги недоступны, можно за минуту поднять туннель с локальной прод-сборки:
+
+```sh
+# 1. Установить cloudflared один раз
+brew install cloudflared
+
+# 2. Перед уроком, в первом терминале — собрать и поднять прод-превью
+npm run build
+npm run preview:host
+
+# 3. Во втором терминале — поднять публичный туннель
+npm run tunnel
+# → скопировать URL вида https://random-words.trycloudflare.com
+
+# 4. (опционально) не дать ноуту уснуть
+caffeinate -dimsu
+```
+
+Туннель живёт пока запущены оба процесса. URL новый при каждом запуске.
+
+### Cloudflare Pages (постоянное зеркало)
+
+Настраивается один раз через https://dash.cloudflare.com → **Workers & Pages → Create → Pages → Connect to Git**:
+
+- **Framework preset:** Vite
+- **Build command:** `npm run build`
+- **Build output directory:** `dist`
+- **Environment variables:** `NODE_VERSION=20`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID` (значения те же, что в Netlify)
+
+Дальше Pages деплоит автоматически при каждом push в main. SPA-роутинг и security-заголовки уже настроены через `public/_redirects` и `public/_headers`.
+
 ## How can I edit this code?
 
 There are several ways of editing your application.
