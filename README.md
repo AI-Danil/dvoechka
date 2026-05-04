@@ -39,16 +39,20 @@ caffeinate -dimsu
 
 Туннель живёт пока запущены оба процесса. URL новый при каждом запуске. Если падает с `connection refused` на DNS — это не лечится правкой репо, нужна другая сеть.
 
-### Cloudflare Pages (постоянное зеркало)
+### Cloudflare Pages / Workers (постоянное зеркало)
 
-Настраивается один раз через https://dash.cloudflare.com → **Workers & Pages → Create → Pages → Connect to Git**:
+Настраивается один раз через https://dash.cloudflare.com → **Workers & Pages → Create → Connect to Git**:
 
-- **Framework preset:** Vite
-- **Build command:** `npm run build`
+- **Build command:** `bun run build` (или `npm run build`)
+- **Deploy command:** `npx wrangler deploy`
 - **Build output directory:** `dist`
 - **Environment variables:** `NODE_VERSION=20`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID` (значения те же, что в Netlify)
 
-Дальше Pages деплоит автоматически при каждом push в main. SPA-роутинг и security-заголовки уже настроены через `public/_redirects` и `public/_headers`.
+Деплой идёт через `wrangler.toml` в корне репо в режиме **assets-only** (статика из `dist/`). SPA-фоллбек включён через `not_found_handling = "single-page-application"` — прямые заходы на `/admin`, `/test/...` и refresh страницы работают.
+
+> **Почему не Cloudflare Vite-плагин?** Он требует Vite ≥ 6, а у нас Vite 5.4 + `@vitejs/plugin-legacy` (нужен для старых браузеров на школьных компах). Апгрейд Vite ради Cloudflare сломает legacy-сборку. Assets-only режим решает задачу без ломки.
+
+Дальше Cloudflare деплоит автоматически при каждом push в main.
 
 ## How can I edit this code?
 
