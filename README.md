@@ -167,3 +167,27 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/c
 - Те же данные, что и на основном `dvoechka.lovable.app`.
 
 **Если Netlify окажется недоступен из РФ** — те же файлы (`dist/`) подойдут для GitHub Pages, Cloudflare Pages, Vercel. Только `netlify.toml` заменить на их аналог.
+
+## Зеркало на GitHub Pages (для РФ)
+
+GitHub в РФ открывается без VPN — это ещё одно зеркало фронтенда. Бэкенд тот же (Supabase), результаты падают в общую таблицу.
+
+**Как включить (один раз):**
+
+1. GitHub → этот репозиторий → **Settings → Pages → Source: GitHub Actions**.
+2. После следующего push в `main` (или ручного запуска workflow `Deploy to GitHub Pages` во вкладке Actions) сборка автоматически задеплоится.
+3. URL будет вида `https://<username>.github.io/<repo>/` — он появится в Settings → Pages после первого успешного деплоя.
+
+**Конфиг:**
+
+- Workflow: `.github/workflows/deploy-pages.yml` — ставит bun, билдит, копирует `index.html → 404.html` для SPA-фоллбека, выкатывает через `actions/deploy-pages`.
+- `vite.config.ts` сам подставляет `base="/<repo>/"` когда видит `GITHUB_PAGES=true` (только в GH Actions, остальные зеркала не трогает).
+- `public/404.html` + snippet в `index.html` — стандартный [spa-github-pages](https://github.com/rafgraph/spa-github-pages) трюк, чтобы прямые ссылки и refresh не отдавали 404.
+
+**Secrets (опционально):**
+
+По умолчанию workflow хардкодит публичные `VITE_SUPABASE_*` ключи (они и так в `.env.production`). Если хочется ротировать без коммита — добавь в Settings → Secrets and variables → Actions: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`.
+
+**Что делать если GH Pages тоже не открывается у ребёнка:**
+
+Проблема не в хостинге фронта, а в Supabase XHR. Смотри Telegram-алерты от `page-beacon`: если приходит `🟦 stage=html` + `🟩 stage=js-start`, но дальше белый экран — блокируется именно `*.supabase.co`. Тогда нужен прокси через RU VPS (вариант Б).
