@@ -54,6 +54,25 @@ async function sendTelegramDocument(docUrl: string, caption: string, lovableKey:
   return data;
 }
 
+// Имя: 2 кириллических слова + опционально цифра (скрытый ретейк)
+const NAME_RE = /^[А-Яа-яЁё]{2,30}\s+[А-Яа-яЁё]{2,30}(\s+\d{1,3})?$/;
+const MIN_TIME_SPENT_SEC = 30;
+const DUP_WINDOW_MS = 5 * 60 * 1000;
+const FLOOD_WINDOW_MS = 10 * 60 * 1000;
+const FLOOD_MAX_PER_NAME = 3;
+
+function jsonResponse(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -72,7 +91,49 @@ serve(async (req) => {
     if (!CHAT_ID) throw new Error("TELEGRAM_CHAT_ID is not configured");
 
     const body = await req.json();
-    const { studentName, grade, subject, cheatLog, timeSpent, attachments, attempt, resultId } = body;
+    let { studentName, grade, subject, cheatLog, timeSpent, attachments, attempt, resultId } = body;
+
+    // ===== СЕРВЕРНАЯ ВАЛИДАЦИЯ И АНТИБОТ =====
+    if (typeof studentName !== "string") {
+      return jsonResponse({ error: "Bad name" }, 400);
+    }
+    studentName = studentName.trim().replace(/\s+/g, " ");
+    if (!NAME_RE.test(studentName)) {
+      console.warn("Rejected: bad name", studentName);
+      return jsonResponse({ error: "Имя должно состоять из 2 русских слов" }, 400);
+    }
+
+    if (typeof timeSpent !== "number" || !Number.isFinite(timeSpent) || timeSpent < MIN_TIME_SPENT_SEC) {
+      console.warn("Rejected: too fast", { studentName, timeSpent });
+      return jsonResponse({ error: "Слишком быстро. Тест не может быть пройден за это время." }, 400);
+    }
+
+    const gradeNum = Number(grade);
+    if (!Number.isInteger(gradeNum) || gradeNum < 1 || gradeNum > 11) {
+      return jsonResponse({ error: "Bad grade" }, 400);
+    }
+    if (typeof subject !== "string" || subject.length > 100) {
+      return jsonResponse({ error: "Bad subject" }, 400);
+    }
+
+    // Антифлуд + дедуп — общий клиент для всех проверок ниже
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    // Антифлуд: не больше N сабмитов с одного имени за 10 минут
+    const floodSince = new Date(Date.now() - FLOOD_WINDOW_MS).toISOString();
+    const { count: floodCount } = await supabaseAdmin
+      .from("test_results")
+      .select("id", { count: "exact", head: true })
+      .eq("student_name", studentName)
+      .gte("created_at", floodSince);
+    if ((floodCount ?? 0) >= FLOOD_MAX_PER_NAME) {
+      console.warn("Rejected: flood", { studentName, floodCount });
+      return jsonResponse({ error: "Слишком много отправок. Подождите 10 минут." }, 429);
+    }
+
 
     // Save to database BEFORE sending to Telegram
     try {
