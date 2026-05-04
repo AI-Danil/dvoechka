@@ -13,7 +13,7 @@
     "tunnel": "cloudflared tunnel --url http://localhost:4173",
     "test": "vitest run",
     "test:watch": "vitest",
-    "deploy:cf": "wrangler deploy --no-bundle"
+    "deploy:cf": "bunx wrangler deploy --no-bundle"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
