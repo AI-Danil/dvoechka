@@ -1,44 +1,51 @@
-## Цель
-Убрать публичный доступ к `test_questions` (сейчас любой может скачать вопросы с правильными ответами) — вопросы будут отдаваться только через серверный edge function без полей `correct_index` и `expected_answer`.
-
-## Шаги
+## План: Итоговая контрольная 5 класс, Технология (hybrid + live)
 
 ### 1. Миграция БД
-- DROP RLS-политики `"Anyone reads questions of published tests"` на `test_questions` (роли anon/authenticated).
-- Оставить только: `"Admins manage all questions"` и `"Authors manage questions of own tests"`.
-- (Аналогично проверить `public_test_questions` — это скорее всего view; если SELECT доступен anon, отозвать GRANT.)
+Добавить класс и назначение учителя:
+- `INSERT INTO classes (name, year) VALUES ('5А', 2025)` → получить `class_id`.
+- `INSERT INTO teacher_assignments (teacher_id, class_id, subject_id)` для teacher `31651e5d-…` и subject «Технология» (`e671aa1c-…`).
 
-### 2. Новый edge function `get-test-questions`
-- `verify_jwt = false`, входы: `attempt_id` (или `test_id` + `student_name` для верификации существующей попытки).
-- Через service role:
-  1. Находит активную `test_attempts` запись (status = `in_progress`) с этим `attempt_id`.
-  2. Загружает `test_questions` без `correct_index`, `expected_answer`.
-  3. Возвращает массив вопросов клиенту.
-- Так гарантируем: вопросы видит только тот, кто реально начал попытку через `start-attempt`/`join-session`.
+### 2. Создать тест (миграция, чтобы прошить точные формулировки и ключи)
+Один `INSERT` в `tests`:
+- `title`: «Итоговая контрольная работа по технологии. 5 класс»
+- `kind`: `hybrid`
+- `status`: `published`
+- `class_id`: новый 5А
+- `subject_id`: Технология
+- `author_user_id` / `teacher_id`: ваш аккаунт (`31651e5d-…`'s `user_id`)
+- `time_per_question_sec`: 60
 
-### 3. Обновление фронта
-- `src/lib/dbTests.ts` → `loadTestQuestions()`: вместо прямого `from("public_test_questions")` вызывать `supabase.functions.invoke("get-test-questions", { body: { attempt_id } })`.
-- Найти все места использования `loadTestQuestions` (вероятно `DbTestRunner.tsx`, `LiveSessionRunner.tsx`) и пробросить `attempt_id`.
-- Убедиться, что нигде на фронте не используются поля `correct_index`/`expected_answer` — оценка уже идёт на сервере в `grade-quiz-submission`.
+Затем 14 строк в `test_questions` (position 0..13):
 
-### 4. Регистрация в `supabase/config.toml`
-Добавить блок:
-```
-[functions.get-test-questions]
-verify_jwt = false
-```
+**Quiz (1–10), `response_kind='quiz'`, `block_title='Часть 1. Квиз'`, `points=1`:**
+- Q1 Клавиатура (idx 2)
+- Q2 Длинная случайная комбинация (idx 2)
+- Q3 Папка (idx 1)
+- Q4 Пробел после знака препинания (idx 2)
+- Q5 Форматирование (idx 3)
+- Q6 Ctrl+C (idx 2)
+- Q7 Нумерованный (idx 1)
+- Q8 Строки, столбцы, ячейки (idx 1)
+- Q9 Плюс/минус (idx 0)
+- Q10 Наглядное представление числовых данных (idx 1)
 
-### 5. Проверка
-- Прогнать `supabase--linter` и `security--run_security_scan` — убедиться, что утечки нет.
-- Тест-сценарий: попробовать `curl` на `test_questions` с anon-ключом → должен вернуться пустой массив / 401.
-- Проверить, что обычное прохождение теста (и live-сессия) работает.
+**Written (11–14), `response_kind='written'`, `block_title='Часть 2. Развёрнутый ответ'`:**
+- Q11 (points=3) — облачные документы / отправка учителю + `expected_answer`
+- Q12 (points=2) — Ctrl+X / Ctrl+V + `expected_answer`
+- Q13 (points=4) — **исправленное условие**: пункт 4 заменю на «стакан стоит рядом с банкой и сосудом с молоком» (вместо «между»), чтобы условие соответствовало ответу. Ключ: Банка—квас, Бутылка—лимонад, Кувшин—молоко, Стакан—вода.
+- Q14 (points=3) — столбчатая (сравнение) и круговая (доли целого) + примеры.
 
-## Возможный риск
-Если в БД есть view `public_test_questions`, он может игнорировать RLS базовой таблицы — нужно либо пересоздать его с `security_invoker=on`, либо отозвать `GRANT SELECT ... TO anon`. Уточню при миграции через `supabase--read_query`.
+### 3. Live-сессия
+Создание сессии — действие учителя в UI (нужны куки/JWT). После миграции:
+- Зайдите в `/teacher/live`, выберите тест «Итоговая контрольная… 5 класс», нажмите «Создать сессию» → получите 4-символьный код.
+- Ученики входят через `/live` с кодом и Имя+Фамилия.
 
-## Затронутые файлы
-- новая миграция (DROP policy + GRANT REVOKE на view)
-- `supabase/functions/get-test-questions/index.ts` (новый)
-- `supabase/config.toml`
-- `src/lib/dbTests.ts`
-- `src/components/DbTestRunner.tsx`, `src/components/LiveSessionRunner.tsx` (адаптация вызова)
+Никаких изменений во фронтенде/edge-функциях не требуется — `hybrid` + live-флоу уже поддержаны (`LiveSessionRunner`, `start-session`, `join-session`, `get-test-questions`).
+
+### Файлы
+- новая миграция: `supabase/migrations/<timestamp>_grade5_tech_final.sql` (создание класса, назначения, теста и 14 вопросов одним файлом).
+
+### Технические детали
+- `correct_index` для quiz и `expected_answer` для written не утекают наружу — `get-test-questions` уже их вырезает (фикс прошлой итерации).
+- `points`: всего 10 (квиз) + 3+2+4+3 = 22 балла.
+- Если ваш `user_id` для teacher `31651e5d-…` нужно подставить — вытащу его в миграции через `SELECT user_id FROM teachers WHERE id='31651e5d-…'` внутри `INSERT … SELECT`.
