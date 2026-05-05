@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.page-beacon]
 verify_jwt = false
+
+[functions.get-test-questions]
+verify_jwt = false

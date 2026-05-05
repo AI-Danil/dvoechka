@@ -80,9 +80,11 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
     enabled: isActive,
   });
 
+  // Вопросы загружаем только после создания попытки (через защищённый edge function).
   useEffect(() => {
-    loadTestQuestions(test.id).then(setQuestions);
-  }, [test.id]);
+    if (!attemptId) return;
+    loadTestQuestions(test.id, attemptId).then(setQuestions);
+  }, [test.id, attemptId]);
 
   // === Сбор cheat events ===
   useEffect(() => {
