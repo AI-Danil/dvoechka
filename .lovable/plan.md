@@ -1,51 +1,32 @@
-## План: Итоговая контрольная 5 класс, Технология (hybrid + live)
+## Проблема
 
-### 1. Миграция БД
-Добавить класс и назначение учителя:
-- `INSERT INTO classes (name, year) VALUES ('5А', 2025)` → получить `class_id`.
-- `INSERT INTO teacher_assignments (teacher_id, class_id, subject_id)` для teacher `31651e5d-…` и subject «Технология» (`e671aa1c-…`).
+На GitHub Pages у учеников 404 при заходе на `/live` (и другие deep links вроде `/auth`, `/teacher/live`).
 
-### 2. Создать тест (миграция, чтобы прошить точные формулировки и ключи)
-Один `INSERT` в `tests`:
-- `title`: «Итоговая контрольная работа по технологии. 5 класс»
-- `kind`: `hybrid`
-- `status`: `published`
-- `class_id`: новый 5А
-- `subject_id`: Технология
-- `author_user_id` / `teacher_id`: ваш аккаунт (`31651e5d-…`'s `user_id`)
-- `time_per_question_sec`: 60
+Причина: workflow `.github/workflows/deploy-pages.yml` после билда выполняет `cp dist/index.html dist/404.html`. Это **перезаписывает** правильный `public/404.html`, в котором лежит SPA-редирект для GH Pages (он переписывает `/<repo>/live` в `/<repo>/?/live`, а инлайн-скрипт в `index.html` потом восстанавливает путь через `history.replaceState`).
 
-Затем 14 строк в `test_questions` (position 0..13):
+После перезаписи `404.html` отдаёт обычный `index.html` без редиректа → роутер не видит правильного пути, ассеты могут резолвиться с неверным base, в итоге у учеников белый экран или 404.
 
-**Quiz (1–10), `response_kind='quiz'`, `block_title='Часть 1. Квиз'`, `points=1`:**
-- Q1 Клавиатура (idx 2)
-- Q2 Длинная случайная комбинация (idx 2)
-- Q3 Папка (idx 1)
-- Q4 Пробел после знака препинания (idx 2)
-- Q5 Форматирование (idx 3)
-- Q6 Ctrl+C (idx 2)
-- Q7 Нумерованный (idx 1)
-- Q8 Строки, столбцы, ячейки (idx 1)
-- Q9 Плюс/минус (idx 0)
-- Q10 Наглядное представление числовых данных (idx 1)
+## Что менять
 
-**Written (11–14), `response_kind='written'`, `block_title='Часть 2. Развёрнутый ответ'`:**
-- Q11 (points=3) — облачные документы / отправка учителю + `expected_answer`
-- Q12 (points=2) — Ctrl+X / Ctrl+V + `expected_answer`
-- Q13 (points=4) — **исправленное условие**: пункт 4 заменю на «стакан стоит рядом с банкой и сосудом с молоком» (вместо «между»), чтобы условие соответствовало ответу. Ключ: Банка—квас, Бутылка—лимонад, Кувшин—молоко, Стакан—вода.
-- Q14 (points=3) — столбчатая (сравнение) и круговая (доли целого) + примеры.
+Файл: `.github/workflows/deploy-pages.yml`
 
-### 3. Live-сессия
-Создание сессии — действие учителя в UI (нужны куки/JWT). После миграции:
-- Зайдите в `/teacher/live`, выберите тест «Итоговая контрольная… 5 класс», нажмите «Создать сессию» → получите 4-символьный код.
-- Ученики входят через `/live` с кодом и Имя+Фамилия.
+Убрать шаг:
 
-Никаких изменений во фронтенде/edge-функциях не требуется — `hybrid` + live-флоу уже поддержаны (`LiveSessionRunner`, `start-session`, `join-session`, `get-test-questions`).
+```yaml
+- name: SPA fallback (copy index.html → 404.html)
+  run: cp dist/index.html dist/404.html
+```
 
-### Файлы
-- новая миграция: `supabase/migrations/<timestamp>_grade5_tech_final.sql` (создание класса, назначения, теста и 14 вопросов одним файлом).
+`public/404.html` уже содержит правильный SPA-редирект и автоматически копируется Vite в `dist/404.html` при билде. Дополнительный `cp` не нужен и вредит.
 
-### Технические детали
-- `correct_index` для quiz и `expected_answer` для written не утекают наружу — `get-test-questions` уже их вырезает (фикс прошлой итерации).
-- `points`: всего 10 (квиз) + 3+2+4+3 = 22 балла.
-- Если ваш `user_id` для teacher `31651e5d-…` нужно подставить — вытащу его в миграции через `SELECT user_id FROM teachers WHERE id='31651e5d-…'` внутри `INSERT … SELECT`.
+## Проверка после деплоя
+
+1. Дождаться завершения GitHub Actions.
+2. Открыть `https://<owner>.github.io/<repo>/live` напрямую → должна открыться форма ввода кода (а не 404 / белый экран).
+3. То же для `https://<owner>.github.io/<repo>/auth`.
+
+## Затронутые файлы
+
+- `.github/workflows/deploy-pages.yml` — удалить шаг "SPA fallback".
+
+На `dvoechka.lovable.app` бага нет — Lovable hosting сам разруливает SPA fallback, поэтому правка касается только GH Pages деплоя.
