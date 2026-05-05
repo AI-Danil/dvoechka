@@ -58,7 +58,7 @@ export default function AuthPage() {
     const { error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: `${window.location.origin}/auth` },
+      options: { emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}auth` },
     });
     setBusy(false);
     if (error) toast({ title: "Не удалось зарегистрироваться", description: error.message, variant: "destructive" });
