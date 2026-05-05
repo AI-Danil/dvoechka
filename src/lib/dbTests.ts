@@ -46,17 +46,20 @@ export async function loadPublishedTestsForGradeSubject(
   return ((data ?? []) as unknown) as DbTestSummary[];
 }
 
-export async function loadTestQuestions(testId: string): Promise<DbTestQuestion[]> {
-  const { data, error } = await supabase
-    .from("public_test_questions" as any)
-    .select("id, position, question_text, options, points, response_kind, block_title, seconds_override")
-    .eq("test_id", testId)
-    .order("position");
-  if (error) {
-    console.error("loadTestQuestions error", error);
+export async function loadTestQuestions(
+  testId: string,
+  attemptId?: string | null,
+): Promise<DbTestQuestion[]> {
+  // Получаем вопросы через защищённую edge-функцию (без correct_index/expected_answer).
+  const { data, error } = await supabase.functions.invoke("get-test-questions", {
+    body: attemptId ? { attempt_id: attemptId } : { test_id: testId },
+  });
+  if (error || !(data as any)?.ok) {
+    console.error("loadTestQuestions error", error ?? (data as any)?.error);
     return [];
   }
-  return ((data ?? []) as any[]).map((r) => ({
+  const rows = ((data as any).questions ?? []) as any[];
+  return rows.map((r) => ({
     id: r.id,
     position: r.position,
     question_text: r.question_text,
