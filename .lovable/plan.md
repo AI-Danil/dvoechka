@@ -1,37 +1,44 @@
-# Фикс 404 на GitHub Pages — basename для React Router
+## Цель
+Убрать публичный доступ к `test_questions` (сейчас любой может скачать вопросы с правильными ответами) — вопросы будут отдаваться только через серверный edge function без полей `correct_index` и `expected_answer`.
 
-## Диагноз
+## Шаги
 
-Открыл `https://ai-danil.github.io/dvoechka/` через браузер-инспектор. Сайт **загружается** (JS, CSS, ассеты — всё подтянулось). Но в консоли:
+### 1. Миграция БД
+- DROP RLS-политики `"Anyone reads questions of published tests"` на `test_questions` (роли anon/authenticated).
+- Оставить только: `"Admins manage all questions"` и `"Authors manage questions of own tests"`.
+- (Аналогично проверить `public_test_questions` — это скорее всего view; если SELECT доступен anon, отозвать GRANT.)
 
+### 2. Новый edge function `get-test-questions`
+- `verify_jwt = false`, входы: `attempt_id` (или `test_id` + `student_name` для верификации существующей попытки).
+- Через service role:
+  1. Находит активную `test_attempts` запись (status = `in_progress`) с этим `attempt_id`.
+  2. Загружает `test_questions` без `correct_index`, `expected_answer`.
+  3. Возвращает массив вопросов клиенту.
+- Так гарантируем: вопросы видит только тот, кто реально начал попытку через `start-attempt`/`join-session`.
+
+### 3. Обновление фронта
+- `src/lib/dbTests.ts` → `loadTestQuestions()`: вместо прямого `from("public_test_questions")` вызывать `supabase.functions.invoke("get-test-questions", { body: { attempt_id } })`.
+- Найти все места использования `loadTestQuestions` (вероятно `DbTestRunner.tsx`, `LiveSessionRunner.tsx`) и пробросить `attempt_id`.
+- Убедиться, что нигде на фронте не используются поля `correct_index`/`expected_answer` — оценка уже идёт на сервере в `grade-quiz-submission`.
+
+### 4. Регистрация в `supabase/config.toml`
+Добавить блок:
 ```
-404 Error: User attempted to access non-existent route: /dvoechka/
+[functions.get-test-questions]
+verify_jwt = false
 ```
 
-Это **не** 404 от GitHub Pages — это 404 от нашего React Router. Vite корректно собран с `base="/dvoechka/"`, но `BrowserRouter` не знает про этот префикс и считает путь `/dvoechka/` неизвестным маршрутом → рендерит компонент `NotFound`.
+### 5. Проверка
+- Прогнать `supabase--linter` и `security--run_security_scan` — убедиться, что утечки нет.
+- Тест-сценарий: попробовать `curl` на `test_questions` с anon-ключом → должен вернуться пустой массив / 401.
+- Проверить, что обычное прохождение теста (и live-сессия) работает.
 
-## Фикс
-
-Один файл, одна строчка.
-
-### `src/App.tsx`
-
-```diff
-- <BrowserRouter>
-+ <BrowserRouter basename={import.meta.env.BASE_URL}>
-```
-
-`import.meta.env.BASE_URL`:
-- На GitHub Pages = `/dvoechka/` (Vite подставляет из `base`)
-- На Lovable / локально = `/`
-- Итого работает везде без условий.
-
-## После
-
-1. Lovable засинкает в GitHub автоматически.
-2. Workflow `Deploy to GitHub Pages` запустится сам на push в `main`.
-3. Через ~2 минуты `https://ai-danil.github.io/dvoechka/` откроет главную с тестами.
-4. На `dvoechka.lovable.app` нужно нажать **Update** в Publish (фронтенд-изменение).
+## Возможный риск
+Если в БД есть view `public_test_questions`, он может игнорировать RLS базовой таблицы — нужно либо пересоздать его с `security_invoker=on`, либо отозвать `GRANT SELECT ... TO anon`. Уточню при миграции через `supabase--read_query`.
 
 ## Затронутые файлы
-- `src/App.tsx` — добавить `basename={import.meta.env.BASE_URL}` к `BrowserRouter`
+- новая миграция (DROP policy + GRANT REVOKE на view)
+- `supabase/functions/get-test-questions/index.ts` (новый)
+- `supabase/config.toml`
+- `src/lib/dbTests.ts`
+- `src/components/DbTestRunner.tsx`, `src/components/LiveSessionRunner.tsx` (адаптация вызова)

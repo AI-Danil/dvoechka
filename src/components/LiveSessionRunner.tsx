@@ -90,8 +90,9 @@ export default function LiveSessionRunner({
   const { finalize } = useRrwebRecorder({ resultId: isActive ? resultId : null, enabled: isActive });
 
   useEffect(() => {
-    loadTestQuestions(testId).then(setQuestions);
-  }, [testId]);
+    if (!attemptId) return;
+    loadTestQuestions(testId, attemptId).then(setQuestions);
+  }, [testId, attemptId]);
 
   // Античит-события
   useEffect(() => {
