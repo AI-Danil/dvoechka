@@ -1,32 +1,37 @@
-## Проблема
+Причина 404 уже понятна: `https://ai-danil.github.io/live` не существует, потому что GitHub Pages у этого репозитория опубликован как project site под префиксом репозитория: `https://ai-danil.github.io/dvoechka/`. Рабочая ссылка для детей сейчас: `https://ai-danil.github.io/dvoechka/live`.
 
-На GitHub Pages у учеников 404 при заходе на `/live` (и другие deep links вроде `/auth`, `/teacher/live`).
+Нужно не только сказать правильную ссылку, но и убрать место, которое снова генерирует неправильную ссылку из интерфейса.
 
-Причина: workflow `.github/workflows/deploy-pages.yml` после билда выполняет `cp dist/index.html dist/404.html`. Это **перезаписывает** правильный `public/404.html`, в котором лежит SPA-редирект для GH Pages (он переписывает `/<repo>/live` в `/<repo>/?/live`, а инлайн-скрипт в `index.html` потом восстанавливает путь через `history.replaceState`).
+План исправления:
 
-После перезаписи `404.html` отдаёт обычный `index.html` без редиректа → роутер не видит правильного пути, ассеты могут резолвиться с неверным base, в итоге у учеников белый экран или 404.
+1. Исправить кнопку на главной странице
+   - Файл: `src/pages/Index.tsx`
+   - Сейчас кнопка «Войти по коду класса» использует обычный HTML-link `href="/live"`.
+   - На GitHub Pages это уводит на корень домена `https://ai-danil.github.io/live`, без `/dvoechka/`, поэтому дети получают GitHub 404.
+   - Заменю на React Router `Link to="/live"`, чтобы `BrowserRouter basename={import.meta.env.BASE_URL}` автоматически добавлял `/dvoechka/` в production-сборке GitHub Pages.
 
-## Что менять
+2. Исправить ссылку возврата на 404-странице
+   - Файл: `src/pages/NotFound.tsx`
+   - Заменю `href="/"` на `Link to="/"`, чтобы возврат домой тоже не терял `/dvoechka/`.
 
-Файл: `.github/workflows/deploy-pages.yml`
+3. Исправить email redirect для GitHub Pages
+   - Файл: `src/pages/Auth.tsx`
+   - Сейчас `emailRedirectTo` собирается как `${window.location.origin}/auth`, что на GitHub Pages даёт `https://ai-danil.github.io/auth` вместо `https://ai-danil.github.io/dvoechka/auth`.
+   - Соберу URL с учётом `import.meta.env.BASE_URL`.
 
-Убрать шаг:
+4. Обновить README, чтобы не вводил в заблуждение
+   - Файл: `README.md`
+   - Уберу устаревшую строку про `index.html → 404.html`, потому что этот шаг уже удалён.
+   - Добавлю явный пример: ссылка live-сессии на GitHub Pages должна быть вида `https://<username>.github.io/<repo>/live`, для текущего репозитория — `https://ai-danil.github.io/dvoechka/live`.
 
-```yaml
-- name: SPA fallback (copy index.html → 404.html)
-  run: cp dist/index.html dist/404.html
+После этого нужно будет запушить изменения и дождаться GitHub Actions deploy. Детям надо давать ссылку:
+
+```text
+https://ai-danil.github.io/dvoechka/live
 ```
 
-`public/404.html` уже содержит правильный SPA-редирект и автоматически копируется Vite в `dist/404.html` при билде. Дополнительный `cp` не нужен и вредит.
+А не:
 
-## Проверка после деплоя
-
-1. Дождаться завершения GitHub Actions.
-2. Открыть `https://<owner>.github.io/<repo>/live` напрямую → должна открыться форма ввода кода (а не 404 / белый экран).
-3. То же для `https://<owner>.github.io/<repo>/auth`.
-
-## Затронутые файлы
-
-- `.github/workflows/deploy-pages.yml` — удалить шаг "SPA fallback".
-
-На `dvoechka.lovable.app` бага нет — Lovable hosting сам разруливает SPA fallback, поэтому правка касается только GH Pages деплоя.
+```text
+https://ai-danil.github.io/live
+```

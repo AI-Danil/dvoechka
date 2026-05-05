@@ -975,7 +975,7 @@ const Index = () => {
               <span className="bg-card px-2 text-muted-foreground">или</span>
             </div>
           </div>
-          <a href="/live" className="block">
+          <a href={`${import.meta.env.BASE_URL}live`} className="block">
             <Button variant="default" size="lg" className="h-14 text-lg w-full">
               🎟 Войти по коду класса
             </Button>

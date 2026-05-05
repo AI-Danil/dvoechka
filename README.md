@@ -180,9 +180,11 @@ GitHub в РФ открывается без VPN — это ещё одно зе
 
 **Конфиг:**
 
-- Workflow: `.github/workflows/deploy-pages.yml` — ставит bun, билдит, копирует `index.html → 404.html` для SPA-фоллбека, выкатывает через `actions/deploy-pages`.
+- Workflow: `.github/workflows/deploy-pages.yml` — ставит bun, билдит, выкатывает через `actions/deploy-pages`.
 - `vite.config.ts` сам подставляет `base="/<repo>/"` когда видит `GITHUB_PAGES=true` (только в GH Actions, остальные зеркала не трогает).
-- `public/404.html` + snippet в `index.html` — стандартный [spa-github-pages](https://github.com/rafgraph/spa-github-pages) трюк, чтобы прямые ссылки и refresh не отдавали 404.
+- `public/404.html` (копируется Vite в `dist/404.html` автоматически) + snippet в `index.html` — стандартный [spa-github-pages](https://github.com/rafgraph/spa-github-pages) трюк, чтобы прямые ссылки и refresh не отдавали 404.
+
+**Важно про ссылки для детей:** GH Pages — это project site под префиксом репозитория. Live-сессия открывается по `https://<username>.github.io/<repo>/live`. Для текущего репо: `https://ai-danil.github.io/dvoechka/live`. Ссылка `https://ai-danil.github.io/live` (без `/dvoechka/`) даст GitHub 404 — это не баг приложения, а структура GH Pages.
 
 **Secrets (опционально):**
 
