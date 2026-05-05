@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Anyone reads questions of published tests" ON public.test_questions;
