@@ -285,10 +285,32 @@ export default function LiveSessionRunner({
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
-  if (!questions) {
+  if (questions === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Загрузка теста…</p>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6 space-y-4 text-center">
+            <div className="text-5xl">⚠️</div>
+            <h2 className="text-xl font-bold">Не удалось загрузить вопросы</h2>
+            <p className="text-sm text-muted-foreground">
+              {questionsError ?? "Попробуйте снова. Если не поможет — сообщите учителю."}
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button onClick={() => setReloadTick((t) => t + 1)}>Попробовать снова</Button>
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                Перезагрузить страницу
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
