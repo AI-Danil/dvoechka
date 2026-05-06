@@ -1161,7 +1161,15 @@ const Index = () => {
     }
 
     // test-pick
-    const tests = TESTS_CATALOG[grade]?.[subject] || [];
+    const rawTests = TESTS_CATALOG[grade]?.[subject] || [];
+    // Подсветка актуальной итоговой работы для 7/technology
+    const featuredId =
+      grade === "7" && subject === "technology" ? "final-q4" : null;
+    const tests = featuredId
+      ? [...rawTests].sort((a, b) =>
+          a.id === featuredId ? -1 : b.id === featuredId ? 1 : 0,
+        )
+      : rawTests;
     const totalCount = tests.length + dbTests.length;
     return cardWrap(
       <div className="grid grid-cols-1 gap-3">
@@ -1169,24 +1177,39 @@ const Index = () => {
           <p className="text-sm text-muted-foreground text-center">Работы пока не добавлены.</p>
         ) : (
           <>
-            {tests.map((t) => (
-              <Button
-                key={t.id}
-                variant="outline"
-                size="lg"
-                className="h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start"
-                onClick={() => startTest(t.id)}
-              >
-                <span className="flex flex-col items-start gap-1 w-full">
-                  <span>{t.title}</span>
-                  {t.date && (
-                    <span className="text-xs font-bold text-accent bg-accent/15 px-2 py-0.5 rounded">
-                      📅 {t.date}
-                    </span>
-                  )}
-                </span>
-              </Button>
-            ))}
+            {tests.map((t) => {
+              const isFeatured = featuredId && t.id === featuredId;
+              const isDimmed = featuredId && t.id !== featuredId;
+              return (
+                <Button
+                  key={t.id}
+                  variant={isFeatured ? "default" : "outline"}
+                  size="lg"
+                  className={`h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start ${
+                    isFeatured
+                      ? "ring-2 ring-primary shadow-lg shadow-primary/30 scale-[1.02]"
+                      : isDimmed
+                        ? "opacity-50 hover:opacity-80 grayscale"
+                        : ""
+                  }`}
+                  onClick={() => startTest(t.id)}
+                >
+                  <span className="flex flex-col items-start gap-1 w-full">
+                    <span>{t.title}</span>
+                    {isFeatured && (
+                      <span className="text-xs font-bold text-primary-foreground bg-primary-foreground/20 px-2 py-0.5 rounded">
+                        🔥 Актуальная работа
+                      </span>
+                    )}
+                    {t.date && (
+                      <span className="text-xs font-bold text-accent bg-accent/15 px-2 py-0.5 rounded">
+                        📅 {t.date}
+                      </span>
+                    )}
+                  </span>
+                </Button>
+              );
+            })}
             {dbTests.map((t) => (
               <Button
                 key={t.id}
