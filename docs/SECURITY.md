@@ -97,6 +97,33 @@ npm audit
 3. Проверить, что не появилось новых таблиц без RLS.
 4. Проверить, что новые edge-функции валидируют вход.
 
+## Data Retention
+
+Edge function `cleanup-old-data` (вызывается вручную или внешним cron-ом
+с учительским HMAC-токеном) удаляет:
+
+- `student_drafts` старше **30 дней** — черновики уже неактуальны.
+- `auth_attempts` старше **7 дней** — лог брутфорс-попыток.
+- Объекты в bucket `rrweb-sessions` старше **90 дней** — записи сессий.
+
+Сами `test_attempts` и `test_results` сохраняются бессрочно (история оценок).
+
+## Защита учительского входа
+
+- Пароль хранится как **bcrypt-хэш** (cost 10) в `teacher_credentials`.
+- `TEACHER_PASSWORD` в env используется только для one-time bootstrap при
+  первом успешном логине. После него env-секрет можно удалить.
+- **Anti-brute-force:** ≥5 неудачных попыток за 15 минут с того же IP+login
+  → ответ `429 Too Many Requests` с `Retry-After: 900`. Все попытки логируются
+  в `auth_attempts`.
+- Токен — HMAC-SHA256 на 8 часов; payload включает `iat` для будущей ротации.
+
+## CSP
+
+Заголовок `Content-Security-Policy` задан в `public/_headers` (Cloudflare Pages)
+и в `netlify.toml` (Netlify). `'unsafe-inline'` и `'unsafe-eval'` оставлены
+из-за ограничений Vite/shadcn — переход на nonce-режим запланирован отдельно.
+
 ## Ответственное разглашение
 
 Если вы нашли уязвимость, пожалуйста, сообщите автору проекта приватно

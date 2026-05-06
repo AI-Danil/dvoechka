@@ -302,12 +302,11 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
 
       // Загружаем прикреплённые файлы (письменная часть)
       const attachments: Record<number, { url: string; name: string; size: number; type: string }> = {};
-      const sanitize = (s: string) =>
-        s.normalize("NFKD").replace(/[^\x20-\x7E]/g, "_").replace(/\s+/g, "_");
+      const { sanitizeFilename } = await import("@/lib/sanitizeFilename");
       for (const [posStr, file] of Object.entries(writtenFiles)) {
         if (!file) continue;
         const pos = Number(posStr);
-        const safeName = sanitize(file.name);
+        const safeName = sanitizeFilename(file.name);
         const path = `${resultId}/q${pos}_${Date.now()}_${safeName}`;
         const { error: upErr } = await supabase.storage
           .from("test-attachments")
