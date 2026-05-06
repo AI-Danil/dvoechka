@@ -283,6 +283,8 @@ const Index = () => {
   useEffect(() => { attachments8physPowerRef.current = attachments8physPower; }, [attachments8physPower]);
   useEffect(() => { answers8physFinalQ4Ref.current = answers8physFinalQ4; }, [answers8physFinalQ4]);
   useEffect(() => { attachments8physFinalQ4Ref.current = attachments8physFinalQ4; }, [attachments8physFinalQ4]);
+  useEffect(() => { answers6techFinalQ4Ref.current = answers6techFinalQ4; }, [answers6techFinalQ4]);
+  useEffect(() => { attachments6techFinalQ4Ref.current = attachments6techFinalQ4; }, [attachments6techFinalQ4]);
   useEffect(() => { answers7physRef.current = answers7phys; }, [answers7phys]);
   useEffect(() => { attachments7physRef.current = attachments7phys; }, [attachments7phys]);
   useEffect(() => { answers7physWorkRef.current = answers7physWork; }, [answers7physWork]);
