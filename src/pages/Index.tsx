@@ -404,6 +404,8 @@ const Index = () => {
       return { answered: answers8physPower.filter(Boolean).length, total: 6 };
     } else if (grade === "8" && subject === "physics" && testId === "final-q4") {
       return { answered: answers8physFinalQ4.filter(Boolean).length, total: 6 };
+    } else if (grade === "6" && subject === "technology" && testId === "final-q4") {
+      return { answered: answers6techFinalQ4.filter(Boolean).length, total: 6 };
     } else if (grade === "8" && subject === "physics") {
       return { answered: answers8phys.filter(Boolean).length, total: 13 };
     } else if (grade === "9" && subject === "physics" && testId === "atom") {
