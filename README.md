@@ -1,195 +1,66 @@
-# Welcome to your Lovable project
+# Двоечка — платформа онлайн-тестирования
 
-## Project info
+Веб-приложение для проведения школьных контрольных и тематических тестов.
+Учитель готовит тест, ученик проходит его в браузере, результаты автоматически
+сохраняются и приходят учителю в Telegram. Работают live-сессии с общим
+таймером, автосохранение черновиков, защита от списывания и запись экрана.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Стек
 
-## Deployments
+- **Frontend:** React 18, TypeScript (strict), Vite 5, Tailwind CSS, shadcn/ui, React Router, TanStack Query.
+- **Backend:** Supabase — Postgres + Auth + Storage + Edge Functions (Deno).
+- **Хостинг:** мульти-зеркало (Lovable, Netlify, Cloudflare Pages, GitHub Pages) на одной БД.
+- **Уведомления:** Telegram Bot API через edge-функцию.
 
-Приложение хостится в нескольких местах одновременно — все они смотрят в одну и ту же базу (Supabase), результаты учеников падают в общую таблицу.
-
-| Зеркало | URL | Когда использовать |
-|---|---|---|
-| Lovable | `https://dvoechka.lovable.app` | Основной публикуемый URL |
-| Netlify | `https://dvoechka.netlify.app` | Основной для учеников |
-| Cloudflare Pages | `https://<project>.pages.dev` | Запасной, лучше открывается из РФ |
-| Cloudflare Tunnel | `https://*.trycloudflare.com` | Опционально, локально с ноута (требует рабочего DNS до Cloudflare) |
-
-### Cloudflare Tunnel (опциональный локальный канал)
-
-> **Внимание:** на сетях с фильтрацией DNS (некоторые РФ-провайдеры, корпоративные Wi-Fi) `cloudflared` не поднимается — резолв `argotunnel.com` падает с `connection refused`. В этом случае используйте мобильный хотспот, Cloudflare WARP или просто опубликованные зеркала Lovable / Netlify / Pages.
-
-Если DNS до CF проходит, туннель поднимается за минуту:
+## Быстрый старт
 
 ```sh
-# 1. Установить cloudflared один раз
-brew install cloudflared
-
-# 2. В первом терминале — собрать и поднять прод-превью
-npm run build
-npm run preview:host
-
-# 3. Во втором терминале — поднять публичный туннель
-npm run tunnel
-# → скопировать URL вида https://random-words.trycloudflare.com
-
-# 4. (опционально) не дать ноуту уснуть
-caffeinate -dimsu
+npm install
+npm run dev          # локальный dev-сервер на http://localhost:5173
+npm run build        # production-сборка в ./dist
+npm run preview:host # локальный preview production-сборки
 ```
 
-Туннель живёт пока запущены оба процесса. URL новый при каждом запуске. Если падает с `connection refused` на DNS — это не лечится правкой репо, нужна другая сеть.
+Переменные окружения (`.env`) подставляются автоматически Lovable Cloud:
 
-### Cloudflare Pages / Workers (постоянное зеркало)
+| Имя                              | Назначение                                      |
+| -------------------------------- | ----------------------------------------------- |
+| `VITE_SUPABASE_URL`              | URL проекта Supabase                            |
+| `VITE_SUPABASE_PUBLISHABLE_KEY`  | Публичный anon-ключ                             |
+| `VITE_SUPABASE_PROJECT_ID`       | ID проекта (для прямых вызовов edge functions)  |
 
-Настраивается один раз через https://dash.cloudflare.com → **Workers & Pages → Create → Connect to Git**.
+## Документация
 
-**Build configuration (важно!):**
+Вся подробная документация — в [`docs/`](./docs):
 
-- **Framework preset:** `None` ⚠️ (НЕ `Vite`! авто-детект ломает деплой)
-- **Build command:** `bun run build`
-- **Deploy command:** `bun run deploy:cf` (это `bunx wrangler deploy --no-bundle` — `wrangler` стоит локально в devDependencies, ставить глобально не нужно)
-- **Build output directory:** `dist`
-- **Environment variables:** `NODE_VERSION=20`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID` (значения те же, что в Netlify)
+| Документ                                              | О чём                                                                       |
+| ----------------------------------------------------- | --------------------------------------------------------------------------- |
+| [ARCHITECTURE.md](./docs/ARCHITECTURE.md)             | Высокоуровневая архитектура: фронт ↔ Supabase, диаграмма потоков            |
+| [DATABASE.md](./docs/DATABASE.md)                     | Все таблицы, связи, RLS-политики и обоснование решений                      |
+| [EDGE_FUNCTIONS.md](./docs/EDGE_FUNCTIONS.md)         | Каталог всех serverless-функций: входы, выходы, кто вызывает                |
+| [AUTH_AND_ROLES.md](./docs/AUTH_AND_ROLES.md)         | Модель ролей (admin / teacher / student), HMAC учительский токен            |
+| [TESTING_FLOW.md](./docs/TESTING_FLOW.md)             | Поток прохождения теста: обычный режим, live-сессии, автосейв, античит      |
+| [SECURITY.md](./docs/SECURITY.md)                     | Модель угроз, осознанные риски, ответственное разглашение                   |
+| [DEPLOYMENT.md](./docs/DEPLOYMENT.md)                 | Деплой: Lovable, Netlify, Cloudflare Pages, GitHub Pages                    |
+| [DEVELOPMENT.md](./docs/DEVELOPMENT.md)               | Локальная разработка, структура папок, конвенции, как добавить новый тест   |
 
-Деплой идёт через `wrangler.toml` в корне репо в режиме **assets-only** (статика из `dist/`). SPA-фоллбек включён через `not_found_handling = "single-page-application"` — прямые заходы на `/admin`, `/test/...` и refresh страницы работают.
+## Структура репозитория
 
-> ⚠️ **НЕ создавать `public/_redirects`!** Это Netlify-специфичный файл. Cloudflare Wrangler валидирует его при деплое и падает с ошибкой `Invalid _redirects configuration / Line 1: Infinite loop detected` на стандартном правиле `/* /index.html 200`. Для Cloudflare SPA fallback уже обеспечен в `wrangler.toml`, для Netlify — в `netlify.toml` (`[[redirects]]`).
-
-> **Почему `Framework preset = None` и `--no-bundle`?**  
-> Если оставить `Framework: Vite`, Cloudflare запустит свой Vite-плагин, который требует Vite ≥ 6. У нас Vite 5.4 + `@vitejs/plugin-legacy` (нужен для старых браузеров на школьных компах). Апгрейд Vite ради Cloudflare сломает legacy-сборку. `--no-bundle` отключает попытку Cloudflare пересобрать проект и просто загружает готовый `dist/` как статику.
->
-> Симптом неправильной настройки в логах:
-> ```
-> Detected Project Settings:
->  - Framework: Vite
-> ✘ The version of Vite used in the project ("5.4.21") cannot be automatically configured.
-> ```
-> Если видишь это — зайди в Settings → Builds → Edit configuration и поставь `Framework preset: None`.
-
-Дальше Cloudflare деплоит автоматически при каждом push в main.
-
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```text
+src/
+  components/        UI-компоненты (shadcn/ui под capot)
+    tests/           Реализации конкретных тестов (Grade7Informatics, …)
+  pages/             Маршруты приложения (Index, Admin, TeacherLive, …)
+  hooks/             Кастомные React-хуки (useAuth, useRrwebRecorder, …)
+  lib/               Чистые утилиты (strictRules, dbTests, safeRandomUUID)
+  integrations/      Авто-генерируемые модули Supabase (НЕ редактировать)
+supabase/
+  functions/         Edge Functions (Deno)
+  migrations/        SQL-миграции (timestamp-based)
+  config.toml        Конфиг проекта Supabase
+docs/                Документация (см. таблицу выше)
 ```
 
-**Edit a file directly in GitHub**
+## Лицензия
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
-
-## Зеркало на Netlify (для РФ)
-
-Проект готов к деплою на Netlify как «зеркало» — отдельный домен, тот же бэкенд (Supabase). Все результаты учеников падают в ту же БД, учитель видит всё в одной админке.
-
-**Способ 1 — через GitHub (рекомендую):**
-1. Откройте [app.netlify.com](https://app.netlify.com) → **Add new site → Import an existing project**.
-2. Выберите GitHub → этот репозиторий.
-3. Netlify автоматически подхватит `netlify.toml` (build command, publish dir, SPA-redirect). Ничего настраивать не надо.
-4. Жмите **Deploy**. Через ~2 минуты получите ссылку вида `https://random-name.netlify.app`.
-5. (Опционально) В **Site settings → Change site name** — задайте читабельный subdomain.
-
-**Способ 2 — Drag & Drop (без Git):**
-1. Локально: `npm install && npm run build` → получите папку `dist/`.
-2. На [app.netlify.com/drop](https://app.netlify.com/drop) перетащите папку `dist`.
-3. Готово.
-
-**Environment variables на Netlify:**
-В дашборде Netlify: **Site configuration → Environment variables → Add a variable → Import from .env**, вставить значения из `.env.production` репо:
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
-- `VITE_SUPABASE_PROJECT_ID`
-
-Технически Vite подхватит `.env.production` из репо и без этого, но задать в дашборде надёжнее (можно ротировать без коммита). После добавления — **Deploys → Trigger deploy → Clear cache and deploy site**.
-
-**Если билд падает на `lockfile is frozen`** — это уже учтено в `netlify.toml` (install command = `bun install --no-frozen-lockfile && npm run build`).
-
-**Что работает на зеркале:**
-- Все тесты, античит, запись экрана (rrweb), Telegram-уведомления, загрузка файлов.
-- Те же данные, что и на основном `dvoechka.lovable.app`.
-
-**Если Netlify окажется недоступен из РФ** — те же файлы (`dist/`) подойдут для GitHub Pages, Cloudflare Pages, Vercel. Только `netlify.toml` заменить на их аналог.
-
-## Зеркало на GitHub Pages (для РФ)
-
-GitHub в РФ открывается без VPN — это ещё одно зеркало фронтенда. Бэкенд тот же (Supabase), результаты падают в общую таблицу.
-
-**Как включить (один раз):**
-
-1. GitHub → этот репозиторий → **Settings → Pages → Source: GitHub Actions**.
-2. После следующего push в `main` (или ручного запуска workflow `Deploy to GitHub Pages` во вкладке Actions) сборка автоматически задеплоится.
-3. URL будет вида `https://<username>.github.io/<repo>/` — он появится в Settings → Pages после первого успешного деплоя.
-
-**Конфиг:**
-
-- Workflow: `.github/workflows/deploy-pages.yml` — ставит bun, билдит, выкатывает через `actions/deploy-pages`.
-- `vite.config.ts` сам подставляет `base="/<repo>/"` когда видит `GITHUB_PAGES=true` (только в GH Actions, остальные зеркала не трогает).
-- `public/404.html` (копируется Vite в `dist/404.html` автоматически) + snippet в `index.html` — стандартный [spa-github-pages](https://github.com/rafgraph/spa-github-pages) трюк, чтобы прямые ссылки и refresh не отдавали 404.
-
-**Важно про ссылки для детей:** GH Pages — это project site под префиксом репозитория. Live-сессия открывается по `https://<username>.github.io/<repo>/live`. Для текущего репо: `https://ai-danil.github.io/dvoechka/live`. Ссылка `https://ai-danil.github.io/live` (без `/dvoechka/`) даст GitHub 404 — это не баг приложения, а структура GH Pages.
-
-**Secrets (опционально):**
-
-По умолчанию workflow хардкодит публичные `VITE_SUPABASE_*` ключи (они и так в `.env.production`). Если хочется ротировать без коммита — добавь в Settings → Secrets and variables → Actions: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`.
-
-**Что делать если GH Pages тоже не открывается у ребёнка:**
-
-Проблема не в хостинге фронта, а в Supabase XHR. Смотри Telegram-алерты от `page-beacon`: если приходит `🟦 stage=html` + `🟩 stage=js-start`, но дальше белый экран — блокируется именно `*.supabase.co`. Тогда нужен прокси через RU VPS (вариант Б).
+Внутренний проект. Все права защищены.

@@ -1,75 +1,92 @@
-# Серверный автосейв для обычного режима
+## Контекст и важная оговорка
 
-## Зачем
-Сейчас в обычном режиме (вне live-сессии) и квиз, и письменные ответы сохраняются **только в `localStorage`**. Если ученик пересядет за другой компьютер, очистит кеш или браузер сам почистит storage — всё пропадёт. В live-режиме письменные ответы уже льются в `test_attempts.draft_answers` через `save-attempt-progress`. Нужно сделать аналог для обычного режима.
+**Скрытие следов ИИ из репо я делать не буду** — причины подробно объяснены в чате (нельзя переписывать git history из среды; всё равно палится по `package.json`, хостингу `lovable.app`, метаданным коммитов; намеренное сокрытие при ревью выглядит хуже честного признания). Вместо этого делаем проект таким, чтобы код прошёл ревью на качестве, а не на «кто автор».
 
-## Архитектура
+Если позже захочешь всё-таки чистить историю — это отдельная задача вне Lovable: локально `git filter-repo`, перенос в новый репозиторий, смена хостинга. Готов написать инструкцию, но выполнить не смогу.
 
-Локальный `localStorage` остаётся как primary (мгновенный, оффлайн). Сервер — как backup и для смены устройства. При входе на тест сравниваем `updated_at` localStorage и сервера, берём новее.
+---
 
-### 1. Новая таблица `student_drafts`
+## Что сделаю
 
+### 1. Аудит безопасности и фиксы
+
+Найдено линтером 8 предупреждений. Чиню всё:
+
+- **Public Bucket Allows Listing** (`test-attachments`) — добавлю RLS на `storage.objects`: публичное чтение конкретных файлов оставляем, но `LIST` запрещаем для anon.
+- **SECURITY DEFINER функции доступны anon/authenticated** (`has_role`, `set_updated_at`, `get_session_by_code`) — `REVOKE EXECUTE ... FROM anon, authenticated` где не нужно. `get_session_by_code` оставляем доступной для anon (её зовёт `join-session` через service role — можно вообще отозвать).
+- **Leaked Password Protection** — включу через `configure_auth`.
+
+Дополнительно ручной разбор:
+- Все edge functions: проверю CORS (в `_shared` или дублирование), `verify_jwt`, валидацию входа (zod), что service role не утекает в ответы, что `student_name` нормализуется одинаково везде (anti-cheat key).
+- RLS-политики 13 таблиц: проверю каждую на recursion, на overly permissive (`true`), на отсутствие политик для INSERT/UPDATE/DELETE где должны быть.
+- `student_drafts`: сейчас INSERT/UPDATE/DELETE закрыты — это правильно (всё через edge с service role). Зафиксирую в комментарии.
+- `verify-teacher-credentials` + HMAC токен в `_shared/teacher-auth.ts` — перепроверю срок жизни, алгоритм.
+- Прогоняю security scan ещё раз после фиксов.
+
+### 2. Документация
+
+Создаю структуру:
+
+```text
+README.md                  — обзор, быстрый старт, ссылки на docs/
+docs/
+  ARCHITECTURE.md          — фронт SPA + Supabase, диаграмма потоков
+  DATABASE.md              — все таблицы, связи, RLS-политики (с пояснением «почему так»)
+  EDGE_FUNCTIONS.md        — каждая функция: назначение, вход, выход, кто вызывает, права
+  AUTH_AND_ROLES.md        — модель ролей (admin/teacher/student), HMAC teacher-token, flow логина
+  TESTING_FLOW.md          — обычный режим / live-сессии / автосейв (3 уровня) / античит
+  SECURITY.md              — модель угроз, что защищено, что осознанный риск, ответственное разглашение
+  DEPLOYMENT.md            — Lovable / Netlify / Cloudflare Pages / GitHub Pages, env vars, build secrets
+  DEVELOPMENT.md           — локальный запуск, структура папок, конвенции, как добавить новый тест
+  CHANGELOG.md             — пустой шаблон под Keep a Changelog
 ```
-id          uuid pk
-student_name text not null
-grade        text not null
-subject      text not null
-test_id      text not null         -- наш строковый id ('final-q4', 'python-hero', ...)
-attempt      text not null default '1'
-written      jsonb not null default '{}'  -- весь объект письменных ответов как сейчас в getDraftKey
-quiz         jsonb                         -- { v:1, total, idx, perQuestion, secondsLeft, savedAt }
-updated_at   timestamptz not null default now()
 
-unique (student_name, grade, subject, test_id, attempt)
-```
+Текущий `README.md` сильно перегружен инструкциями по деплою — переношу деплой в `docs/DEPLOYMENT.md`, README делаю чистым обзором.
 
-RLS:
-- SELECT — только teachers/admins (для отладки).
-- INSERT/UPDATE/DELETE для клиента закрыты — всё через edge-функции с service role.
+### 3. Комментарии в коде (JSDoc)
 
-### 2. Edge-функции
+Прохожусь по ключевым модулям и добавляю заголовочные JSDoc-блоки + поясняющие комментарии у нетривиальных мест:
 
-**`save-draft`** (POST, `verify_jwt = false`):
-- Body: `{ student_name, grade, subject, test_id, attempt, written?, quiz? }`.
-- Валидация Zod: имя 2 слова (как в остальном коде), grade в whitelist, размер payload < 256 KB.
-- Upsert в `student_drafts` по `(student_name, grade, subject, test_id, attempt)`. Обновляются только переданные поля.
+- `src/pages/Index.tsx` — главный экран, маршрутизация по тестам, автосейв
+- `src/components/Quiz.tsx` — таймер, persist, восстановление
+- `src/components/LiveSessionRunner.tsx` — live-режим, серверный таймер
+- `src/hooks/useAuth.tsx`, `useTeacherAuth.ts`, `useAntiCheatNotify.ts`, `useRrwebRecorder.ts`, `useDevToolsBlock.ts`
+- `src/lib/strictRules.ts`, `quizRegistry.ts`, `dbTests.ts`, `safeRandomUUID.ts`
+- Все 25 edge functions: 5–10 строк сверху (назначение, входы, выходы, side effects, security)
 
-**`load-draft`** (POST, `verify_jwt = false`):
-- Body: `{ student_name, grade, subject, test_id, attempt }`.
-- Возвращает `{ written, quiz, updated_at } | null`.
+Особо документирую «костыли с причиной»:
+- санитизация кириллицы перед upload в Storage
+- 2 русских слова в имени + 3-е слово-цифра как hidden retake
+- `verify_jwt = false` для большинства функций + причина (signing-keys + in-code validation)
+- почему `student_drafts` без INSERT-политики (только service role)
 
-**`clear-draft`** (POST, `verify_jwt = false`):
-- Удаляет запись после успешного сабмита. Параметры те же.
+### 4. Чистка
 
-Все три — стандартный CORS-блок, как в `save-attempt-progress`.
+- Удалю `console.log`, оставлю `console.error`/`console.warn` где уместно.
+- Уберу мёртвый код, найденный по ходу аудита.
+- Помечу TODO либо закрою, либо оформлю в `docs/ROADMAP.md`.
 
-### 3. Клиент: `src/pages/Index.tsx`
+### 5. Финальная проверка
 
-- После ввода имени и до старта теста: вызвать `load-draft`. Сравнить с `localStorage.getItem(getDraftKey(...))` по `updated_at` (в localStorage добавим обёртку `{ updated_at, data }`). Берём новее, прокидываем в setState и показываем тост «Черновик восстановлен с сервера»/«… с этого устройства».
-- Хук `useDebouncedServerSave(written, quiz, 5000)` — после 5с тишины шлёт `save-draft`. Также флашит на `pagehide`/`beforeunload` через `navigator.sendBeacon` (без CORS-преflight).
-- При успешном сабмите — `clear-draft` (fire-and-forget) + чистка локальных ключей (как сейчас).
-- Аналогично для квизового ключа: новый колбэк `onProgress` от `Quiz` поднимает свежий snapshot наверх, наверху он попадает в тот же дебаунсер.
+- `supabase--linter` — должно быть 0 warnings.
+- `security--run_security_scan` — прогнать.
+- Пройду по чеклисту OWASP ASVS Level 1 (то, что применимо к SPA + BaaS).
+- Убедиться, что typecheck/build не сломаны.
 
-### 4. Клиент: `src/components/Quiz.tsx`
+---
 
-- Добавить опциональный prop `onProgress?: (state: PersistedQuizState) => void`.
-- Вызывать его рядом с каждым `persist()` (на ответ и раз в N секунд — например, дросселировать до 1 раза в 5с, чтобы не дёргать сеть на каждый тик).
-- `localStorage` как и сейчас — без изменений.
+## Файлы, которые будут затронуты
 
-### 5. UX-нюансы
-- Если сервер недоступен — молча игнорируем, локальный сейв работает. Никаких алертов ученику.
-- На экране входа в тест, если `load-draft` нашёл черновик с другого устройства, показываем модалку «Найден незавершённый тест от {дата}. Продолжить или начать заново?». Заново → `clear-draft` + сброс localStorage.
-- Конфликт «локально новее» → используем локальный, но всё равно шлём его на сервер (выровнять).
+**Создаются:** `docs/*.md` (8 файлов), миграция для RLS-фиксов.
+**Переписывается:** `README.md`.
+**Правятся:** ~20 .ts/.tsx файлов (комментарии + чистка console.log), `supabase/functions/*/index.ts` (заголовочные комментарии).
 
-## Файлы
+## Чего НЕ трогаю
 
-- **миграция:** новая таблица `student_drafts` + RLS.
-- **новые edge-функции:** `supabase/functions/save-draft/index.ts`, `load-draft/index.ts`, `clear-draft/index.ts`.
-- **`src/pages/Index.tsx`:** хук-дебаунсер, вызов `load-draft` на входе, `clear-draft` на сабмите, обёртка `{updated_at,data}` для localStorage, модалка конфликта.
-- **`src/components/Quiz.tsx`:** prop `onProgress`, дроссель 5с.
-- *(опционально)* `src/components/LiveSessionRunner.tsx` — без изменений, там сервер уже есть.
+- `src/integrations/supabase/{client,types}.ts`, `.env*`, `supabase/config.toml` (project-level), `package.json` лишний раз.
+- Бизнес-логику тестов/квизов — только комментирую.
+- Git history.
 
-## Что НЕ делаем
-- Не трогаем `test_attempts` (она для live).
-- Не делаем realtime — обычный POST с дебаунсом 5с достаточен.
-- Не вводим аутентификацию учеников — ключ это (имя + класс + предмет + тест + попытка), как и сейчас в проекте.
+## Оценка
+
+Большой объём, но прямолинейный. Сделаю одним проходом, в конце — короткий отчёт «что починено / что осталось как осознанный риск».

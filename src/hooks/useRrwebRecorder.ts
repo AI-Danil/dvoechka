@@ -1,3 +1,11 @@
+/**
+ * Записывает экран ученика через rrweb и чанками заливает в приватный
+ * bucket `rrweb-sessions`. Первый flush — через 10 сек после старта,
+ * затем каждые 30 сек. Финальный flush — при unmount/submit.
+ *
+ * Учитель смотрит запись через /replay/:resultId — фронт получает
+ * signed URL у edge-функции replay-signed-url (TTL ~1 час).
+ */
 import { useEffect, useRef } from "react";
 import { record as rrwebRecord } from "rrweb";
 type RrwebEvent = Record<string, unknown>;
