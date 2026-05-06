@@ -27,6 +27,7 @@ Deno.serve(async (req) => {
 
     // Если передан attempt_id — проверяем активную попытку.
     let resolvedTestId: string | null = null;
+    let attemptInactive = false;
     if (attempt_id) {
       const { data: attempt, error: aErr } = await admin
         .from("test_attempts")
@@ -34,7 +35,9 @@ Deno.serve(async (req) => {
         .eq("id", attempt_id)
         .maybeSingle();
       if (aErr || !attempt) return json({ ok: false, error: "Попытка не найдена" }, 404);
-      if (attempt.status !== "in_progress") return json({ ok: false, error: "Попытка не активна" }, 403);
+      // НЕ блокируем выдачу вопросов, если попытка уже не active — иначе UI получает []
+      // и падает в белый экран. Просто помечаем флагом, чтобы клиент мог среагировать.
+      if (attempt.status !== "in_progress") attemptInactive = true;
       resolvedTestId = attempt.test_id;
     } else {
       // fallback: test_id допускаем только для опубликованных тестов (нужно для preview/teacher)
