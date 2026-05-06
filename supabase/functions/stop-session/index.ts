@@ -42,6 +42,21 @@ Deno.serve(async (req) => {
       .update({ status: "finished", ends_at: nowIso })
       .eq("id", session_id);
 
+    // Закрываем «висящие» attempts учеников этой сессии, чтобы они не оставались in_progress.
+    const { data: parts } = await admin
+      .from("test_session_participants")
+      .select("attempt_id")
+      .eq("session_id", session_id)
+      .not("attempt_id", "is", null);
+    const attemptIds = (parts ?? []).map((p: any) => p.attempt_id).filter(Boolean);
+    if (attemptIds.length > 0) {
+      await admin
+        .from("test_attempts")
+        .update({ status: "aborted", finished_at: nowIso })
+        .in("id", attemptIds)
+        .eq("status", "in_progress");
+    }
+
     // Broadcast — мгновенная доставка ученикам, обходит RLS
     try {
       const ch = admin.channel("live-broadcast");
