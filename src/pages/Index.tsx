@@ -306,59 +306,83 @@ const Index = () => {
   const testActiveRef = useRef(false);
   const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
 
+  // Гард: persist не должен писать, пока restore для текущего ключа не завершён.
+  // Иначе пустые initial-стейты затрут восстановленный черновик.
+  const restoredKeyRef = useRef<string | null>(null);
+
   // --- Autosave: restore draft on test start ---
   useEffect(() => {
-    if (screen !== "test" || !grade || !subject) return;
-    const key = getDraftKey(grade, subject, attempt, testId);
-    const saved = localStorage.getItem(key);
-    if (!saved) return;
-    try {
-      const draft = JSON.parse(saved);
-      if (grade === "8" && subject === "informatics" && testId === "python-hero") {
-        if (draft.answers8infoPy) setAnswers8infoPy(draft.answers8infoPy);
-      } else if (grade === "8" && subject === "informatics") {
-        if (draft.blitz8) setBlitz8(draft.blitz8);
-        if (draft.tasks8) setTasks8(draft.tasks8);
-      } else if (grade === "8" && subject === "physics" && testId === "power-joule") {
-        if (draft.answers8physPower) setAnswers8physPower(draft.answers8physPower);
-      } else if (grade === "8" && subject === "physics" && testId === "final-q4") {
-        if (draft.answers8physFinalQ4) setAnswers8physFinalQ4(draft.answers8physFinalQ4);
-      } else if (grade === "6" && subject === "technology" && testId === "final-q4") {
-        if (draft.answers6techFinalQ4) setAnswers6techFinalQ4(draft.answers6techFinalQ4);
-      } else if (grade === "8" && subject === "physics") {
-        if (draft.answers8phys) setAnswers8phys(draft.answers8phys);
-      } else if (grade === "9" && subject === "physics" && testId === "atom") {
-        if (draft.answers9physAtom) setAnswers9physAtom(draft.answers9physAtom);
-      } else if (grade === "9" && subject === "physics") {
-        if (draft.answers9phys) setAnswers9phys(draft.answers9phys);
-      } else if (grade === "9" && subject === "technology") {
-        if (draft.answers9tech) setAnswers9tech(draft.answers9tech);
-      } else if (grade === "9") {
-        if (draft.answers9) setAnswers9(draft.answers9);
-      } else if (grade === "7" && subject === "physics" && testId === "work-power") {
-        if (draft.answers7physWork) {
-          const restored = (draft.answers7physWork as string[]).slice(0, 6);
-          while (restored.length < 6) restored.push("");
-          setAnswers7physWork(restored);
-        }
-      } else if (grade === "7" && subject === "physics") {
-        if (draft.answers7phys) setAnswers7phys(draft.answers7phys);
-      } else if (grade === "7" && subject === "technology") {
-        if (draft.theory7tech) setTheory7tech(draft.theory7tech);
-        if (draft.practice7tech) setPractice7tech(draft.practice7tech);
-      } else if (grade === "7") {
-        if (draft.theory7) setTheory7(draft.theory7);
-        if (draft.practice7) setPractice7(draft.practice7);
-      }
-    } catch {
-      // ignore
+    if (screen !== "test" || !grade || !subject) {
+      restoredKeyRef.current = null;
+      return;
     }
-  }, [screen, grade, subject, testId, attempt]);
+    const key = getDraftKey(grade, subject, attempt, testId);
+    if (restoredKeyRef.current === key) return;
+    const saved = localStorage.getItem(key);
+    let restoredSomething = false;
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        const mark = (v: unknown) => { if (v) restoredSomething = true; };
+        if (grade === "8" && subject === "informatics" && testId === "python-hero") {
+          if (draft.answers8infoPy) { setAnswers8infoPy(draft.answers8infoPy); mark(draft.answers8infoPy); }
+        } else if (grade === "8" && subject === "informatics") {
+          if (draft.blitz8) { setBlitz8(draft.blitz8); mark(draft.blitz8); }
+          if (draft.tasks8) { setTasks8(draft.tasks8); mark(draft.tasks8); }
+        } else if (grade === "8" && subject === "physics" && testId === "power-joule") {
+          if (draft.answers8physPower) { setAnswers8physPower(draft.answers8physPower); mark(draft.answers8physPower); }
+        } else if (grade === "8" && subject === "physics" && testId === "final-q4") {
+          if (draft.answers8physFinalQ4) { setAnswers8physFinalQ4(draft.answers8physFinalQ4); mark(draft.answers8physFinalQ4); }
+        } else if (grade === "6" && subject === "technology" && testId === "final-q4") {
+          if (draft.answers6techFinalQ4) { setAnswers6techFinalQ4(draft.answers6techFinalQ4); mark(draft.answers6techFinalQ4); }
+        } else if (grade === "8" && subject === "physics") {
+          if (draft.answers8phys) { setAnswers8phys(draft.answers8phys); mark(draft.answers8phys); }
+        } else if (grade === "9" && subject === "physics" && testId === "atom") {
+          if (draft.answers9physAtom) { setAnswers9physAtom(draft.answers9physAtom); mark(draft.answers9physAtom); }
+        } else if (grade === "9" && subject === "physics") {
+          if (draft.answers9phys) { setAnswers9phys(draft.answers9phys); mark(draft.answers9phys); }
+        } else if (grade === "9" && subject === "technology") {
+          if (draft.answers9tech) { setAnswers9tech(draft.answers9tech); mark(draft.answers9tech); }
+        } else if (grade === "9") {
+          if (draft.answers9) { setAnswers9(draft.answers9); mark(draft.answers9); }
+        } else if (grade === "7" && subject === "physics" && testId === "work-power") {
+          if (draft.answers7physWork) {
+            const restored = (draft.answers7physWork as string[]).slice(0, 6);
+            while (restored.length < 6) restored.push("");
+            setAnswers7physWork(restored);
+            mark(draft.answers7physWork);
+          }
+        } else if (grade === "7" && subject === "physics") {
+          if (draft.answers7phys) { setAnswers7phys(draft.answers7phys); mark(draft.answers7phys); }
+        } else if (grade === "7" && subject === "technology") {
+          if (draft.theory7tech) { setTheory7tech(draft.theory7tech); mark(draft.theory7tech); }
+          if (draft.practice7tech) { setPractice7tech(draft.practice7tech); mark(draft.practice7tech); }
+        } else if (grade === "7") {
+          if (draft.theory7) { setTheory7(draft.theory7); mark(draft.theory7); }
+          if (draft.practice7) { setPractice7(draft.practice7); mark(draft.practice7); }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    // ВАЖНО: помечаем ключ как восстановленный ВСЕГДА (даже если черновика не было),
+    // чтобы persist-эффект разблокировался для этого теста.
+    restoredKeyRef.current = key;
+    if (restoredSomething) {
+      toast({
+        title: "✅ Черновик восстановлен",
+        description: "Мы вернули ваши предыдущие ответы. Продолжайте с того же места.",
+      });
+    }
+  }, [screen, grade, subject, testId, attempt, toast]);
 
   // --- Autosave: persist ---
   useEffect(() => {
     if (screen !== "test" || !grade || !subject) return;
     const key = getDraftKey(grade, subject, attempt, testId);
+    // Не пишем, пока restore для этого ключа не завершён —
+    // иначе пустые initial-стейты затрут сохранённый черновик.
+    if (restoredKeyRef.current !== key) return;
     let data: Record<string, unknown> = {};
     if (grade === "8" && subject === "informatics" && testId === "python-hero") {
       data = { answers8infoPy };
@@ -389,8 +413,50 @@ const Index = () => {
     } else if (grade === "7") {
       data = { theory7, practice7 };
     }
-    localStorage.setItem(key, JSON.stringify(data));
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch {
+      // quota / private mode — игнор
+    }
   }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4, answers6techFinalQ4, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+
+  // --- Autosave: страховочный flush на закрытие/сворачивание вкладки ---
+  useEffect(() => {
+    if (screen !== "test" || !grade || !subject) return;
+    const flush = () => {
+      const key = getDraftKey(grade, subject, attempt, testId);
+      if (restoredKeyRef.current !== key) return;
+      const data: Record<string, unknown> = {
+        blitz8: blitz8Ref.current,
+        tasks8: tasks8Ref.current,
+        answers8infoPy: answers8infoPyRef.current,
+        answers8phys: answers8physRef.current,
+        answers8physPower: answers8physPowerRef.current,
+        answers8physFinalQ4: answers8physFinalQ4Ref.current,
+        answers6techFinalQ4: answers6techFinalQ4Ref.current,
+        answers9: answers9Ref.current,
+        answers9phys: answers9physRef.current,
+        answers9physAtom: answers9physAtomRef.current,
+        answers9tech: answers9techRef.current,
+        answers7phys: answers7physRef.current,
+        answers7physWork: answers7physWorkRef.current,
+        theory7: theory7Ref.current,
+        practice7: practice7Ref.current,
+        theory7tech: theory7techRef.current,
+        practice7tech: practice7techRef.current,
+      };
+      try { localStorage.setItem(key, JSON.stringify(data)); } catch { /* ignore */ }
+    };
+    const onVis = () => { if (document.hidden) flush(); };
+    window.addEventListener("beforeunload", flush);
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [screen, grade, subject, testId, attempt]);
 
   // --- Progress ---
   const { answered, total } = useMemo(() => {
