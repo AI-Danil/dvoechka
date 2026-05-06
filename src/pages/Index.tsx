@@ -400,6 +400,93 @@ const Index = () => {
     }
   }, [screen, grade, subject, testId, attempt, toast]);
 
+  // --- Серверный restore: если локально ничего нет, тянем черновик с сервера ---
+  const serverRestoredKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (screen !== "test" || !grade || !subject || !cleanName) return;
+    const key = getDraftKey(grade, subject, attempt, testId);
+    if (serverRestoredKeyRef.current === key) return;
+    const localHas = !!localStorage.getItem(key);
+    const localQuizHas = !!localStorage.getItem(getQuizDraftKey(grade, subject, attempt, testId));
+    if (localHas && localQuizHas) {
+      // локальные данные актуальнее — пропускаем серверный restore
+      serverRestoredKeyRef.current = key;
+      return;
+    }
+    serverRestoredKeyRef.current = key;
+    (async () => {
+      try {
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/load-draft`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""}`,
+          },
+          body: JSON.stringify({
+            student_name: cleanName,
+            grade, subject, test_id: testId, attempt,
+          }),
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const draft = json?.draft;
+        if (!draft) return;
+        let restored = false;
+        const w = draft.written ?? {};
+        if (!localHas) {
+          if (grade === "8" && subject === "informatics" && testId === "python-hero" && w.answers8infoPy) { setAnswers8infoPy(w.answers8infoPy); restored = true; }
+          else if (grade === "8" && subject === "informatics") {
+            if (w.blitz8) { setBlitz8(w.blitz8); restored = true; }
+            if (w.tasks8) { setTasks8(w.tasks8); restored = true; }
+          }
+          else if (grade === "8" && subject === "physics" && testId === "power-joule" && w.answers8physPower) { setAnswers8physPower(w.answers8physPower); restored = true; }
+          else if (grade === "8" && subject === "physics" && testId === "final-q4" && w.answers8physFinalQ4) { setAnswers8physFinalQ4(w.answers8physFinalQ4); restored = true; }
+          else if (grade === "6" && subject === "technology" && testId === "final-q4" && w.answers6techFinalQ4) { setAnswers6techFinalQ4(w.answers6techFinalQ4); restored = true; }
+          else if (grade === "7" && subject === "technology" && testId === "final-q4" && w.answers7techFinalQ4) {
+            const arr = (w.answers7techFinalQ4 as string[]).slice(0, 12);
+            while (arr.length < 12) arr.push("");
+            setAnswers7techFinalQ4(arr); restored = true;
+          }
+          else if (grade === "8" && subject === "physics" && w.answers8phys) { setAnswers8phys(w.answers8phys); restored = true; }
+          else if (grade === "9" && subject === "physics" && testId === "atom" && w.answers9physAtom) { setAnswers9physAtom(w.answers9physAtom); restored = true; }
+          else if (grade === "9" && subject === "physics" && w.answers9phys) { setAnswers9phys(w.answers9phys); restored = true; }
+          else if (grade === "9" && subject === "technology" && w.answers9tech) { setAnswers9tech(w.answers9tech); restored = true; }
+          else if (grade === "9" && w.answers9) { setAnswers9(w.answers9); restored = true; }
+          else if (grade === "7" && subject === "physics" && testId === "work-power" && w.answers7physWork) {
+            const arr = (w.answers7physWork as string[]).slice(0, 6);
+            while (arr.length < 6) arr.push("");
+            setAnswers7physWork(arr); restored = true;
+          }
+          else if (grade === "7" && subject === "physics" && w.answers7phys) { setAnswers7phys(w.answers7phys); restored = true; }
+          else if (grade === "7" && subject === "technology") {
+            if (w.theory7tech) { setTheory7tech(w.theory7tech); restored = true; }
+            if (w.practice7tech) { setPractice7tech(w.practice7tech); restored = true; }
+          }
+          else if (grade === "7") {
+            if (w.theory7) { setTheory7(w.theory7); restored = true; }
+            if (w.practice7) { setPractice7(w.practice7); restored = true; }
+          }
+        }
+        if (!localQuizHas && draft.quiz) {
+          try {
+            localStorage.setItem(getQuizDraftKey(grade, subject, attempt, testId), JSON.stringify(draft.quiz));
+            restored = true;
+          } catch { /* ignore */ }
+        }
+        if (restored) {
+          toast({
+            title: "☁️ Черновик восстановлен с сервера",
+            description: "Мы нашли ваши предыдущие ответы и вернули их.",
+          });
+        }
+      } catch {
+        // молча игнорируем — нет сети, не критично
+      }
+    })();
+  }, [screen, grade, subject, testId, attempt, cleanName, toast]);
+
   // --- Autosave: persist ---
   useEffect(() => {
     if (screen !== "test" || !grade || !subject) return;
