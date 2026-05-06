@@ -544,6 +544,38 @@ serve(async (req) => {
 
       message += `\n💻 КОД (задание «Генератор героя»)${attachmentMap["0"] ? " 📎" : ""}:\n`;
       message += `\`\`\`\n${code || "(пусто)"}\n\`\`\`\n`;
+    } else if (body.type === "grade7technologyFinalQ4") {
+      const ans = (body.answers as string[]) ?? [];
+      const quiz = body.quizResults as
+        | {
+            correct: number;
+            total: number;
+            perQuestion: { answer: number; correct: number; timeSpent: number; timedOut: boolean }[];
+          }
+        | null
+        | undefined;
+
+      if (quiz) {
+        const optLabel = (n: number) => (n < 0 ? "—" : ["А", "Б", "В", "Г"][n] ?? "?");
+        message += `\n🎯 КВИЗ (15 вопросов): ${quiz.correct}/${quiz.total} правильных\n`;
+        quiz.perQuestion.forEach((r, i) => {
+          const mark = r.answer === r.correct ? "✅" : r.timedOut ? "⏰" : "❌";
+          message += `Вопрос ${i + 1}: ${mark} ответ: ${optLabel(r.answer)} (правильный: ${optLabel(r.correct)}) ⏱ ${r.timeSpent}с${r.timedOut ? " (таймаут)" : ""}\n`;
+        });
+      }
+
+      message += `\n📊 ЧАСТЬ 1. ПРАКТИКА (задачи 1–4):\n`;
+      for (let i = 0; i < 4; i++) {
+        const hasFile = attachmentMap[String(i)];
+        message += `Задача ${i + 1}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n`;
+      }
+
+      message += `\n📝 ЧАСТЬ 2. ТЕОРИЯ (вопросы 1–8):\n`;
+      for (let j = 0; j < 8; j++) {
+        const idx = 4 + j;
+        const hasFile = attachmentMap[String(idx)];
+        message += `Вопрос ${j + 1}: ${ans[idx] || "(пусто)"}${hasFile ? " 📎" : ""}\n`;
+      }
     } else {
       const blitz = body.blitz as string[];
       const tasks = body.tasks as Record<string, string>;
