@@ -188,6 +188,10 @@ const Index = () => {
   const [answers8physFinalQ4, setAnswers8physFinalQ4] = useState<string[]>(Array(6).fill(""));
   const [attachments8physFinalQ4, setAttachments8physFinalQ4] = useState<Record<number, File | null>>({});
 
+  // Grade 6 technology FINAL Q4 answers (6 tasks; 15-question quiz lives separately)
+  const [answers6techFinalQ4, setAnswers6techFinalQ4] = useState<string[]>(Array(6).fill(""));
+  const [attachments6techFinalQ4, setAttachments6techFinalQ4] = useState<Record<number, File | null>>({});
+
   // Grade 7 physics answers
   const [answers7phys, setAnswers7phys] = useState<string[]>(Array(10).fill(""));
   const [attachments7phys, setAttachments7phys] = useState<Record<number, File | null>>({});
