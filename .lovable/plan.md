@@ -1,92 +1,70 @@
-## Контекст и важная оговорка
+## Что делаем (4 блока)
 
-**Скрытие следов ИИ из репо я делать не буду** — причины подробно объяснены в чате (нельзя переписывать git history из среды; всё равно палится по `package.json`, хостингу `lovable.app`, метаданным коммитов; намеренное сокрытие при ревью выглядит хуже честного признания). Вместо этого делаем проект таким, чтобы код прошёл ревью на качестве, а не на «кто автор».
+### Блок 1 — Защита учительского логина
 
-Если позже захочешь всё-таки чистить историю — это отдельная задача вне Lovable: локально `git filter-repo`, перенос в новый репозиторий, смена хостинга. Готов написать инструкцию, но выполнить не смогу.
+**Проблема:** `TEACHER_PASSWORD` в env в открытом виде; нет защиты от брутфорса (минута перебора — и токен у атакующего).
 
----
+- Новая таблица `teacher_credentials(login text PK, password_hash text, updated_at)` + миграция.
+- Новая таблица `auth_attempts(id, login text, ip text, success bool, created_at)` для счётчика попыток.
+- Edge function `set-teacher-password` (admin only) — хэширует через `bcrypt` (`npm:bcryptjs`) и записывает в `teacher_credentials`.
+- One-time миграция: при первом вызове `verify-teacher-credentials`, если в БД нет хэша — берём `TEACHER_PASSWORD` из env, хэшируем, сохраняем. После проверки можно env удалить вручную.
+- В `verify-teacher-credentials`: читаем хэш из БД, `bcrypt.compare`. Перед этим — счётчик: если за последние 15 минут с этого IP+login было ≥5 неудачных, отдаём 429 с задержкой. Все попытки логируем в `auth_attempts`.
+- HMAC-токен: добавить `iat` в payload (для будущей ротации `TEACHER_JWT_SECRET` через `revoked_before` timestamp в env). `kid` пока не добавляем — overkill.
 
-## Что сделаю
+**Примечание:** в Lovable нет infra для рейт-лимита, делаем ad-hoc через таблицу. Это работает, но не идеально (можно обойти при наличии многих IP). Для текущих угроз (один абитуриент-хулиган) — достаточно.
 
-### 1. Аудит безопасности и фиксы
+### Блок 2 — CI на GitHub Actions + базовые тесты
 
-Найдено линтером 8 предупреждений. Чиню всё:
+- `.github/workflows/ci.yml`: на push/PR гоняет `bun install → bun run lint → tsc --noEmit → bunx vitest run`. Без playwright/deno (отдельный workflow позже, если нужно).
+- Бейдж `![CI](...)` в `README.md`.
+- Unit-тесты (vitest) для критичной логики:
+  - `src/lib/strictRules.ts` — валидация имени (2 слова кириллицы, цифра как hidden retake), edge cases.
+  - `src/lib/safeRandomUUID.ts` — fallback path.
+  - Утилита санитизации Cyrillic → ASCII (вынести из `FileAttach.tsx` в `src/lib/sanitizeFilename.ts`, покрыть тестами).
+  - Формула оценки в `grade-quiz-submission` — выделить в чистую функцию `src/lib/grading.ts`, импортировать и в edge function, и в тесте.
+- Деплой Pages (`deploy-pages.yml`) — добавить `needs: ci`, чтобы не публиковалось битое.
 
-- **Public Bucket Allows Listing** (`test-attachments`) — добавлю RLS на `storage.objects`: публичное чтение конкретных файлов оставляем, но `LIST` запрещаем для anon.
-- **SECURITY DEFINER функции доступны anon/authenticated** (`has_role`, `set_updated_at`, `get_session_by_code`) — `REVOKE EXECUTE ... FROM anon, authenticated` где не нужно. `get_session_by_code` оставляем доступной для anon (её зовёт `join-session` через service role — можно вообще отозвать).
-- **Leaked Password Protection** — включу через `configure_auth`.
+### Блок 3 — Zod-валидация во всех edge functions + общий CORS
 
-Дополнительно ручной разбор:
-- Все edge functions: проверю CORS (в `_shared` или дублирование), `verify_jwt`, валидацию входа (zod), что service role не утекает в ответы, что `student_name` нормализуется одинаково везде (anti-cheat key).
-- RLS-политики 13 таблиц: проверю каждую на recursion, на overly permissive (`true`), на отсутствие политик для INSERT/UPDATE/DELETE где должны быть.
-- `student_drafts`: сейчас INSERT/UPDATE/DELETE закрыты — это правильно (всё через edge с service role). Зафиксирую в комментарии.
-- `verify-teacher-credentials` + HMAC токен в `_shared/teacher-auth.ts` — перепроверю срок жизни, алгоритм.
-- Прогоняю security scan ещё раз после фиксов.
+- `supabase/functions/_shared/cors.ts` — экспорт `corsHeaders` и `handleCors(req)`. Подменить во всех 25 функциях (механическая правка).
+- `supabase/functions/_shared/validate.ts` — хелпер `parseJson(req, schema)` → `Response | data`.
+- Перевести на zod (`npm:zod`) функции, где сейчас ручной парсинг:
+  - `save-draft`, `load-draft`, `clear-draft`
+  - `save-attempt-progress`, `start-attempt`
+  - `send-test-results`, `notify-copy-attempt`, `log-cheat-event`
+  - `verify-teacher-credentials`, `create-session`, `start-session`, `stop-session`, `join-session`
+  - `generate-test`, `publish-test`, `delete-test`, `get-test-questions`, `grade-quiz-submission`
+  - `replay-signed-url`, `update-replay-url`, `page-beacon`, `claim-admin`, `seed-teacher`, `list-results`
+- Единый формат ошибок: `{ ok: false, error: { code, message, fields? } }`.
 
-### 2. Документация
+### Блок 4 — CSP + retention
 
-Создаю структуру:
+- `public/_headers`: добавить
+  ```
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.telegram.org; frame-ancestors 'none'
+  ```
+  (`unsafe-inline` для Vite/shadcn неизбежен; nonce-режим — отдельный большой рефакторинг).
+- Аналогично в `netlify.toml` для Netlify-деплоя.
+- Retention через миграцию + edge function `cleanup-old-data` (вызывается вручную или cron-ом извне):
+  - `student_drafts` старше 30 дней → удалить.
+  - `auth_attempts` старше 7 дней → удалить.
+  - Записи `cheat_log` в `test_attempts` со статусом `submitted` старше 90 дней → очистить (сам attempt оставить).
+  - Файлы в bucket `rrweb-sessions` старше 90 дней → удалить (через `storage.remove`).
+- Документировать в `docs/SECURITY.md` (раздел "Data Retention").
 
-```text
-README.md                  — обзор, быстрый старт, ссылки на docs/
-docs/
-  ARCHITECTURE.md          — фронт SPA + Supabase, диаграмма потоков
-  DATABASE.md              — все таблицы, связи, RLS-политики (с пояснением «почему так»)
-  EDGE_FUNCTIONS.md        — каждая функция: назначение, вход, выход, кто вызывает, права
-  AUTH_AND_ROLES.md        — модель ролей (admin/teacher/student), HMAC teacher-token, flow логина
-  TESTING_FLOW.md          — обычный режим / live-сессии / автосейв (3 уровня) / античит
-  SECURITY.md              — модель угроз, что защищено, что осознанный риск, ответственное разглашение
-  DEPLOYMENT.md            — Lovable / Netlify / Cloudflare Pages / GitHub Pages, env vars, build secrets
-  DEVELOPMENT.md           — локальный запуск, структура папок, конвенции, как добавить новый тест
-  CHANGELOG.md             — пустой шаблон под Keep a Changelog
-```
+### Технические детали
 
-Текущий `README.md` сильно перегружен инструкциями по деплою — переношу деплой в `docs/DEPLOYMENT.md`, README делаю чистым обзором.
+- **bcrypt в Deno:** `import bcrypt from "npm:bcryptjs@2.4.3"` — работает в edge functions, cost 10.
+- **Уникальный индекс для `student_drafts`:** проверить и при отсутствии добавить миграцией `UNIQUE(student_name, grade, subject, test_id, attempt)` — нужен для `onConflict` в `save-draft`.
+- **Не трогаем:** `client.ts`, `types.ts`, `package.json` версии, бизнес-логику тестов, git history.
 
-### 3. Комментарии в коде (JSDoc)
+### Затронутые файлы (≈)
 
-Прохожусь по ключевым модулям и добавляю заголовочные JSDoc-блоки + поясняющие комментарии у нетривиальных мест:
+- 2 миграции (credentials/attempts/retention/index)
+- 4 новых edge function (`set-teacher-password`, `cleanup-old-data`) + правки 20+ существующих
+- 2 новых `_shared/` файла
+- 4 новых файла в `src/lib/` + тесты
+- `.github/workflows/ci.yml`, `deploy-pages.yml`
+- `public/_headers`, `netlify.toml`, `README.md`, `docs/SECURITY.md`, `supabase/config.toml` (новые функции)
 
-- `src/pages/Index.tsx` — главный экран, маршрутизация по тестам, автосейв
-- `src/components/Quiz.tsx` — таймер, persist, восстановление
-- `src/components/LiveSessionRunner.tsx` — live-режим, серверный таймер
-- `src/hooks/useAuth.tsx`, `useTeacherAuth.ts`, `useAntiCheatNotify.ts`, `useRrwebRecorder.ts`, `useDevToolsBlock.ts`
-- `src/lib/strictRules.ts`, `quizRegistry.ts`, `dbTests.ts`, `safeRandomUUID.ts`
-- Все 25 edge functions: 5–10 строк сверху (назначение, входы, выходы, side effects, security)
-
-Особо документирую «костыли с причиной»:
-- санитизация кириллицы перед upload в Storage
-- 2 русских слова в имени + 3-е слово-цифра как hidden retake
-- `verify_jwt = false` для большинства функций + причина (signing-keys + in-code validation)
-- почему `student_drafts` без INSERT-политики (только service role)
-
-### 4. Чистка
-
-- Удалю `console.log`, оставлю `console.error`/`console.warn` где уместно.
-- Уберу мёртвый код, найденный по ходу аудита.
-- Помечу TODO либо закрою, либо оформлю в `docs/ROADMAP.md`.
-
-### 5. Финальная проверка
-
-- `supabase--linter` — должно быть 0 warnings.
-- `security--run_security_scan` — прогнать.
-- Пройду по чеклисту OWASP ASVS Level 1 (то, что применимо к SPA + BaaS).
-- Убедиться, что typecheck/build не сломаны.
-
----
-
-## Файлы, которые будут затронуты
-
-**Создаются:** `docs/*.md` (8 файлов), миграция для RLS-фиксов.
-**Переписывается:** `README.md`.
-**Правятся:** ~20 .ts/.tsx файлов (комментарии + чистка console.log), `supabase/functions/*/index.ts` (заголовочные комментарии).
-
-## Чего НЕ трогаю
-
-- `src/integrations/supabase/{client,types}.ts`, `.env*`, `supabase/config.toml` (project-level), `package.json` лишний раз.
-- Бизнес-логику тестов/квизов — только комментирую.
-- Git history.
-
-## Оценка
-
-Большой объём, но прямолинейный. Сделаю одним проходом, в конце — короткий отчёт «что починено / что осталось как осознанный риск».
+Объём большой, но всё параллелится. После реализации повторно прогоним security scan и линтер.
