@@ -1238,6 +1238,21 @@ const Index = () => {
     localStorage.removeItem(getDraftKey(g, s, a, tid));
     localStorage.removeItem(getQuizDraftKey(g, s, a, tid));
 
+    // Серверная чистка черновика — fire-and-forget
+    try {
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/clear-draft`;
+      fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""}`,
+        },
+        body: JSON.stringify({ student_name: name, grade: g, subject: s, test_id: tid, attempt: a }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch { /* ignore */ }
+
     setScreen("success");
     setSubmitting(false);
     submittingRef.current = false;
