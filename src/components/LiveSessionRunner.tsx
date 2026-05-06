@@ -93,8 +93,39 @@ export default function LiveSessionRunner({
 
   useEffect(() => {
     if (!attemptId) return;
-    loadTestQuestions(testId, attemptId).then(setQuestions);
-  }, [testId, attemptId]);
+    let cancelled = false;
+    setQuestionsError(null);
+    setQuestions(null);
+    loadTestQuestions(testId, attemptId)
+      .then((qs) => {
+        if (cancelled) return;
+        if (!qs || qs.length === 0) {
+          setQuestionsError("Не удалось загрузить вопросы теста");
+          setQuestions([]);
+          // Алерт учителю в TG
+          void supabase.functions.invoke("log-cheat-event", {
+            body: {
+              attempt_id: attemptId,
+              event: {
+                type: "questions_load_failed",
+                details: `student=${studentName}; testId=${testId}`,
+                timestamp: Date.now(),
+              },
+            },
+          });
+        } else {
+          setQuestions(qs);
+        }
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setQuestionsError(e?.message ?? "Ошибка загрузки");
+        setQuestions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [testId, attemptId, reloadTick, studentName]);
 
   // Античит-события
   useEffect(() => {
