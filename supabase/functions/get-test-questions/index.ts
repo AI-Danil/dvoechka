@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
       .order("position");
     if (qErr) return json({ ok: false, error: qErr.message }, 500);
 
-    return json({ ok: true, questions: questions ?? [] });
+    return json({ ok: true, questions: questions ?? [], attempt_inactive: attemptInactive });
   } catch (e) {
     return json({ ok: false, error: e instanceof Error ? e.message : "unknown" }, 500);
   }
