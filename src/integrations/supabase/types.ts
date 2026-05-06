@@ -35,6 +35,45 @@ export type Database = {
         }
         Relationships: []
       }
+      student_drafts: {
+        Row: {
+          attempt: string
+          created_at: string
+          grade: string
+          id: string
+          quiz: Json | null
+          student_name: string
+          subject: string
+          test_id: string
+          updated_at: string
+          written: Json
+        }
+        Insert: {
+          attempt?: string
+          created_at?: string
+          grade: string
+          id?: string
+          quiz?: Json | null
+          student_name: string
+          subject: string
+          test_id: string
+          updated_at?: string
+          written?: Json
+        }
+        Update: {
+          attempt?: string
+          created_at?: string
+          grade?: string
+          id?: string
+          quiz?: Json | null
+          student_name?: string
+          subject?: string
+          test_id?: string
+          updated_at?: string
+          written?: Json
+        }
+        Relationships: []
+      }
       students: {
         Row: {
           class_id: string | null
