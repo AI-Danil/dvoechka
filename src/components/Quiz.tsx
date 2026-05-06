@@ -1,3 +1,18 @@
+/**
+ * Универсальный квиз: один вопрос на экране, поквопросный таймер, авто-переход
+ * по истечению времени или клику. Возврата к предыдущим вопросам нет.
+ *
+ * Автосохранение в localStorage:
+ *   - на каждый ответ;
+ *   - каждый тик таймера (1с);
+ *   - на visibilitychange / pagehide / beforeunload (flush).
+ *
+ * При монтировании синхронно восстанавливает idx, ответы и таймер из
+ * localStorage по storageKey. Если все вопросы пройдены — сразу finish.
+ *
+ * Серверный автосейв сюда не встроен — это делает родитель (Index.tsx),
+ * передавая onProgress для дополнительной точки сохранения.
+ */
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

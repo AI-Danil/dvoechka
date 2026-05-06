@@ -1,3 +1,10 @@
+/**
+ * Хук-источник Telegram-алертов для критичных античит-событий
+ * (копирование, уход с вкладки, открытие DevTools).
+ *
+ * Дросселирует уведомления: не чаще одного на NOTIFY_COOLDOWN_MS,
+ * чтобы не заспамить чат при удержании Ctrl+C.
+ */
 import { useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 

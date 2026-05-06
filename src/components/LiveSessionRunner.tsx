@@ -1,6 +1,14 @@
-// Live-режим: запускает тест с общим таймером по ends_at.
-// Не делает intake/intro — имя уже известно, attempt уже создан в join-session.
-// При истечении ends_at автоматически отправляет работу.
+/**
+ * Live-режим прохождения теста.
+ *
+ * Отличия от обычного (Index.tsx):
+ *   - имя ученика и attemptId известны заранее (из join-session);
+ *   - таймер общий, серверный (ends_at из test_sessions);
+ *   - прогресс пишется не в student_drafts, а в test_attempts.draft_answers
+ *     через save-attempt-progress (учитель видит прогресс в реальном времени);
+ *   - при истечении ends_at работа отправляется автоматически;
+ *   - intake/intro не показывается.
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

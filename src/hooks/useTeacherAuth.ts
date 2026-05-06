@@ -1,3 +1,10 @@
+/**
+ * Хук для legacy-аутентификации учителя через HMAC-токен.
+ * См. docs/AUTH_AND_ROLES.md → "Механизм 2".
+ *
+ * Токен живёт в sessionStorage (не localStorage — чтобы не перетекал между
+ * вкладками и сбрасывался при закрытии браузера).
+ */
 import { useCallback, useEffect, useState } from "react";
 
 const TOKEN_KEY = "teacherToken";

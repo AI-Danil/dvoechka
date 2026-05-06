@@ -1,3 +1,19 @@
+/**
+ * Главная страница ученика. Обычный (не-live) режим прохождения теста.
+ *
+ * Поток:
+ *   1. Intake-экран: выбор класса → предмета → теста + ввод ФИО (см. strictRules).
+ *   2. Тест-экран: квиз (Quiz.tsx) + письменная часть (компонент из quizRegistry).
+ *   3. Сабмит: send-test-results edge fn → запись в test_results + Telegram-отчёт.
+ *
+ * Автосохранение (3 уровня):
+ *   - localStorage  — мгновенно, на каждое изменение поля.
+ *   - student_drafts (server) — debounce 5 сек, beacon flush на pagehide.
+ *   - clear-draft   — при успешной сдаче.
+ *
+ * Идентификация ученика — композитный ключ (student_name, grade, subject,
+ * test_id, attempt). Без Supabase Auth — анонимный поток.
+ */
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
