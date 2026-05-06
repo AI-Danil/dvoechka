@@ -204,6 +204,12 @@ Deno.serve(async (req) => {
           result_id: row.id,
         })
         .eq("id", attempt_id);
+
+      // Закрываем live-participant, чтобы повторный заход не создавал новую попытку.
+      await admin
+        .from("test_session_participants")
+        .update({ submitted_at: new Date().toISOString() })
+        .eq("attempt_id", attempt_id);
     }
 
     // ---- Telegram notification ----
