@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      auth_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          ip: string | null
+          login: string
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip?: string | null
+          login: string
+          success?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip?: string | null
+          login?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       classes: {
         Row: {
           created_at: string
@@ -169,6 +193,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      teacher_credentials: {
+        Row: {
+          created_at: string
+          login: string
+          password_hash: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          login: string
+          password_hash: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          login?: string
+          password_hash?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       teachers: {
         Row: {
