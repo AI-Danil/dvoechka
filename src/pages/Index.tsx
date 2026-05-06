@@ -400,6 +400,93 @@ const Index = () => {
     }
   }, [screen, grade, subject, testId, attempt, toast]);
 
+  // --- Серверный restore: если локально ничего нет, тянем черновик с сервера ---
+  const serverRestoredKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (screen !== "test" || !grade || !subject || !cleanName) return;
+    const key = getDraftKey(grade, subject, attempt, testId);
+    if (serverRestoredKeyRef.current === key) return;
+    const localHas = !!localStorage.getItem(key);
+    const localQuizHas = !!localStorage.getItem(getQuizDraftKey(grade, subject, attempt, testId));
+    if (localHas && localQuizHas) {
+      // локальные данные актуальнее — пропускаем серверный restore
+      serverRestoredKeyRef.current = key;
+      return;
+    }
+    serverRestoredKeyRef.current = key;
+    (async () => {
+      try {
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/load-draft`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""}`,
+          },
+          body: JSON.stringify({
+            student_name: cleanName,
+            grade, subject, test_id: testId, attempt,
+          }),
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const draft = json?.draft;
+        if (!draft) return;
+        let restored = false;
+        const w = draft.written ?? {};
+        if (!localHas) {
+          if (grade === "8" && subject === "informatics" && testId === "python-hero" && w.answers8infoPy) { setAnswers8infoPy(w.answers8infoPy); restored = true; }
+          else if (grade === "8" && subject === "informatics") {
+            if (w.blitz8) { setBlitz8(w.blitz8); restored = true; }
+            if (w.tasks8) { setTasks8(w.tasks8); restored = true; }
+          }
+          else if (grade === "8" && subject === "physics" && testId === "power-joule" && w.answers8physPower) { setAnswers8physPower(w.answers8physPower); restored = true; }
+          else if (grade === "8" && subject === "physics" && testId === "final-q4" && w.answers8physFinalQ4) { setAnswers8physFinalQ4(w.answers8physFinalQ4); restored = true; }
+          else if (grade === "6" && subject === "technology" && testId === "final-q4" && w.answers6techFinalQ4) { setAnswers6techFinalQ4(w.answers6techFinalQ4); restored = true; }
+          else if (grade === "7" && subject === "technology" && testId === "final-q4" && w.answers7techFinalQ4) {
+            const arr = (w.answers7techFinalQ4 as string[]).slice(0, 12);
+            while (arr.length < 12) arr.push("");
+            setAnswers7techFinalQ4(arr); restored = true;
+          }
+          else if (grade === "8" && subject === "physics" && w.answers8phys) { setAnswers8phys(w.answers8phys); restored = true; }
+          else if (grade === "9" && subject === "physics" && testId === "atom" && w.answers9physAtom) { setAnswers9physAtom(w.answers9physAtom); restored = true; }
+          else if (grade === "9" && subject === "physics" && w.answers9phys) { setAnswers9phys(w.answers9phys); restored = true; }
+          else if (grade === "9" && subject === "technology" && w.answers9tech) { setAnswers9tech(w.answers9tech); restored = true; }
+          else if (grade === "9" && w.answers9) { setAnswers9(w.answers9); restored = true; }
+          else if (grade === "7" && subject === "physics" && testId === "work-power" && w.answers7physWork) {
+            const arr = (w.answers7physWork as string[]).slice(0, 6);
+            while (arr.length < 6) arr.push("");
+            setAnswers7physWork(arr); restored = true;
+          }
+          else if (grade === "7" && subject === "physics" && w.answers7phys) { setAnswers7phys(w.answers7phys); restored = true; }
+          else if (grade === "7" && subject === "technology") {
+            if (w.theory7tech) { setTheory7tech(w.theory7tech); restored = true; }
+            if (w.practice7tech) { setPractice7tech(w.practice7tech); restored = true; }
+          }
+          else if (grade === "7") {
+            if (w.theory7) { setTheory7(w.theory7); restored = true; }
+            if (w.practice7) { setPractice7(w.practice7); restored = true; }
+          }
+        }
+        if (!localQuizHas && draft.quiz) {
+          try {
+            localStorage.setItem(getQuizDraftKey(grade, subject, attempt, testId), JSON.stringify(draft.quiz));
+            restored = true;
+          } catch { /* ignore */ }
+        }
+        if (restored) {
+          toast({
+            title: "☁️ Черновик восстановлен с сервера",
+            description: "Мы нашли ваши предыдущие ответы и вернули их.",
+          });
+        }
+      } catch {
+        // молча игнорируем — нет сети, не критично
+      }
+    })();
+  }, [screen, grade, subject, testId, attempt, cleanName, toast]);
+
   // --- Autosave: persist ---
   useEffect(() => {
     if (screen !== "test" || !grade || !subject) return;
@@ -484,6 +571,113 @@ const Index = () => {
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [screen, grade, subject, testId, attempt]);
+
+  // --- Серверный автосейв: дублирует localStorage в student_drafts (на случай смены устройства) ---
+  // Дебаунс 5с после последнего изменения; flush через sendBeacon на закрытие вкладки.
+  const serverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastServerPayloadRef = useRef<string>("");
+
+  const buildServerPayload = useCallback(() => {
+    const g = gradeRef.current;
+    const s = subjectRef.current;
+    const tid = testIdRef.current;
+    const a = attemptRef.current;
+    const name = cleanNameRef.current;
+    if (!g || !s || !name) return null;
+    const written: Record<string, unknown> = {
+      blitz8: blitz8Ref.current,
+      tasks8: tasks8Ref.current,
+      answers8infoPy: answers8infoPyRef.current,
+      answers8phys: answers8physRef.current,
+      answers8physPower: answers8physPowerRef.current,
+      answers8physFinalQ4: answers8physFinalQ4Ref.current,
+      answers6techFinalQ4: answers6techFinalQ4Ref.current,
+      answers7techFinalQ4: answers7techFinalQ4Ref.current,
+      answers9: answers9Ref.current,
+      answers9phys: answers9physRef.current,
+      answers9physAtom: answers9physAtomRef.current,
+      answers9tech: answers9techRef.current,
+      answers7phys: answers7physRef.current,
+      answers7physWork: answers7physWorkRef.current,
+      theory7: theory7Ref.current,
+      practice7: practice7Ref.current,
+      theory7tech: theory7techRef.current,
+      practice7tech: practice7techRef.current,
+    };
+    let quiz: unknown = undefined;
+    try {
+      const raw = localStorage.getItem(getQuizDraftKey(g, s, a, tid));
+      if (raw) quiz = JSON.parse(raw);
+    } catch { /* ignore */ }
+    return {
+      student_name: name,
+      grade: g,
+      subject: s,
+      test_id: tid,
+      attempt: a,
+      written,
+      quiz,
+    };
+  }, []);
+
+  const sendServerSave = useCallback(async (useBeacon = false) => {
+    const payload = buildServerPayload();
+    if (!payload) return;
+    const body = JSON.stringify(payload);
+    // дедупликация: не шлём, если ничего не поменялось
+    if (body === lastServerPayloadRef.current) return;
+    lastServerPayloadRef.current = body;
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-draft`;
+    try {
+      if (useBeacon && navigator.sendBeacon) {
+        // Beacon без Authorization-заголовка — функция всё равно работает (verify_jwt=false по умолчанию).
+        navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+        return;
+      }
+      await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""}`,
+        },
+        body,
+        keepalive: true,
+      });
+    } catch {
+      // молча игнорируем — локальный сейв уже отработал
+    }
+  }, [buildServerPayload]);
+
+  // Дебаунсер: триггерится теми же зависимостями, что и локальный persist
+  useEffect(() => {
+    if (screen !== "test" || !grade || !subject || !cleanName) return;
+    if (restoredKeyRef.current !== getDraftKey(grade, subject, attempt, testId)) return;
+    if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
+    serverSaveTimerRef.current = setTimeout(() => sendServerSave(false), 5000);
+    return () => {
+      if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
+    };
+  }, [screen, grade, subject, testId, attempt, cleanName, sendServerSave,
+      blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4,
+      answers6techFinalQ4, answers7techFinalQ4, answers9, answers9phys, answers9physAtom,
+      answers9tech, theory7, practice7, theory7tech, practice7tech, answers7phys, answers7physWork,
+      quizPhase, quizResults]);
+
+  // Flush через beacon на закрытие/сворачивание
+  useEffect(() => {
+    if (screen !== "test" || !grade || !subject || !cleanName) return;
+    const flush = () => sendServerSave(true);
+    const onVis = () => { if (document.hidden) flush(); };
+    window.addEventListener("beforeunload", flush);
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [screen, grade, subject, cleanName, sendServerSave]);
 
   // --- Progress ---
   const { answered, total } = useMemo(() => {
@@ -1043,6 +1237,21 @@ const Index = () => {
     localStorage.setItem(submittedKey, "1");
     localStorage.removeItem(getDraftKey(g, s, a, tid));
     localStorage.removeItem(getQuizDraftKey(g, s, a, tid));
+
+    // Серверная чистка черновика — fire-and-forget
+    try {
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/clear-draft`;
+      fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""}`,
+        },
+        body: JSON.stringify({ student_name: name, grade: g, subject: s, test_id: tid, attempt: a }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch { /* ignore */ }
 
     setScreen("success");
     setSubmitting(false);
