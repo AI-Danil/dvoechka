@@ -81,9 +81,10 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: "Вы уже сдали этот тест", code: "already_submitted" });
     }
 
-    // 5. Если сессия running — создаём (или возобновляем) attempt
+    // 5. Если сессия running — создаём (или возобновляем) attempt атомарно.
     let attempt: any = null;
     if (session.status === "running") {
+      // Если уже есть attempt_id — используем его.
       if (participant.attempt_id) {
         const { data: a } = await admin
           .from("test_attempts")
@@ -93,28 +94,64 @@ Deno.serve(async (req) => {
         attempt = a;
       }
       if (!attempt) {
-        const initialPhase = test.kind === "written" ? "written" : "quiz";
-        const { data: created, error: aErr } = await admin
-          .from("test_attempts")
-          .insert({
-            test_id: session.test_id,
-            student_name: nameNorm,
-            student_fingerprint: fingerprint ?? null,
-            status: "in_progress",
-            draft_answers: {},
-            current_phase: initialPhase,
-            current_question: 0,
-            attempt_no: 1,
-            cheat_log: [{ type: "live_attempt_started", timestamp: Date.now(), session_code: codeUp }],
-          })
-          .select("*")
-          .single();
-        if (aErr) return json({ ok: false, error: `attempt insert: ${aErr.message}` });
-        attempt = created;
-        await admin
+        // Атомарное резервирование: генерируем UUID на клиенте, пытаемся
+        // занять attempt_id в participant. Если другой запрос уже выиграл
+        // гонку — берём его attempt_id и НЕ создаём дубль.
+        const reservedId = crypto.randomUUID();
+        const { data: claimed, error: claimErr } = await admin
           .from("test_session_participants")
-          .update({ attempt_id: created.id })
-          .eq("id", participant.id);
+          .update({ attempt_id: reservedId })
+          .eq("id", participant.id)
+          .is("attempt_id", null)
+          .select("attempt_id")
+          .maybeSingle();
+        if (claimErr) return json({ ok: false, error: `participant claim: ${claimErr.message}` });
+
+        if (claimed?.attempt_id === reservedId) {
+          // Мы выиграли гонку — создаём attempt с этим ID.
+          const initialPhase = test.kind === "written" ? "written" : "quiz";
+          const { data: created, error: aErr } = await admin
+            .from("test_attempts")
+            .insert({
+              id: reservedId,
+              test_id: session.test_id,
+              student_name: nameNorm,
+              student_fingerprint: fingerprint ?? null,
+              status: "in_progress",
+              draft_answers: {},
+              current_phase: initialPhase,
+              current_question: 0,
+              attempt_no: 1,
+              cheat_log: [{ type: "live_attempt_started", timestamp: Date.now(), session_code: codeUp }],
+            })
+            .select("*")
+            .single();
+          if (aErr) {
+            // Откат резервирования, иначе participant залочен на несуществующий attempt.
+            await admin
+              .from("test_session_participants")
+              .update({ attempt_id: null })
+              .eq("id", participant.id)
+              .eq("attempt_id", reservedId);
+            return json({ ok: false, error: `attempt insert: ${aErr.message}` });
+          }
+          attempt = created;
+        } else {
+          // Гонку выиграл другой запрос — перечитываем participant и attempt.
+          const { data: p2 } = await admin
+            .from("test_session_participants")
+            .select("attempt_id")
+            .eq("id", participant.id)
+            .maybeSingle();
+          if (p2?.attempt_id) {
+            const { data: a } = await admin
+              .from("test_attempts")
+              .select("*")
+              .eq("id", p2.attempt_id)
+              .maybeSingle();
+            attempt = a;
+          }
+        }
       }
     }
 
