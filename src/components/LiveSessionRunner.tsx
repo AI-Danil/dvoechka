@@ -45,6 +45,8 @@ export default function LiveSessionRunner({
 }: Props) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<DbTestQuestion[] | null>(null);
+  const [questionsError, setQuestionsError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
   const [phase, setPhase] = useState<"quiz" | "written" | "submitting" | "done">(
     testKind === "written" ? "written" : "quiz",
   );
