@@ -1380,7 +1380,22 @@ const Index = () => {
           />
         )}
 
-        {grade === "7" && subject === "technology" && (
+        {grade === "7" && subject === "technology" && testId === "final-q4" && (
+          <Grade7TechnologyFinalQ4
+            answers={answers7techFinalQ4}
+            attachments={attachments7techFinalQ4}
+            onAnswerChange={(i, v) => {
+              setAnswers7techFinalQ4((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments7techFinalQ4((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "7" && subject === "technology" && testId !== "final-q4" && (
           <Grade7Technology
             theory={theory7tech}
             practice={practice7tech}
