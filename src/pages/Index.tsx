@@ -485,6 +485,113 @@ const Index = () => {
     };
   }, [screen, grade, subject, testId, attempt]);
 
+  // --- Серверный автосейв: дублирует localStorage в student_drafts (на случай смены устройства) ---
+  // Дебаунс 5с после последнего изменения; flush через sendBeacon на закрытие вкладки.
+  const serverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastServerPayloadRef = useRef<string>("");
+
+  const buildServerPayload = useCallback(() => {
+    const g = gradeRef.current;
+    const s = subjectRef.current;
+    const tid = testIdRef.current;
+    const a = attemptRef.current;
+    const name = cleanNameRef.current;
+    if (!g || !s || !name) return null;
+    const written: Record<string, unknown> = {
+      blitz8: blitz8Ref.current,
+      tasks8: tasks8Ref.current,
+      answers8infoPy: answers8infoPyRef.current,
+      answers8phys: answers8physRef.current,
+      answers8physPower: answers8physPowerRef.current,
+      answers8physFinalQ4: answers8physFinalQ4Ref.current,
+      answers6techFinalQ4: answers6techFinalQ4Ref.current,
+      answers7techFinalQ4: answers7techFinalQ4Ref.current,
+      answers9: answers9Ref.current,
+      answers9phys: answers9physRef.current,
+      answers9physAtom: answers9physAtomRef.current,
+      answers9tech: answers9techRef.current,
+      answers7phys: answers7physRef.current,
+      answers7physWork: answers7physWorkRef.current,
+      theory7: theory7Ref.current,
+      practice7: practice7Ref.current,
+      theory7tech: theory7techRef.current,
+      practice7tech: practice7techRef.current,
+    };
+    let quiz: unknown = undefined;
+    try {
+      const raw = localStorage.getItem(getQuizDraftKey(g, s, a, tid));
+      if (raw) quiz = JSON.parse(raw);
+    } catch { /* ignore */ }
+    return {
+      student_name: name,
+      grade: g,
+      subject: s,
+      test_id: tid,
+      attempt: a,
+      written,
+      quiz,
+    };
+  }, []);
+
+  const sendServerSave = useCallback(async (useBeacon = false) => {
+    const payload = buildServerPayload();
+    if (!payload) return;
+    const body = JSON.stringify(payload);
+    // дедупликация: не шлём, если ничего не поменялось
+    if (body === lastServerPayloadRef.current) return;
+    lastServerPayloadRef.current = body;
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-draft`;
+    try {
+      if (useBeacon && navigator.sendBeacon) {
+        // Beacon без Authorization-заголовка — функция всё равно работает (verify_jwt=false по умолчанию).
+        navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+        return;
+      }
+      await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ""}`,
+        },
+        body,
+        keepalive: true,
+      });
+    } catch {
+      // молча игнорируем — локальный сейв уже отработал
+    }
+  }, [buildServerPayload]);
+
+  // Дебаунсер: триггерится теми же зависимостями, что и локальный persist
+  useEffect(() => {
+    if (screen !== "test" || !grade || !subject || !cleanName) return;
+    if (restoredKeyRef.current !== getDraftKey(grade, subject, attempt, testId)) return;
+    if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
+    serverSaveTimerRef.current = setTimeout(() => sendServerSave(false), 5000);
+    return () => {
+      if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
+    };
+  }, [screen, grade, subject, testId, attempt, cleanName, sendServerSave,
+      blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4,
+      answers6techFinalQ4, answers7techFinalQ4, answers9, answers9phys, answers9physAtom,
+      answers9tech, theory7, practice7, theory7tech, practice7tech, answers7phys, answers7physWork,
+      quizPhase, quizResults]);
+
+  // Flush через beacon на закрытие/сворачивание
+  useEffect(() => {
+    if (screen !== "test" || !grade || !subject || !cleanName) return;
+    const flush = () => sendServerSave(true);
+    const onVis = () => { if (document.hidden) flush(); };
+    window.addEventListener("beforeunload", flush);
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [screen, grade, subject, cleanName, sendServerSave]);
+
   // --- Progress ---
   const { answered, total } = useMemo(() => {
     if (grade === "8" && subject === "informatics" && testId === "python-hero") {
