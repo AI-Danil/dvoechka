@@ -356,7 +356,18 @@ export default function LiveSessionRunner({
       <>
         {Header}
         <RecordingBadge variant="full" />
-        <Quiz questions={qs} secondsPerQuestion={30} onFinish={handleQuizFinish} />
+        <Quiz
+          questions={qs}
+          secondsPerQuestion={30}
+          onFinish={handleQuizFinish}
+          storageKey={`live_quiz_${attemptId}`}
+          onResumed={(fromIdx) => {
+            toast({
+              title: "Прогресс восстановлен",
+              description: `Продолжаем квиз с вопроса ${fromIdx + 1}`,
+            });
+          }}
+        />
       </>
     );
   }
