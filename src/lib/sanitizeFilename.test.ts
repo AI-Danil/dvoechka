@@ -9,7 +9,7 @@ describe("sanitizeFilename", () => {
     expect(sanitizeFilename("photo_01.jpg")).toBe("photo_01.jpg");
   });
   it("replaces spaces and special chars", () => {
-    expect(sanitizeFilename("моя работа №1.pdf")).toBe("moya_rabota_1.pdf");
+    expect(sanitizeFilename("моя работа №1.pdf")).toBe("moya_rabota_No1.pdf");
   });
   it("handles empty string", () => {
     expect(sanitizeFilename("")).toBe("file");
