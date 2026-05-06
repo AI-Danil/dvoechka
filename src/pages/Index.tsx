@@ -44,6 +44,7 @@ type QuizPhase = "intro" | "running" | "done";
 const TOTAL_TIME = 40 * 60;
 
 const AVAILABLE_TESTS: Record<string, string[]> = {
+  "6": ["informatics", "technology", "physics"],
   "7": ["informatics", "technology", "physics"],
   "8": ["informatics", "physics"],
   "9": ["informatics", "physics", "technology"],
