@@ -1042,6 +1042,7 @@ const Index = () => {
     const submittedKey = getSubmittedKey(g, s, name, a, tid);
     localStorage.setItem(submittedKey, "1");
     localStorage.removeItem(getDraftKey(g, s, a, tid));
+    localStorage.removeItem(getQuizDraftKey(g, s, a, tid));
 
     setScreen("success");
     setSubmitting(false);
