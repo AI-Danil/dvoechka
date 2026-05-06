@@ -827,6 +827,13 @@ const Index = () => {
         answers: answers8physFinalQ4Ref.current,
         quizResults: quizResultsRef.current,
       };
+    } else if (g === "6" && s === "technology" && tid === "final-q4") {
+      fileUrls = await uploadAttachments(attachments6techFinalQ4Ref.current);
+      answers = {
+        type: "grade6technologyFinalQ4",
+        answers: answers6techFinalQ4Ref.current,
+        quizResults: quizResultsRef.current,
+      };
     } else if (g === "8" && s === "physics") {
       fileUrls = await uploadAttachments(attachments8physRef.current);
       answers = { type: "grade8physics", answers: answers8physRef.current };
