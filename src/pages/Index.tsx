@@ -124,6 +124,10 @@ function getDraftKey(grade: string, subject: string, attempt: string, testId: st
   return `test_draft_${grade}_${subject}_${testId}_${attempt}`;
 }
 
+function getQuizDraftKey(grade: string, subject: string, attempt: string, testId: string) {
+  return `quiz_draft_${grade}_${subject}_${testId}_${attempt}`;
+}
+
 function getSubmittedKey(grade: string, subject: string, name: string, attempt: string, testId: string) {
   return `test_submitted_${grade}_${subject}_${testId}_${name.trim().toLowerCase()}_${attempt}`;
 }
@@ -1038,6 +1042,7 @@ const Index = () => {
     const submittedKey = getSubmittedKey(g, s, name, a, tid);
     localStorage.setItem(submittedKey, "1");
     localStorage.removeItem(getDraftKey(g, s, a, tid));
+    localStorage.removeItem(getQuizDraftKey(g, s, a, tid));
 
     setScreen("success");
     setSubmitting(false);
@@ -1279,6 +1284,13 @@ const Index = () => {
             questions={cfg.questions}
             secondsPerQuestion={cfg.secondsPerQuestion}
             onFinish={handleQuizFinish}
+            storageKey={getQuizDraftKey(grade, subject, attempt, testId)}
+            onResumed={(fromIdx) => {
+              toast({
+                title: "Прогресс восстановлен",
+                description: `Продолжаем квиз с вопроса ${fromIdx + 1}`,
+              });
+            }}
           />
         </>
       );
