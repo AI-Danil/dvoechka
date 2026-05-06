@@ -124,6 +124,10 @@ function getDraftKey(grade: string, subject: string, attempt: string, testId: st
   return `test_draft_${grade}_${subject}_${testId}_${attempt}`;
 }
 
+function getQuizDraftKey(grade: string, subject: string, attempt: string, testId: string) {
+  return `quiz_draft_${grade}_${subject}_${testId}_${attempt}`;
+}
+
 function getSubmittedKey(grade: string, subject: string, name: string, attempt: string, testId: string) {
   return `test_submitted_${grade}_${subject}_${testId}_${name.trim().toLowerCase()}_${attempt}`;
 }
