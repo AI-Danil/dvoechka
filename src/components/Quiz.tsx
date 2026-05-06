@@ -28,43 +28,163 @@ interface QuizProps {
   questions: QuizQuestion[];
   secondsPerQuestion: number;
   onFinish: (results: QuizResults) => void;
+  /** Ключ для автосохранения прогресса в localStorage. Если не задан — персиста нет. */
+  storageKey?: string;
+  /** Колбэк при восстановлении прогресса (idx — с какого вопроса продолжаем, 0-based). */
+  onResumed?: (fromIdx: number) => void;
 }
 
-const Quiz = ({ questions, secondsPerQuestion, onFinish }: QuizProps) => {
-  const [idx, setIdx] = useState(0);
+interface PersistedQuizState {
+  v: 1;
+  total: number;
+  idx: number;
+  perQuestion: QuizPerQuestionResult[];
+  secondsLeft: number;
+  savedAt: number;
+}
+
+const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed }: QuizProps) => {
   const getSecondsFor = (i: number) => questions[i]?.seconds ?? secondsPerQuestion;
-  const [secondsLeft, setSecondsLeft] = useState(getSecondsFor(0));
-  const resultsRef = useRef<QuizPerQuestionResult[]>([]);
+
+  // Восстановление: читаем синхронно при первом рендере, чтобы не было «мигания» с 1-го вопроса.
+  const restoredRef = useRef<PersistedQuizState | null>(null);
+  if (restoredRef.current === null && storageKey) {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as PersistedQuizState;
+        if (
+          parsed &&
+          parsed.v === 1 &&
+          parsed.total === questions.length &&
+          Array.isArray(parsed.perQuestion) &&
+          typeof parsed.idx === "number"
+        ) {
+          restoredRef.current = parsed;
+        } else {
+          // схема не совпала — чистим, чтобы не мешало
+          localStorage.removeItem(storageKey);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const initialIdx = restoredRef.current?.idx ?? 0;
+  const initialSeconds = (() => {
+    const r = restoredRef.current;
+    if (!r) return getSecondsFor(0);
+    const elapsed = Math.floor((Date.now() - r.savedAt) / 1000);
+    return Math.max(1, r.secondsLeft - Math.max(0, elapsed));
+  })();
+
+  const [idx, setIdx] = useState(initialIdx);
+  const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
+  const resultsRef = useRef<QuizPerQuestionResult[]>(restoredRef.current?.perQuestion ?? []);
   const startedAtRef = useRef<number>(Date.now());
   const finishedRef = useRef(false);
+  const idxRef = useRef(idx);
+  const secondsLeftRef = useRef(secondsLeft);
+  const isFirstQuestionEffect = useRef(true);
 
-  // Reset timer for each question
+  useEffect(() => { idxRef.current = idx; }, [idx]);
+  useEffect(() => { secondsLeftRef.current = secondsLeft; }, [secondsLeft]);
+
+  // Уведомление о восстановлении + ранний финиш, если все вопросы уже отвечены
   useEffect(() => {
+    const r = restoredRef.current;
+    if (!r) return;
+    if (r.idx >= questions.length) {
+      // все вопросы уже отвечены — финишируем сразу
+      if (!finishedRef.current) {
+        finishedRef.current = true;
+        const per = resultsRef.current;
+        const correctCount = per.filter((rr, i) => rr.answer === questions[i]?.correct).length;
+        if (storageKey) { try { localStorage.removeItem(storageKey); } catch { /* ignore */ } }
+        onFinish({
+          answers: per.map((rr) => rr.answer),
+          correct: correctCount,
+          total: questions.length,
+          perQuestion: per,
+        });
+      }
+      return;
+    }
+    if (r.idx > 0) {
+      onResumed?.(r.idx);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const persist = (overrides?: Partial<PersistedQuizState>) => {
+    if (!storageKey) return;
+    try {
+      const data: PersistedQuizState = {
+        v: 1,
+        total: questions.length,
+        idx: idxRef.current,
+        perQuestion: resultsRef.current,
+        secondsLeft: secondsLeftRef.current,
+        savedAt: Date.now(),
+        ...overrides,
+      };
+      localStorage.setItem(storageKey, JSON.stringify(data));
+    } catch {
+      // quota / private mode — игнор
+    }
+  };
+
+  // Reset timer when moving to a new question (но не для самого первого, если восстановили)
+  useEffect(() => {
+    if (isFirstQuestionEffect.current) {
+      isFirstQuestionEffect.current = false;
+      startedAtRef.current = Date.now() - (getSecondsFor(idx) - secondsLeft) * 1000;
+      return;
+    }
     setSecondsLeft(getSecondsFor(idx));
     startedAtRef.current = Date.now();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idx, secondsPerQuestion]);
+  }, [idx]);
 
-  // Tick
+  // Tick + автосейв каждую секунду
   useEffect(() => {
     const t = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
-          // time-out → record and advance
           recordAndAdvance(-1, true);
           return getSecondsFor(idx);
         }
-        return prev - 1;
+        const next = prev - 1;
+        secondsLeftRef.current = next;
+        persist({ secondsLeft: next });
+        return next;
       });
     }, 1000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
+  // Flush на закрытие/сворачивание вкладки
+  useEffect(() => {
+    if (!storageKey) return;
+    const flush = () => persist();
+    const onVis = () => { if (document.hidden) flush(); };
+    window.addEventListener("beforeunload", flush);
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("beforeunload", flush);
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
+
   const recordAndAdvance = (answer: number, timedOut: boolean) => {
-    const q = questions[idx];
+    const q = questions[idxRef.current];
     if (!q) return;
-    const qSeconds = getSecondsFor(idx);
+    const qSeconds = getSecondsFor(idxRef.current);
     const timeSpent = Math.min(
       qSeconds,
       Math.round((Date.now() - startedAtRef.current) / 1000)
@@ -76,11 +196,19 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish }: QuizProps) => {
       timedOut,
     });
 
-    if (idx + 1 >= questions.length) {
+    if (idxRef.current + 1 >= questions.length) {
       if (finishedRef.current) return;
       finishedRef.current = true;
       const per = resultsRef.current;
       const correctCount = per.filter((r) => r.answer === r.correct).length;
+      // фиксируем финальное состояние и чистим черновик
+      if (storageKey) {
+        try {
+          // сначала запишем idx=total на случай, если onFinish упадёт — при возврате сразу финишнем
+          persist({ idx: questions.length, secondsLeft: 0 });
+          localStorage.removeItem(storageKey);
+        } catch { /* ignore */ }
+      }
       onFinish({
         answers: per.map((r) => r.answer),
         correct: correctCount,
@@ -88,7 +216,12 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish }: QuizProps) => {
         perQuestion: per,
       });
     } else {
-      setIdx((i) => i + 1);
+      const nextIdx = idxRef.current + 1;
+      idxRef.current = nextIdx;
+      const nextSeconds = getSecondsFor(nextIdx);
+      secondsLeftRef.current = nextSeconds;
+      persist({ idx: nextIdx, secondsLeft: nextSeconds });
+      setIdx(nextIdx);
     }
   };
 
