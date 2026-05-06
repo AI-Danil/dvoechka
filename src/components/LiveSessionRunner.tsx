@@ -326,6 +326,26 @@ export default function LiveSessionRunner({
   );
 
   if (phase === "quiz" && (testKind === "quiz" || testKind === "hybrid")) {
+    if (quizQuestions.length === 0) {
+      // hybrid без quiz-вопросов → сразу к письменной части
+      if (testKind === "hybrid" && writtenQuestions.length > 0) {
+        setPhase("written");
+        return null;
+      }
+      return (
+        <>
+          {Header}
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <Card className="max-w-md w-full">
+              <CardContent className="pt-6 text-center space-y-3">
+                <p className="text-2xl">⚠️</p>
+                <p>В тесте нет вопросов для этой части. Сообщите учителю.</p>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      );
+    }
     const qs = quizQuestions.map((q) => ({
       q: q.question_text,
       options: [q.options[0] ?? "", q.options[1] ?? "", q.options[2] ?? "", q.options[3] ?? ""] as [string, string, string, string],
