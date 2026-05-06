@@ -245,6 +245,8 @@ const Index = () => {
   const attachments8physPowerRef = useRef(attachments8physPower);
   const answers8physFinalQ4Ref = useRef(answers8physFinalQ4);
   const attachments8physFinalQ4Ref = useRef(attachments8physFinalQ4);
+  const answers6techFinalQ4Ref = useRef(answers6techFinalQ4);
+  const attachments6techFinalQ4Ref = useRef(attachments6techFinalQ4);
   const answers7physRef = useRef(answers7phys);
   const attachments7physRef = useRef(attachments7phys);
   const answers7physWorkRef = useRef(answers7physWork);
