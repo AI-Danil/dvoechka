@@ -323,6 +323,8 @@ const Index = () => {
         if (draft.answers8physPower) setAnswers8physPower(draft.answers8physPower);
       } else if (grade === "8" && subject === "physics" && testId === "final-q4") {
         if (draft.answers8physFinalQ4) setAnswers8physFinalQ4(draft.answers8physFinalQ4);
+      } else if (grade === "6" && subject === "technology" && testId === "final-q4") {
+        if (draft.answers6techFinalQ4) setAnswers6techFinalQ4(draft.answers6techFinalQ4);
       } else if (grade === "8" && subject === "physics") {
         if (draft.answers8phys) setAnswers8phys(draft.answers8phys);
       } else if (grade === "9" && subject === "physics" && testId === "atom") {
