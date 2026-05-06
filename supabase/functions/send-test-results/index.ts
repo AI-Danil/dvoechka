@@ -152,7 +152,9 @@ serve(async (req) => {
     } else if (
       body.type === "grade9physicsAtom" ||
       body.type === "grade7physicsWork" ||
-      body.type === "grade8informaticsPython"
+      body.type === "grade8informaticsPython" ||
+      body.type === "grade8physicsFinalQ4" ||
+      body.type === "grade6technologyFinalQ4"
     ) {
       answersData.answers = body.answers;
       answersData.quizResults = body.quizResults;
