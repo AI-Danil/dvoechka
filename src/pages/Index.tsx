@@ -1284,6 +1284,13 @@ const Index = () => {
             questions={cfg.questions}
             secondsPerQuestion={cfg.secondsPerQuestion}
             onFinish={handleQuizFinish}
+            storageKey={getQuizDraftKey(grade, subject, attempt, testId)}
+            onResumed={(fromIdx) => {
+              toast({
+                title: "Прогресс восстановлен",
+                description: `Продолжаем квиз с вопроса ${fromIdx + 1}`,
+              });
+            }}
           />
         </>
       );
