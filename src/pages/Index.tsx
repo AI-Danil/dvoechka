@@ -64,6 +64,11 @@ interface TestEntry {
 }
 
 const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
+  "6": {
+    technology: [
+      { id: "final-q4", title: "Итоговая контрольная за 4 четверть (с квизом)" },
+    ],
+  },
   "7": {
     informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
     physics: [
