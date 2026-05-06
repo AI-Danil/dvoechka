@@ -108,6 +108,7 @@ const TESTS_WITH_QUIZ: Record<string, QuizConfig> = {
   "7_physics_work-power": { questions: WORK_POWER_QUIZ_QUESTIONS, secondsPerQuestion: 30 },
   "8_informatics_python-hero": { questions: PYTHON_HERO_QUIZ_QUESTIONS, secondsPerQuestion: 40 },
   "8_physics_final-q4": { questions: FINAL_Q4_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
+  "6_technology_final-q4": { questions: FINAL_Q4_TECH6_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
 };
 
 const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;
