@@ -83,6 +83,35 @@ export default function LiveSessionRunner({
     return () => clearInterval(t);
   }, []);
 
+  // Preflight: проверяем, что запись экрана работает, ДО активации теста
+  useEffect(() => {
+    let cancelled = false;
+    setStorageReady("checking");
+    setStorageError("");
+    void checkRecordingStorage(resultId).then((res) => {
+      if (cancelled) return;
+      if (res.ok) {
+        setStorageReady("ok");
+      } else {
+        setStorageReady("failed");
+        setStorageError(res.reason);
+        try {
+          void supabase.functions.invoke("notify-copy-attempt", {
+            body: {
+              studentName,
+              grade: "?",
+              subject: testTitle,
+              event: `⚠️ Live: не смог запустить тест, запись экрана недоступна. reason="${res.reason}". UA=${navigator.userAgent.slice(0, 120)}`,
+            },
+          });
+        } catch (e) {
+          console.error("[live] preflight alert failed:", e);
+        }
+      }
+    });
+    return () => { cancelled = true; };
+  }, [resultId, storageRetryTick, studentName, testTitle]);
+
   const remainingSec = Math.max(0, Math.floor((new Date(endsAt).getTime() - now) / 1000));
 
   const quizQuestions = useMemo(
