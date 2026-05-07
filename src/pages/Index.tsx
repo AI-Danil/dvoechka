@@ -1040,12 +1040,15 @@ const Index = () => {
     };
   }, [timerActive]);
 
+  // doSubmit ещё не объявлен в этой точке — кладём его в ref ниже и зовём через ref,
+  // чтобы избежать stale closure в эффекте автосабмита по таймеру.
+  const doSubmitRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (screen === "test" && timeLeft === 0 && !autoSubmitTriggered) {
       setAutoSubmitTriggered(true);
       setTimeout(() => {
         if (!submittingRef.current) {
-          doSubmit();
+          doSubmitRef.current?.();
         }
       }, 50);
     }
@@ -1396,6 +1399,12 @@ const Index = () => {
     setSubmitting(false);
     submittingRef.current = false;
   };
+
+  // Держим актуальную ссылку на doSubmit, чтобы эффект автосабмита (выше)
+  // вызывал свежую версию без stale closure.
+  useEffect(() => {
+    doSubmitRef.current = doSubmit;
+  });
 
   const handleSubmit = () => doSubmit();
 
