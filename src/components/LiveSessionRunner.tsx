@@ -23,6 +23,7 @@ import { useDevToolsBlock } from "@/hooks/useDevToolsBlock";
 import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
 import RecordingBadge from "@/components/RecordingBadge";
 import { safeRandomUUID } from "@/lib/safeRandomUUID";
+import { checkRecordingStorage } from "@/lib/checkRecordingStorage";
 
 interface Props {
   testId: string;
