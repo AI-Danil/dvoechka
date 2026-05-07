@@ -577,7 +577,7 @@ const Index = () => {
     } catch {
       // quota / private mode — игнор
     }
-  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4, answers6techFinalQ4, answers7techFinalQ4, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4, answers6techFinalQ4, answers5techFinalQ4V2, answers7techFinalQ4, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   // --- Autosave: страховочный flush на закрытие/сворачивание вкладки ---
   useEffect(() => {
@@ -593,6 +593,7 @@ const Index = () => {
         answers8physPower: answers8physPowerRef.current,
         answers8physFinalQ4: answers8physFinalQ4Ref.current,
         answers6techFinalQ4: answers6techFinalQ4Ref.current,
+        answers5techFinalQ4V2: answers5techFinalQ4V2Ref.current,
         answers7techFinalQ4: answers7techFinalQ4Ref.current,
         answers9: answers9Ref.current,
         answers9phys: answers9physRef.current,
@@ -638,6 +639,7 @@ const Index = () => {
       answers8physPower: answers8physPowerRef.current,
       answers8physFinalQ4: answers8physFinalQ4Ref.current,
       answers6techFinalQ4: answers6techFinalQ4Ref.current,
+      answers5techFinalQ4V2: answers5techFinalQ4V2Ref.current,
       answers7techFinalQ4: answers7techFinalQ4Ref.current,
       answers9: answers9Ref.current,
       answers9phys: answers9physRef.current,
@@ -739,6 +741,8 @@ const Index = () => {
       return { answered: answers8physFinalQ4.filter(Boolean).length, total: 6 };
     } else if (grade === "6" && subject === "technology" && testId === "final-q4") {
       return { answered: answers6techFinalQ4.filter(Boolean).length, total: 6 };
+    } else if (grade === "5" && subject === "technology" && testId === "final-q4-v2") {
+      return { answered: answers5techFinalQ4V2.filter(Boolean).length, total: 4 };
     } else if (grade === "7" && subject === "technology" && testId === "final-q4") {
       return { answered: answers7techFinalQ4.filter(Boolean).length, total: 12 };
     } else if (grade === "8" && subject === "physics") {
@@ -765,7 +769,7 @@ const Index = () => {
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, subject, testId, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4, answers6techFinalQ4, answers7techFinalQ4, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [grade, subject, testId, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4, answers6techFinalQ4, answers5techFinalQ4V2, answers7techFinalQ4, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
