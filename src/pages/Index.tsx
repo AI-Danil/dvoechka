@@ -1729,6 +1729,21 @@ const Index = () => {
           />
         )}
 
+        {grade === "8" && subject === "technology" && testId === "final-q4-theory" && (
+          <Grade8TechnologyFinalQ4Theory
+            answers={answers8techFinalQ4Theory}
+            attachments={attachments8techFinalQ4Theory}
+            onAnswerChange={(i, v) => {
+              setAnswers8techFinalQ4Theory((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments8techFinalQ4Theory((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
         {grade === "8" && subject === "physics" && testId !== "power-joule" && testId !== "final-q4" && (
           <Grade8Physics
             answers={answers8phys}
