@@ -384,6 +384,13 @@ const Index = () => {
           if (draft.answers8physFinalQ4) { setAnswers8physFinalQ4(draft.answers8physFinalQ4); mark(draft.answers8physFinalQ4); }
         } else if (grade === "6" && subject === "technology" && testId === "final-q4") {
           if (draft.answers6techFinalQ4) { setAnswers6techFinalQ4(draft.answers6techFinalQ4); mark(draft.answers6techFinalQ4); }
+        } else if (grade === "5" && subject === "technology" && testId === "final-q4-v2") {
+          if (draft.answers5techFinalQ4V2) {
+            const restored = (draft.answers5techFinalQ4V2 as string[]).slice(0, 4);
+            while (restored.length < 4) restored.push("");
+            setAnswers5techFinalQ4V2(restored);
+            mark(draft.answers5techFinalQ4V2);
+          }
         } else if (grade === "7" && subject === "technology" && testId === "final-q4") {
           if (draft.answers7techFinalQ4) {
             const restored = (draft.answers7techFinalQ4 as string[]).slice(0, 12);
@@ -476,6 +483,11 @@ const Index = () => {
           else if (grade === "8" && subject === "physics" && testId === "power-joule" && w.answers8physPower) { setAnswers8physPower(w.answers8physPower); restored = true; }
           else if (grade === "8" && subject === "physics" && testId === "final-q4" && w.answers8physFinalQ4) { setAnswers8physFinalQ4(w.answers8physFinalQ4); restored = true; }
           else if (grade === "6" && subject === "technology" && testId === "final-q4" && w.answers6techFinalQ4) { setAnswers6techFinalQ4(w.answers6techFinalQ4); restored = true; }
+          else if (grade === "5" && subject === "technology" && testId === "final-q4-v2" && w.answers5techFinalQ4V2) {
+            const arr = (w.answers5techFinalQ4V2 as string[]).slice(0, 4);
+            while (arr.length < 4) arr.push("");
+            setAnswers5techFinalQ4V2(arr); restored = true;
+          }
           else if (grade === "7" && subject === "technology" && testId === "final-q4" && w.answers7techFinalQ4) {
             const arr = (w.answers7techFinalQ4 as string[]).slice(0, 12);
             while (arr.length < 12) arr.push("");
@@ -537,6 +549,8 @@ const Index = () => {
       data = { answers8physFinalQ4 };
     } else if (grade === "6" && subject === "technology" && testId === "final-q4") {
       data = { answers6techFinalQ4 };
+    } else if (grade === "5" && subject === "technology" && testId === "final-q4-v2") {
+      data = { answers5techFinalQ4V2 };
     } else if (grade === "8" && subject === "physics") {
       data = { answers8phys };
     } else if (grade === "9" && subject === "physics" && testId === "atom") {
