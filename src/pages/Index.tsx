@@ -782,6 +782,8 @@ const Index = () => {
       return { answered: answers5techFinalQ4V2.filter(Boolean).length, total: 4 };
     } else if (grade === "7" && subject === "technology" && testId === "final-q4") {
       return { answered: answers7techFinalQ4.filter(Boolean).length, total: 12 };
+    } else if (grade === "8" && subject === "technology" && testId === "final-q4-theory") {
+      return { answered: answers8techFinalQ4Theory.filter(Boolean).length, total: 6 };
     } else if (grade === "8" && subject === "physics") {
       return { answered: answers8phys.filter(Boolean).length, total: 13 };
     } else if (grade === "9" && subject === "physics" && testId === "atom") {
