@@ -1479,9 +1479,11 @@ const Index = () => {
 
     // test-pick
     const rawTests = TESTS_CATALOG[grade]?.[subject] || [];
-    // Подсветка актуальной итоговой работы для 7/technology
+    // Подсветка актуальной итоговой работы (неоновая кнопка)
     const featuredId =
-      grade === "7" && subject === "technology" ? "final-q4" : null;
+      grade === "7" && subject === "technology" ? "final-q4" :
+      grade === "8" && subject === "technology" ? "final-q4-theory" :
+      null;
     const tests = featuredId
       ? [...rawTests].sort((a, b) =>
           a.id === featuredId ? -1 : b.id === featuredId ? 1 : 0,
