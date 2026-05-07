@@ -1506,7 +1506,7 @@ const Index = () => {
                   size="lg"
                   className={`h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start ${
                     isFeatured
-                      ? "ring-2 ring-primary shadow-[0_0_24px_hsl(var(--primary)/0.55)] hover:shadow-[0_0_32px_hsl(var(--primary)/0.75)] scale-[1.02] animate-pulse"
+                      ? "ring-2 ring-primary shadow-[0_0_24px_hsl(var(--primary)/0.55)] hover:shadow-[0_0_32px_hsl(var(--primary)/0.75)] scale-[1.02]"
                       : isDimmed
                         ? "opacity-50 hover:opacity-80 grayscale"
                         : ""
