@@ -1400,6 +1400,12 @@ const Index = () => {
     submittingRef.current = false;
   };
 
+  // Держим актуальную ссылку на doSubmit, чтобы эффект автосабмита (выше)
+  // вызывал свежую версию без stale closure.
+  useEffect(() => {
+    doSubmitRef.current = doSubmit;
+  });
+
   const handleSubmit = () => doSubmit();
 
   // ============ DB-backed test (created by teacher) ============
