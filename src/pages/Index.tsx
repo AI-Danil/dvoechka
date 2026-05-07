@@ -115,6 +115,9 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
       { id: "power-joule", title: "Контрольная №2. Работа и мощность тока. Закон Джоуля—Ленца" },
       { id: "final-q4", title: "Итоговая контрольная за 4 четверть (с квизом)" },
     ],
+    technology: [
+      { id: "final-q4-theory", title: "🌟 Итоговая контрольная за 4 четверть. Теория: Python и логика ветвлений" },
+    ],
   },
   "9": {
     informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
