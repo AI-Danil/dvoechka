@@ -4,20 +4,27 @@ import { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork"
 import { PYTHON_HERO_QUIZ_QUESTIONS } from "@/components/tests/Grade8InformaticsPython";
 import { FINAL_Q4_QUIZ_QUESTIONS } from "@/components/tests/Grade8PhysicsFinalQ4";
 import { FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS } from "@/components/tests/Grade5TechnologyFinalQ4V2";
+import { FINAL_Q4_TECH6_QUIZ_QUESTIONS } from "@/components/tests/Grade6TechnologyFinalQ4";
+import { FINAL_Q4_TECH7_QUIZ_QUESTIONS } from "@/components/tests/Grade7TechnologyFinalQ4";
 import { FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS } from "@/components/tests/Grade8TechnologyFinalQ4Theory";
 
 // test_type строки, которые сохраняются в БД при сабмите квизов.
 // Сопоставляем их с массивом вопросов.
-const REGISTRY: Record<string, QuizQuestion[]> = {
+// ВАЖНО: при добавлении нового хардкод-теста ОБЯЗАТЕЛЬНО регистрируй его здесь,
+// иначе на странице результата вместо вопроса будет «[вопрос недоступен]».
+// Покрыто тестом src/lib/quizRegistry.test.ts.
+export const QUIZ_REGISTRY: Record<string, QuizQuestion[]> = {
   grade9physicsAtom: ATOM_QUIZ_QUESTIONS,
   grade7physicsWorkPower: WORK_POWER_QUIZ_QUESTIONS,
   grade8informaticsPython: PYTHON_HERO_QUIZ_QUESTIONS,
   grade8physicsFinalQ4: FINAL_Q4_QUIZ_QUESTIONS,
   grade5technologyFinalQ4V2: FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS,
+  grade6technologyFinalQ4: FINAL_Q4_TECH6_QUIZ_QUESTIONS,
+  grade7technologyFinalQ4: FINAL_Q4_TECH7_QUIZ_QUESTIONS,
   grade8technologyFinalQ4Theory: FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS,
 };
 
 export function getQuizQuestionsForTestType(testType?: string | null): QuizQuestion[] | null {
   if (!testType) return null;
-  return REGISTRY[testType] ?? null;
+  return QUIZ_REGISTRY[testType] ?? null;
 }
