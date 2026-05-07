@@ -745,7 +745,7 @@ const Index = () => {
     };
   }, [screen, grade, subject, testId, attempt, cleanName, sendServerSave,
       blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4,
-      answers6techFinalQ4, answers7techFinalQ4, answers9, answers9phys, answers9physAtom,
+      answers6techFinalQ4, answers7techFinalQ4, answers8techFinalQ4Theory, answers9, answers9phys, answers9physAtom,
       answers9tech, theory7, practice7, theory7tech, practice7tech, answers7phys, answers7physWork,
       quizPhase, quizResults]);
 
