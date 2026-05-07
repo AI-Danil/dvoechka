@@ -4,6 +4,7 @@ import { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork"
 import { PYTHON_HERO_QUIZ_QUESTIONS } from "@/components/tests/Grade8InformaticsPython";
 import { FINAL_Q4_QUIZ_QUESTIONS } from "@/components/tests/Grade8PhysicsFinalQ4";
 import { FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS } from "@/components/tests/Grade5TechnologyFinalQ4V2";
+import { FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS } from "@/components/tests/Grade8TechnologyFinalQ4Theory";
 
 // test_type строки, которые сохраняются в БД при сабмите квизов.
 // Сопоставляем их с массивом вопросов.
