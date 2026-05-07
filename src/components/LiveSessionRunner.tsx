@@ -71,8 +71,11 @@ export default function LiveSessionRunner({
   const [resultId] = useState(() => safeRandomUUID());
   const startedAtRef = useRef<number>(Date.now());
   const submittedRef = useRef(false);
+  const [storageReady, setStorageReady] = useState<"checking" | "ok" | "failed">("checking");
+  const [storageError, setStorageError] = useState<string>("");
+  const [storageRetryTick, setStorageRetryTick] = useState(0);
 
-  const isActive = phase === "quiz" || phase === "written";
+  const isActive = storageReady === "ok" && (phase === "quiz" || phase === "written");
 
   // Тики таймера
   useEffect(() => {
