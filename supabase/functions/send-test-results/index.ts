@@ -166,6 +166,23 @@ serve(async (req) => {
       answersData.tasks = body.tasks;
     }
 
+    // Guard: если в answersData ничего, кроме type, — клиент прислал нераспознанный тип.
+    // Не пишем пустую запись в БД, чтобы не терять ответы молча.
+    {
+      const keys = Object.keys(answersData).filter((k) => k !== "type");
+      const hasPayload = keys.some((k) => {
+        const v = (answersData as Record<string, unknown>)[k];
+        if (v == null) return false;
+        if (Array.isArray(v)) return v.length > 0;
+        if (typeof v === "object") return Object.keys(v as object).length > 0;
+        return true;
+      });
+      if (!hasPayload) {
+        console.error("Rejected: empty answersData for type", body.type, "— full body keys:", Object.keys(body));
+        return jsonResponse({ error: `Неизвестный тип теста: ${body.type}. Ответы не сохранены — обратитесь к учителю.` }, 400);
+      }
+    }
+
     // Дедуп: те же ответы от того же ученика за последние 5 минут
     const dupSince = new Date(Date.now() - DUP_WINDOW_MS).toISOString();
     const answersHash = await sha256Hex(JSON.stringify(answersData));
