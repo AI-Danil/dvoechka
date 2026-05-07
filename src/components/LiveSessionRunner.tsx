@@ -94,7 +94,7 @@ export default function LiveSessionRunner({
         setStorageReady("ok");
         return;
       }
-      const reason = res.reason;
+      const reason = (res as { ok: false; reason: string }).reason;
       setStorageReady("failed");
       setStorageError(reason);
       try {
