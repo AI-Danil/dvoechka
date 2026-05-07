@@ -1547,7 +1547,8 @@ const Index = () => {
                         ? "opacity-50 hover:opacity-80 grayscale"
                         : ""
                   }`}
-                  onClick={() => startTest(t.id)}
+                  onClick={() => { void startTest(t.id); }}
+                  disabled={checkingStorage}
                 >
                   <span className="flex flex-col items-start gap-1 w-full">
                     <span>{t.title}</span>
