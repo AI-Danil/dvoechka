@@ -351,6 +351,8 @@ const Index = () => {
   useEffect(() => { attachments6techFinalQ4Ref.current = attachments6techFinalQ4; }, [attachments6techFinalQ4]);
   useEffect(() => { answers5techFinalQ4V2Ref.current = answers5techFinalQ4V2; }, [answers5techFinalQ4V2]);
   useEffect(() => { attachments5techFinalQ4V2Ref.current = attachments5techFinalQ4V2; }, [attachments5techFinalQ4V2]);
+  useEffect(() => { answers8techFinalQ4TheoryRef.current = answers8techFinalQ4Theory; }, [answers8techFinalQ4Theory]);
+  useEffect(() => { attachments8techFinalQ4TheoryRef.current = attachments8techFinalQ4Theory; }, [attachments8techFinalQ4Theory]);
   useEffect(() => { answers7techFinalQ4Ref.current = answers7techFinalQ4; }, [answers7techFinalQ4]);
   useEffect(() => { attachments7techFinalQ4Ref.current = attachments7techFinalQ4; }, [attachments7techFinalQ4]);
   useEffect(() => { answers7physRef.current = answers7phys; }, [answers7phys]);
