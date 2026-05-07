@@ -56,6 +56,7 @@ import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
 import DbTestRunner from "@/components/DbTestRunner";
 import { loadPublishedTestsForGradeSubject, type DbTestSummary } from "@/lib/dbTests";
 import { safeRandomUUID } from "@/lib/safeRandomUUID";
+import { checkRecordingStorage } from "@/lib/checkRecordingStorage";
 
 type Screen = "login" | "test" | "success";
 type LoginStep = "grade" | "subject" | "name" | "test-pick";
