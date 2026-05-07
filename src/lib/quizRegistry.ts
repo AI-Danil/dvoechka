@@ -14,6 +14,7 @@ const REGISTRY: Record<string, QuizQuestion[]> = {
   grade8informaticsPython: PYTHON_HERO_QUIZ_QUESTIONS,
   grade8physicsFinalQ4: FINAL_Q4_QUIZ_QUESTIONS,
   grade5technologyFinalQ4V2: FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS,
+  grade8technologyFinalQ4Theory: FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS,
 };
 
 export function getQuizQuestionsForTestType(testType?: string | null): QuizQuestion[] | null {
