@@ -259,6 +259,10 @@ const Index = () => {
       setDbTests([]);
       return;
     }
+    if (grade === "5") {
+      setDbTests([]);
+      return;
+    }
     loadPublishedTestsForGradeSubject(grade, subject).then(setDbTests).catch(() => setDbTests([]));
   }, [grade, subject]);
 
