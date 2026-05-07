@@ -1,70 +1,50 @@
-## Что делаем (4 блока)
+## План: 5 класс, Технология — Итоговая Q4 (Вариант 2)
 
-### Блок 1 — Защита учительского логина
+### 1. Новый компонент теста
+Создать `src/components/tests/Grade5TechnologyFinalQ4V2.tsx` (по образцу `Grade6TechnologyFinalQ4.tsx`):
+- Экспорт `FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS` — 15 вопросов × 60 сек (полный текст из ТЗ: информация, устройства ввода, ТБ, файлы, папки, источник/приёмник, фишинг, пробелы, Shift, форматирование, Ctrl+X, списки, строки таблицы, «+» в логической таблице, столбчатая диаграмма).
+- Default-export — 4 письменных задания (16–19) с подробными «инструкциями для ученика»: горячие клавиши, безопасность/облака, табличный детектив, наглядные формы. Каждое — `Textarea` + `FileAttach`. Текст условий с `userSelect: "none"`.
 
-**Проблема:** `TEACHER_PASSWORD` в env в открытом виде; нет защиты от брутфорса (минута перебора — и токен у атакующего).
-
-- Новая таблица `teacher_credentials(login text PK, password_hash text, updated_at)` + миграция.
-- Новая таблица `auth_attempts(id, login text, ip text, success bool, created_at)` для счётчика попыток.
-- Edge function `set-teacher-password` (admin only) — хэширует через `bcrypt` (`npm:bcryptjs`) и записывает в `teacher_credentials`.
-- One-time миграция: при первом вызове `verify-teacher-credentials`, если в БД нет хэша — берём `TEACHER_PASSWORD` из env, хэшируем, сохраняем. После проверки можно env удалить вручную.
-- В `verify-teacher-credentials`: читаем хэш из БД, `bcrypt.compare`. Перед этим — счётчик: если за последние 15 минут с этого IP+login было ≥5 неудачных, отдаём 429 с задержкой. Все попытки логируем в `auth_attempts`.
-- HMAC-токен: добавить `iat` в payload (для будущей ротации `TEACHER_JWT_SECRET` через `revoked_before` timestamp в env). `kid` пока не добавляем — overkill.
-
-**Примечание:** в Lovable нет infra для рейт-лимита, делаем ad-hoc через таблицу. Это работает, но не идеально (можно обойти при наличии многих IP). Для текущих угроз (один абитуриент-хулиган) — достаточно.
-
-### Блок 2 — CI на GitHub Actions + базовые тесты
-
-- `.github/workflows/ci.yml`: на push/PR гоняет `bun install → bun run lint → tsc --noEmit → bunx vitest run`. Без playwright/deno (отдельный workflow позже, если нужно).
-- Бейдж `![CI](...)` в `README.md`.
-- Unit-тесты (vitest) для критичной логики:
-  - `src/lib/strictRules.ts` — валидация имени (2 слова кириллицы, цифра как hidden retake), edge cases.
-  - `src/lib/safeRandomUUID.ts` — fallback path.
-  - Утилита санитизации Cyrillic → ASCII (вынести из `FileAttach.tsx` в `src/lib/sanitizeFilename.ts`, покрыть тестами).
-  - Формула оценки в `grade-quiz-submission` — выделить в чистую функцию `src/lib/grading.ts`, импортировать и в edge function, и в тесте.
-- Деплой Pages (`deploy-pages.yml`) — добавить `needs: ci`, чтобы не публиковалось битое.
-
-### Блок 3 — Zod-валидация во всех edge functions + общий CORS
-
-- `supabase/functions/_shared/cors.ts` — экспорт `corsHeaders` и `handleCors(req)`. Подменить во всех 25 функциях (механическая правка).
-- `supabase/functions/_shared/validate.ts` — хелпер `parseJson(req, schema)` → `Response | data`.
-- Перевести на zod (`npm:zod`) функции, где сейчас ручной парсинг:
-  - `save-draft`, `load-draft`, `clear-draft`
-  - `save-attempt-progress`, `start-attempt`
-  - `send-test-results`, `notify-copy-attempt`, `log-cheat-event`
-  - `verify-teacher-credentials`, `create-session`, `start-session`, `stop-session`, `join-session`
-  - `generate-test`, `publish-test`, `delete-test`, `get-test-questions`, `grade-quiz-submission`
-  - `replay-signed-url`, `update-replay-url`, `page-beacon`, `claim-admin`, `seed-teacher`, `list-results`
-- Единый формат ошибок: `{ ok: false, error: { code, message, fields? } }`.
-
-### Блок 4 — CSP + retention
-
-- `public/_headers`: добавить
+### 2. Меню в `src/pages/Index.tsx`
+- В `AVAILABLE_TESTS` добавить `"5": ["technology"]` — у пятиклассников в меню только Технология.
+- В `TESTS_CATALOG` добавить:
+  ```ts
+  "5": {
+    technology: [
+      { id: "final-q4-v2", title: "🌟 Итоговая контрольная за 4 четверть (Вариант 2)" },
+    ],
+  }
   ```
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.telegram.org; frame-ancestors 'none'
-  ```
-  (`unsafe-inline` для Vite/shadcn неизбежен; nonce-режим — отдельный большой рефакторинг).
-- Аналогично в `netlify.toml` для Netlify-деплоя.
-- Retention через миграцию + edge function `cleanup-old-data` (вызывается вручную или cron-ом извне):
-  - `student_drafts` старше 30 дней → удалить.
-  - `auth_attempts` старше 7 дней → удалить.
-  - Записи `cheat_log` в `test_attempts` со статусом `submitted` старше 90 дней → очистить (сам attempt оставить).
-  - Файлы в bucket `rrweb-sessions` старше 90 дней → удалить (через `storage.remove`).
-- Документировать в `docs/SECURITY.md` (раздел "Data Retention").
+  Других тестов у 5 класса не будет — «скрытие» достигается отсутствием записей в каталоге.
 
-### Технические детали
+### 3. Подключение в `Index.tsx`
+- Импорт `Grade5TechnologyFinalQ4V2` и `FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS`.
+- В `TESTS_WITH_QUIZ` добавить `"5_technology_final-q4-v2": { questions: FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS, secondsPerQuestion: 60 }`.
+- Новые state/refs: `answers5techFinalQ4V2: string[]` (длина 4) + `attachments5techFinalQ4V2`.
+- Добавить ветки `grade === "5" && subject === "technology" && testId === "final-q4-v2"` во все существующие switch-блоки:
+  - локальный restore (~строка 369),
+  - серверный restore (~строка 462),
+  - локальный autosave `data` (~строка 522) + dep-массив,
+  - локальный flush `written` (~строка 565),
+  - серверный payload `written` (~строка 610),
+  - сабмит `answers` (~строка 1135) — `type: "grade5technologyFinalQ4V2"`, с `quizResults`,
+  - прогресс `{ answered, total: 4 }` (~строка 710) + dep-массив,
+  - render-блок (~строка 1613).
 
-- **bcrypt в Deno:** `import bcrypt from "npm:bcryptjs@2.4.3"` — работает в edge functions, cost 10.
-- **Уникальный индекс для `student_drafts`:** проверить и при отсутствии добавить миграцией `UNIQUE(student_name, grade, subject, test_id, attempt)` — нужен для `onConflict` в `save-draft`.
-- **Не трогаем:** `client.ts`, `types.ts`, `package.json` версии, бизнес-логику тестов, git history.
+### 4. Регистрация квиза для серверной проверки
+В `src/lib/quizRegistry.ts` добавить:
+```ts
+grade5technologyFinalQ4V2: FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS,
+```
 
-### Затронутые файлы (≈)
+### 5. Память проекта
+Обновить `mem://content/available-tests` — отметить, что у 5 класса доступна только Технология / Итоговая Q4 Вариант 2 (15 вопросов квиз + 4 письменных).
 
-- 2 миграции (credentials/attempts/retention/index)
-- 4 новых edge function (`set-teacher-password`, `cleanup-old-data`) + правки 20+ существующих
-- 2 новых `_shared/` файла
-- 4 новых файла в `src/lib/` + тесты
-- `.github/workflows/ci.yml`, `deploy-pages.yml`
-- `public/_headers`, `netlify.toml`, `README.md`, `docs/SECURITY.md`, `supabase/config.toml` (новые функции)
+### Что НЕ трогаем
+- БД, edge-функции, RLS — без изменений.
+- Каталоги 6/7/8/9 классов — без изменений.
+- Анти-чит, таймер 40 мин, авто-сабмит, rrweb, Telegram-отчёт — работают через общий пайплайн.
 
-Объём большой, но всё параллелится. После реализации повторно прогоним security scan и линтер.
+### Затронутые файлы
+- **создаём:** `src/components/tests/Grade5TechnologyFinalQ4V2.tsx`
+- **редактируем:** `src/pages/Index.tsx`, `src/lib/quizRegistry.ts`, `mem://content/available-tests`
