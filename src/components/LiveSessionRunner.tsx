@@ -92,21 +92,22 @@ export default function LiveSessionRunner({
       if (cancelled) return;
       if (res.ok) {
         setStorageReady("ok");
-      } else {
-        setStorageReady("failed");
-        setStorageError(res.reason);
-        try {
-          void supabase.functions.invoke("notify-copy-attempt", {
-            body: {
-              studentName,
-              grade: "?",
-              subject: testTitle,
-              event: `⚠️ Live: не смог запустить тест, запись экрана недоступна. reason="${res.reason}". UA=${navigator.userAgent.slice(0, 120)}`,
-            },
-          });
-        } catch (e) {
-          console.error("[live] preflight alert failed:", e);
-        }
+        return;
+      }
+      const reason = res.reason;
+      setStorageReady("failed");
+      setStorageError(reason);
+      try {
+        void supabase.functions.invoke("notify-copy-attempt", {
+          body: {
+            studentName,
+            grade: "?",
+            subject: testTitle,
+            event: `⚠️ Live: не смог запустить тест, запись экрана недоступна. reason="${reason}". UA=${navigator.userAgent.slice(0, 120)}`,
+          },
+        });
+      } catch (e) {
+        console.error("[live] preflight alert failed:", e);
       }
     });
     return () => { cancelled = true; };
