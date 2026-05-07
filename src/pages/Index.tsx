@@ -412,6 +412,13 @@ const Index = () => {
             setAnswers5techFinalQ4V2(restored);
             mark(draft.answers5techFinalQ4V2);
           }
+        } else if (grade === "8" && subject === "technology" && testId === "final-q4-theory") {
+          if (draft.answers8techFinalQ4Theory) {
+            const restored = (draft.answers8techFinalQ4Theory as string[]).slice(0, 6);
+            while (restored.length < 6) restored.push("");
+            setAnswers8techFinalQ4Theory(restored);
+            mark(draft.answers8techFinalQ4Theory);
+          }
         } else if (grade === "7" && subject === "technology" && testId === "final-q4") {
           if (draft.answers7techFinalQ4) {
             const restored = (draft.answers7techFinalQ4 as string[]).slice(0, 12);
