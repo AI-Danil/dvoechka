@@ -43,6 +43,7 @@ import Grade8Physics from "@/components/tests/Grade8Physics";
 import Grade8PhysicsPower from "@/components/tests/Grade8PhysicsPower";
 import Grade8PhysicsFinalQ4, { FINAL_Q4_QUIZ_QUESTIONS } from "@/components/tests/Grade8PhysicsFinalQ4";
 import Grade6TechnologyFinalQ4, { FINAL_Q4_TECH6_QUIZ_QUESTIONS } from "@/components/tests/Grade6TechnologyFinalQ4";
+import Grade5TechnologyFinalQ4V2, { FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS } from "@/components/tests/Grade5TechnologyFinalQ4V2";
 import Grade7TechnologyFinalQ4, { FINAL_Q4_TECH7_QUIZ_QUESTIONS } from "@/components/tests/Grade7TechnologyFinalQ4";
 import Grade7Physics from "@/components/tests/Grade7Physics";
 import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork";
@@ -62,6 +63,7 @@ type QuizPhase = "intro" | "running" | "done";
 const TOTAL_TIME = 40 * 60;
 
 const AVAILABLE_TESTS: Record<string, string[]> = {
+  "5": ["technology"],
   "6": ["informatics", "technology", "physics"],
   "7": ["informatics", "technology", "physics"],
   "8": ["informatics", "physics"],
@@ -81,6 +83,11 @@ interface TestEntry {
 }
 
 const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
+  "5": {
+    technology: [
+      { id: "final-q4-v2", title: "🌟 Итоговая контрольная за 4 четверть (Вариант 2)" },
+    ],
+  },
   "6": {
     technology: [
       { id: "final-q4", title: "Итоговая контрольная за 4 четверть (с квизом)" },
@@ -130,6 +137,7 @@ const TESTS_WITH_QUIZ: Record<string, QuizConfig> = {
   "8_physics_final-q4": { questions: FINAL_Q4_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "6_technology_final-q4": { questions: FINAL_Q4_TECH6_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "7_technology_final-q4": { questions: FINAL_Q4_TECH7_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
+  "5_technology_final-q4-v2": { questions: FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
 };
 
 const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;
