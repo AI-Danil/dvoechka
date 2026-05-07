@@ -326,6 +326,44 @@ export default function LiveSessionRunner({
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
+  if (storageReady === "checking") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <p className="text-muted-foreground">Проверяем запись экрана…</p>
+      </div>
+    );
+  }
+
+  if (storageReady === "failed") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6 space-y-4 text-center">
+            <div className="text-5xl">⚠️</div>
+            <h2 className="text-xl font-bold">Запись экрана недоступна</h2>
+            <p className="text-sm text-muted-foreground">
+              Без записи тест начать нельзя. Обновите страницу, попробуйте Chrome
+              или подойдите к учителю.
+            </p>
+            {storageError && (
+              <p className="text-xs text-muted-foreground break-all">
+                Причина: {storageError}
+              </p>
+            )}
+            <div className="flex flex-col gap-2">
+              <Button onClick={() => setStorageRetryTick((t) => t + 1)}>
+                Повторить проверку
+              </Button>
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                Перезагрузить страницу
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (questions === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
