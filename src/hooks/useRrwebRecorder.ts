@@ -117,7 +117,7 @@ export function useRrwebRecorder({ resultId, enabled }: Options) {
         const sentinelPath = `${resultId}/sentinel.txt`;
         const { error } = await supabase.storage
           .from("rrweb-sessions")
-          .upload(sentinelPath, new Blob(["ok"], { type: "text/plain" }), { upsert: true });
+          .upload(sentinelPath, new Blob(["ok"], { type: "text/plain" }), { upsert: false });
         if (error) console.error("[rrweb] SENTINEL upload failed:", error);
         else console.log("[rrweb] sentinel uploaded OK ->", sentinelPath);
       } catch (e) {
