@@ -56,6 +56,7 @@ import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
 import DbTestRunner from "@/components/DbTestRunner";
 import { loadPublishedTestsForGradeSubject, type DbTestSummary } from "@/lib/dbTests";
 import { safeRandomUUID } from "@/lib/safeRandomUUID";
+import { checkRecordingStorage } from "@/lib/checkRecordingStorage";
 
 type Screen = "login" | "test" | "success";
 type LoginStep = "grade" | "subject" | "name" | "test-pick";
@@ -1100,7 +1101,9 @@ const Index = () => {
     setLoginStep("test-pick");
   };
 
-  const startTest = (chosenTestId: string) => {
+  const [checkingStorage, setCheckingStorage] = useState(false);
+
+  const startTest = async (chosenTestId: string) => {
     const submittedKey = getSubmittedKey(grade, subject, cleanName, attempt, chosenTestId);
     if (localStorage.getItem(submittedKey)) {
       toast({
@@ -1110,9 +1113,41 @@ const Index = () => {
       });
       return;
     }
+
+    // Preflight: проверяем, что запись экрана реально работает
+    const newResultId = safeRandomUUID();
+    setCheckingStorage(true);
+    let check: { ok: true } | { ok: false; reason: string };
+    try {
+      check = await checkRecordingStorage(newResultId);
+    } finally {
+      setCheckingStorage(false);
+    }
+    if (!check.ok) {
+      toast({
+        title: "Запись экрана не работает",
+        description:
+          "На этом устройстве не получается включить запись. Обновите страницу, попробуйте Chrome или подойдите к учителю. Без записи тест начать нельзя.",
+        variant: "destructive",
+      });
+      // Алерт учителю в Telegram, fire-and-forget
+      try {
+        void supabase.functions.invoke("notify-copy-attempt", {
+          body: {
+            studentName: cleanName || studentName || "(неизвестно)",
+            grade,
+            subject,
+            event: `⚠️ Не смог запустить тест: запись экрана недоступна. reason="${(check as { ok: false; reason: string }).reason}". UA=${navigator.userAgent.slice(0, 120)}`,
+          },
+        });
+      } catch (e) {
+        console.error("Failed to send preflight failure alert:", e);
+      }
+      return;
+    }
+
     setTestId(chosenTestId);
-    // Заранее генерируем UUID результата — он же путь для rrweb-записи
-    setResultId(safeRandomUUID());
+    setResultId(newResultId);
     const hasQuiz = !!TESTS_WITH_QUIZ[quizKey(grade, subject, chosenTestId)];
     if (hasQuiz) {
       setQuizPhase("intro");
@@ -1122,6 +1157,7 @@ const Index = () => {
     }
     setScreen("test");
   };
+
 
   const handleQuizFinish = (results: QuizResults) => {
     setQuizResults(results);
@@ -1511,7 +1547,8 @@ const Index = () => {
                         ? "opacity-50 hover:opacity-80 grayscale"
                         : ""
                   }`}
-                  onClick={() => startTest(t.id)}
+                  onClick={() => { void startTest(t.id); }}
+                  disabled={checkingStorage}
                 >
                   <span className="flex flex-col items-start gap-1 w-full">
                     <span>{t.title}</span>

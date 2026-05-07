@@ -23,6 +23,7 @@ import { useDevToolsBlock } from "@/hooks/useDevToolsBlock";
 import { useRrwebRecorder } from "@/hooks/useRrwebRecorder";
 import RecordingBadge from "@/components/RecordingBadge";
 import { safeRandomUUID } from "@/lib/safeRandomUUID";
+import { checkRecordingStorage } from "@/lib/checkRecordingStorage";
 
 interface Props {
   testId: string;
@@ -70,14 +71,47 @@ export default function LiveSessionRunner({
   const [resultId] = useState(() => safeRandomUUID());
   const startedAtRef = useRef<number>(Date.now());
   const submittedRef = useRef(false);
+  const [storageReady, setStorageReady] = useState<"checking" | "ok" | "failed">("checking");
+  const [storageError, setStorageError] = useState<string>("");
+  const [storageRetryTick, setStorageRetryTick] = useState(0);
 
-  const isActive = phase === "quiz" || phase === "written";
+  const isActive = storageReady === "ok" && (phase === "quiz" || phase === "written");
 
   // Тики таймера
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Preflight: проверяем, что запись экрана работает, ДО активации теста
+  useEffect(() => {
+    let cancelled = false;
+    setStorageReady("checking");
+    setStorageError("");
+    void checkRecordingStorage(resultId).then((res) => {
+      if (cancelled) return;
+      if (res.ok) {
+        setStorageReady("ok");
+        return;
+      }
+      const reason = (res as { ok: false; reason: string }).reason;
+      setStorageReady("failed");
+      setStorageError(reason);
+      try {
+        void supabase.functions.invoke("notify-copy-attempt", {
+          body: {
+            studentName,
+            grade: "?",
+            subject: testTitle,
+            event: `⚠️ Live: не смог запустить тест, запись экрана недоступна. reason="${reason}". UA=${navigator.userAgent.slice(0, 120)}`,
+          },
+        });
+      } catch (e) {
+        console.error("[live] preflight alert failed:", e);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [resultId, storageRetryTick, studentName, testTitle]);
 
   const remainingSec = Math.max(0, Math.floor((new Date(endsAt).getTime() - now) / 1000));
 
@@ -291,6 +325,44 @@ export default function LiveSessionRunner({
   };
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  if (storageReady === "checking") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <p className="text-muted-foreground">Проверяем запись экрана…</p>
+      </div>
+    );
+  }
+
+  if (storageReady === "failed") {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6 space-y-4 text-center">
+            <div className="text-5xl">⚠️</div>
+            <h2 className="text-xl font-bold">Запись экрана недоступна</h2>
+            <p className="text-sm text-muted-foreground">
+              Без записи тест начать нельзя. Обновите страницу, попробуйте Chrome
+              или подойдите к учителю.
+            </p>
+            {storageError && (
+              <p className="text-xs text-muted-foreground break-all">
+                Причина: {storageError}
+              </p>
+            )}
+            <div className="flex flex-col gap-2">
+              <Button onClick={() => setStorageRetryTick((t) => t + 1)}>
+                Повторить проверку
+              </Button>
+              <Button variant="outline" onClick={() => window.location.reload()}>
+                Перезагрузить страницу
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (questions === null) {
     return (
