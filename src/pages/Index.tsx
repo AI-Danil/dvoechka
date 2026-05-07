@@ -67,7 +67,7 @@ const AVAILABLE_TESTS: Record<string, string[]> = {
   "5": ["technology"],
   "6": ["informatics", "technology", "physics"],
   "7": ["informatics", "technology", "physics"],
-  "8": ["informatics", "physics"],
+  "8": ["informatics", "physics", "technology"],
   "9": ["informatics", "physics", "technology"],
 };
 
