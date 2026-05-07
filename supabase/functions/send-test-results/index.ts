@@ -578,6 +578,56 @@ serve(async (req) => {
         const hasFile = attachmentMap[String(idx)];
         message += `Вопрос ${j + 1}: ${ans[idx] || "(пусто)"}${hasFile ? " 📎" : ""}\n`;
       }
+    } else if (body.type === "grade8technologyFinalQ4Theory") {
+      const ans = (body.answers as string[]) ?? [];
+      const quiz = body.quizResults as
+        | {
+            correct: number;
+            total: number;
+            perQuestion: { answer: number; correct: number; timeSpent: number; timedOut: boolean }[];
+          }
+        | null
+        | undefined;
+
+      if (quiz) {
+        const optLabel = (n: number) => (n < 0 ? "—" : ["А", "Б", "В", "Г"][n] ?? "?");
+        message += `\n🎯 КВИЗ (15 вопросов): ${quiz.correct}/${quiz.total} правильных\n`;
+        quiz.perQuestion.forEach((r, i) => {
+          const mark = r.answer === r.correct ? "✅" : r.timedOut ? "⏰" : "❌";
+          message += `Вопрос ${i + 1}: ${mark} ответ: ${optLabel(r.answer)} (правильный: ${optLabel(r.correct)}) ⏱ ${r.timeSpent}с${r.timedOut ? " (таймаут)" : ""}\n`;
+        });
+      }
+
+      message += `\n📝 ЧАСТЬ 2. ТЕОРИЯ (задания 1–6):\n`;
+      for (let i = 0; i < 6; i++) {
+        const hasFile = attachmentMap[String(i)];
+        message += `Задание ${i + 1}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+      }
+    } else if (body.type === "grade5technologyFinalQ4V2") {
+      const ans = (body.answers as string[]) ?? [];
+      const quiz = body.quizResults as
+        | {
+            correct: number;
+            total: number;
+            perQuestion: { answer: number; correct: number; timeSpent: number; timedOut: boolean }[];
+          }
+        | null
+        | undefined;
+
+      if (quiz) {
+        const optLabel = (n: number) => (n < 0 ? "—" : ["А", "Б", "В", "Г"][n] ?? "?");
+        message += `\n🎯 КВИЗ (15 вопросов): ${quiz.correct}/${quiz.total} правильных\n`;
+        quiz.perQuestion.forEach((r, i) => {
+          const mark = r.answer === r.correct ? "✅" : r.timedOut ? "⏰" : "❌";
+          message += `Вопрос ${i + 1}: ${mark} ответ: ${optLabel(r.answer)} (правильный: ${optLabel(r.correct)}) ⏱ ${r.timeSpent}с${r.timedOut ? " (таймаут)" : ""}\n`;
+        });
+      }
+
+      message += `\n📝 ЧАСТЬ 2. ПИСЬМЕННЫЕ ЗАДАНИЯ (16–19):\n`;
+      for (let i = 0; i < 4; i++) {
+        const hasFile = attachmentMap[String(i)];
+        message += `Задание ${16 + i}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
+      }
     } else {
       const blitz = body.blitz as string[];
       const tasks = body.tasks as Record<string, string>;
