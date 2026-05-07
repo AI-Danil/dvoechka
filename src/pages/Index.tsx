@@ -1137,7 +1137,7 @@ const Index = () => {
             studentName: cleanName || studentName || "(неизвестно)",
             grade,
             subject,
-            event: `⚠️ Не смог запустить тест: запись экрана недоступна. reason="${check.reason}". UA=${navigator.userAgent.slice(0, 120)}`,
+            event: `⚠️ Не смог запустить тест: запись экрана недоступна. reason="${(check as { ok: false; reason: string }).reason}". UA=${navigator.userAgent.slice(0, 120)}`,
           },
         });
       } catch (e) {
