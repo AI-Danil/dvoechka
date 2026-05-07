@@ -1,50 +1,23 @@
-## План: 5 класс, Технология — Итоговая Q4 (Вариант 2)
+## Цель
+На «Шаг 4. Выберите работу» для 5 класса / Технология показывать ТОЛЬКО карточку «🌟 Итоговая контрольная за 4 четверть (Вариант 2)». Учительская работа «Итоговая контрольная работа по технологии. 5 класс» (🧩 Смешанный тест от учителя) должна быть скрыта.
 
-### 1. Новый компонент теста
-Создать `src/components/tests/Grade5TechnologyFinalQ4V2.tsx` (по образцу `Grade6TechnologyFinalQ4.tsx`):
-- Экспорт `FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS` — 15 вопросов × 60 сек (полный текст из ТЗ: информация, устройства ввода, ТБ, файлы, папки, источник/приёмник, фишинг, пробелы, Shift, форматирование, Ctrl+X, списки, строки таблицы, «+» в логической таблице, столбчатая диаграмма).
-- Default-export — 4 письменных задания (16–19) с подробными «инструкциями для ученика»: горячие клавиши, безопасность/облака, табличный детектив, наглядные формы. Каждое — `Textarea` + `FileAttach`. Текст условий с `userSelect: "none"`.
+## Изменения
 
-### 2. Меню в `src/pages/Index.tsx`
-- В `AVAILABLE_TESTS` добавить `"5": ["technology"]` — у пятиклассников в меню только Технология.
-- В `TESTS_CATALOG` добавить:
-  ```ts
-  "5": {
-    technology: [
-      { id: "final-q4-v2", title: "🌟 Итоговая контрольная за 4 четверть (Вариант 2)" },
-    ],
-  }
-  ```
-  Других тестов у 5 класса не будет — «скрытие» достигается отсутствием записей в каталоге.
+**`src/pages/Index.tsx`** — в эффекте загрузки `dbTests` (~строка 259–262) добавить условие: если `grade === "5"`, не подгружать опубликованные учительские тесты, а сразу выставлять `setDbTests([])`.
 
-### 3. Подключение в `Index.tsx`
-- Импорт `Grade5TechnologyFinalQ4V2` и `FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS`.
-- В `TESTS_WITH_QUIZ` добавить `"5_technology_final-q4-v2": { questions: FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS, secondsPerQuestion: 60 }`.
-- Новые state/refs: `answers5techFinalQ4V2: string[]` (длина 4) + `attachments5techFinalQ4V2`.
-- Добавить ветки `grade === "5" && subject === "technology" && testId === "final-q4-v2"` во все существующие switch-блоки:
-  - локальный restore (~строка 369),
-  - серверный restore (~строка 462),
-  - локальный autosave `data` (~строка 522) + dep-массив,
-  - локальный flush `written` (~строка 565),
-  - серверный payload `written` (~строка 610),
-  - сабмит `answers` (~строка 1135) — `type: "grade5technologyFinalQ4V2"`, с `quizResults`,
-  - прогресс `{ answered, total: 4 }` (~строка 710) + dep-массив,
-  - render-блок (~строка 1613).
-
-### 4. Регистрация квиза для серверной проверки
-В `src/lib/quizRegistry.ts` добавить:
 ```ts
-grade5technologyFinalQ4V2: FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS,
+useEffect(() => {
+  if (!grade || !subject) { setDbTests([]); return; }
+  if (grade === "5") { setDbTests([]); return; }   // ← новое
+  loadPublishedTestsForGradeSubject(grade, subject)
+    .then(setDbTests).catch(() => setDbTests([]));
+}, [grade, subject]);
 ```
 
-### 5. Память проекта
-Обновить `mem://content/available-tests` — отметить, что у 5 класса доступна только Технология / Итоговая Q4 Вариант 2 (15 вопросов квиз + 4 письменных).
+Это гарантированно скроет любые учительские (db) тесты для 5 класса в меню выбора работ — независимо от того, что лежит в БД. Карточка из `TESTS_CATALOG` («Вариант 2») остаётся единственной.
 
-### Что НЕ трогаем
-- БД, edge-функции, RLS — без изменений.
-- Каталоги 6/7/8/9 классов — без изменений.
-- Анти-чит, таймер 40 мин, авто-сабмит, rrweb, Telegram-отчёт — работают через общий пайплайн.
+## Что НЕ трогаем
+- `TESTS_CATALOG`, `AVAILABLE_TESTS`, сам компонент теста, БД, edge-функции, 6/7/8/9 классы.
 
-### Затронутые файлы
-- **создаём:** `src/components/tests/Grade5TechnologyFinalQ4V2.tsx`
-- **редактируем:** `src/pages/Index.tsx`, `src/lib/quizRegistry.ts`, `mem://content/available-tests`
+## Затронутые файлы
+- редактируем: `src/pages/Index.tsx` (1 эффект)
