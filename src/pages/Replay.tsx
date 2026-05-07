@@ -207,8 +207,7 @@ function ReplayInner() {
   // Уничтожить плеер
   const destroyPlayer = () => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (playerInstanceRef.current as any)?.$destroy?.();
+      (playerInstanceRef.current as unknown as { $destroy?: () => void })?.$destroy?.();
     } catch { /* ignore */ }
     playerInstanceRef.current = null;
     if (playerHostRef.current) playerHostRef.current.innerHTML = "";
@@ -222,8 +221,12 @@ function ReplayInner() {
     try {
       playerInstanceRef.current = new rrwebPlayer({
         target: playerHostRef.current,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        props: { events: events as any, width: 880, height: 500, autoPlay: true },
+        props: {
+          events: events as ConstructorParameters<typeof rrwebPlayer>[0]["props"]["events"],
+          width: 880,
+          height: 500,
+          autoPlay: true,
+        },
       });
     } catch (e) {
       console.error("Player init failed:", e);
@@ -261,8 +264,7 @@ function ReplayInner() {
     if (offset < 0) offset = 0;
     setTimeout(() => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (playerInstanceRef.current as any)?.goto?.(offset);
+        (playerInstanceRef.current as unknown as { goto?: (n: number) => void })?.goto?.(offset);
       } catch (e) {
         console.error("seek failed:", e);
       }

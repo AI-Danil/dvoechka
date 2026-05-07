@@ -157,7 +157,6 @@ export function useRrwebRecorder({ resultId, enabled }: Options) {
       stopFnRef.current = null;
       startedRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, resultId]);
 
   const finalize = async () => {

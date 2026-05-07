@@ -1,32 +1,15 @@
-## Что чиним
+## Фиксы
 
-В просмотре результата квиза вместо текста вопросов рисуется `[вопрос недоступен]`. Причина — в реестре `src/lib/quizRegistry.ts` не зарегистрированы два теста, по которым уже сданы работы:
+1. **`src/pages/Index.tsx`** — обернуть `doSubmit` в `useCallback` (или вызывать через ref), включить в deps useEffect автосабмита (строка 1052). Убирает риск stale closure при тайм-ауте.
+2. **`src/hooks/useRrwebRecorder.ts`** — удалить мёртвый `// eslint-disable-next-line react-hooks/exhaustive-deps` (строка 160).
+3. **`src/pages/Replay.tsx`** — заменить три `as any` + комментарии eslint-disable на узкие типы:
+   - `{ $destroy?: () => void }` для destroy
+   - `{ goto?: (n: number) => void }` для seek
+   - корректный тип events для конструктора rrwebPlayer
 
-- `grade6technologyFinalQ4` (15 работ в БД, в т.ч. «Ваня Шарло»)
-- `grade7technologyFinalQ4` (15 работ в БД)
+После правок — `vitest run` + `eslint` для верификации.
 
-Сами `*_QUIZ_QUESTIONS` экспорты в коде есть (`Grade6TechnologyFinalQ4.tsx`, `Grade7TechnologyFinalQ4.tsx`), но не подключены к реестру → `getQuizQuestionsForTestType()` возвращает `null` → фронт показывает фолбэк.
-
-## Правки
-
-### 1. `src/lib/quizRegistry.ts`
-Добавить два импорта и две записи в `REGISTRY`:
-```ts
-import { FINAL_Q4_TECH6_QUIZ_QUESTIONS } from "@/components/tests/Grade6TechnologyFinalQ4";
-import { FINAL_Q4_TECH7_QUIZ_QUESTIONS } from "@/components/tests/Grade7TechnologyFinalQ4";
-
-const REGISTRY = {
-  ...,
-  grade6technologyFinalQ4: FINAL_Q4_TECH6_QUIZ_QUESTIONS,
-  grade7technologyFinalQ4: FINAL_Q4_TECH7_QUIZ_QUESTIONS,
-};
-```
-
-После этого все 30 уже сохранённых работ начнут корректно отображать тексты вопросов и варианты — данные в БД не трогаем.
-
-### 2. `src/lib/quizRegistry.test.ts` (новый)
-Маленький unit-тест-страховка от повторения: пройтись по списку известных хардкод `test_type` и убедиться, что для каждого реестр возвращает массив длиной ≥ 1. Если кто-то снова добавит тест и забудет реестр — упадёт CI, а не прод.
-
-## Затронутые файлы
-- `src/lib/quizRegistry.ts` — правка
-- `src/lib/quizRegistry.test.ts` — новый
+## Файлы
+- `src/pages/Index.tsx`
+- `src/hooks/useRrwebRecorder.ts`
+- `src/pages/Replay.tsx`
