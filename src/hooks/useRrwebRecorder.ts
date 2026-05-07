@@ -83,7 +83,7 @@ export function useRrwebRecorder({ resultId, enabled }: Options) {
           .from("rrweb-sessions")
           .upload(path, encoded.blob, {
             contentType: encoded.contentType,
-            upsert: true,
+            upsert: false,
           });
         if (error) {
           console.error("[rrweb] chunk upload failed:", error, "path:", path);
