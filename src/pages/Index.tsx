@@ -225,6 +225,10 @@ const Index = () => {
   const [answers6techFinalQ4, setAnswers6techFinalQ4] = useState<string[]>(Array(6).fill(""));
   const [attachments6techFinalQ4, setAttachments6techFinalQ4] = useState<Record<number, File | null>>({});
 
+  // Grade 5 technology FINAL Q4 V2 answers (4 tasks; 15-question quiz lives separately)
+  const [answers5techFinalQ4V2, setAnswers5techFinalQ4V2] = useState<string[]>(Array(4).fill(""));
+  const [attachments5techFinalQ4V2, setAttachments5techFinalQ4V2] = useState<Record<number, File | null>>({});
+
   // Grade 7 technology FINAL Q4 answers (4 practice + 8 theory = 12; 15-question quiz lives separately)
   const [answers7techFinalQ4, setAnswers7techFinalQ4] = useState<string[]>(Array(12).fill(""));
   const [attachments7techFinalQ4, setAttachments7techFinalQ4] = useState<Record<number, File | null>>({});
@@ -284,6 +288,8 @@ const Index = () => {
   const attachments8physFinalQ4Ref = useRef(attachments8physFinalQ4);
   const answers6techFinalQ4Ref = useRef(answers6techFinalQ4);
   const attachments6techFinalQ4Ref = useRef(attachments6techFinalQ4);
+  const answers5techFinalQ4V2Ref = useRef(answers5techFinalQ4V2);
+  const attachments5techFinalQ4V2Ref = useRef(attachments5techFinalQ4V2);
   const answers7techFinalQ4Ref = useRef(answers7techFinalQ4);
   const attachments7techFinalQ4Ref = useRef(attachments7techFinalQ4);
   const answers7physRef = useRef(answers7phys);
@@ -324,6 +330,8 @@ const Index = () => {
   useEffect(() => { attachments8physFinalQ4Ref.current = attachments8physFinalQ4; }, [attachments8physFinalQ4]);
   useEffect(() => { answers6techFinalQ4Ref.current = answers6techFinalQ4; }, [answers6techFinalQ4]);
   useEffect(() => { attachments6techFinalQ4Ref.current = attachments6techFinalQ4; }, [attachments6techFinalQ4]);
+  useEffect(() => { answers5techFinalQ4V2Ref.current = answers5techFinalQ4V2; }, [answers5techFinalQ4V2]);
+  useEffect(() => { attachments5techFinalQ4V2Ref.current = attachments5techFinalQ4V2; }, [attachments5techFinalQ4V2]);
   useEffect(() => { answers7techFinalQ4Ref.current = answers7techFinalQ4; }, [answers7techFinalQ4]);
   useEffect(() => { attachments7techFinalQ4Ref.current = attachments7techFinalQ4; }, [attachments7techFinalQ4]);
   useEffect(() => { answers7physRef.current = answers7phys; }, [answers7phys]);
