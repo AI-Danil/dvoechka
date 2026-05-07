@@ -1173,7 +1173,13 @@ const Index = () => {
         answers: answers6techFinalQ4Ref.current,
         quizResults: quizResultsRef.current,
       };
-    } else if (g === "8" && s === "physics") {
+    } else if (g === "5" && s === "technology" && tid === "final-q4-v2") {
+      fileUrls = await uploadAttachments(attachments5techFinalQ4V2Ref.current);
+      answers = {
+        type: "grade5technologyFinalQ4V2",
+        answers: answers5techFinalQ4V2Ref.current,
+        quizResults: quizResultsRef.current,
+      };
       fileUrls = await uploadAttachments(attachments8physRef.current);
       answers = { type: "grade8physics", answers: answers8physRef.current };
     } else if (g === "9" && s === "physics" && tid === "atom") {
@@ -1656,6 +1662,21 @@ const Index = () => {
               });
             }}
             onAttachmentChange={(i, file) => setAttachments6techFinalQ4((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "5" && subject === "technology" && testId === "final-q4-v2" && (
+          <Grade5TechnologyFinalQ4V2
+            answers={answers5techFinalQ4V2}
+            attachments={attachments5techFinalQ4V2}
+            onAnswerChange={(i, v) => {
+              setAnswers5techFinalQ4V2((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments5techFinalQ4V2((prev) => ({ ...prev, [i]: file }))}
           />
         )}
 
