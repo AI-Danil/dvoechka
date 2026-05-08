@@ -168,6 +168,8 @@ const Index = () => {
   const { finalize: finalizeRecording } = useRrwebRecorder({
     resultId,
     enabled: screen === "test",
+    // 40 минут таймера + 5 минут буфер = 2700 сек жёсткого потолка записи.
+    maxDurationSec: 40 * 60 + 5 * 60,
   });
   const [loginStep, setLoginStep] = useState<LoginStep>("grade");
   const [studentName, setStudentName] = useState("");
