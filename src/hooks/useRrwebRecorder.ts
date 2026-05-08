@@ -13,10 +13,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 const FLUSH_INTERVAL_MS = 30 * 1000; // 30 секунд
 const FIRST_FLUSH_DELAY_MS = 10 * 1000; // 10 секунд после старта
+const HIDDEN_AUTO_FINALIZE_MS = 5 * 60 * 1000; // 5 минут скрытой вкладки → авто-финализ
+const DEFAULT_MAX_DURATION_SEC = 40 * 60 + 5 * 60; // 45 минут общий потолок
 
 interface Options {
   resultId: string | null;
   enabled: boolean;
+  /** Жёсткий лимит длительности записи в секундах. По умолчанию 2700 (45 мин). */
+  maxDurationSec?: number;
 }
 
 interface EncodedChunk {
