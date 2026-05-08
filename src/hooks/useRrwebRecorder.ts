@@ -106,10 +106,20 @@ export function useRrwebRecorder({ resultId, enabled, maxDurationSec }: Options)
     await uploadPromise;
   };
 
+  const stopRecordingOnly = () => {
+    try { stopFnRef.current?.(); } catch { /* ignore */ }
+    stopFnRef.current = null;
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
+    if (firstFlushTimeoutRef.current) { clearTimeout(firstFlushTimeoutRef.current); firstFlushTimeoutRef.current = null; }
+    if (maxDurationTimeoutRef.current) { clearTimeout(maxDurationTimeoutRef.current); maxDurationTimeoutRef.current = null; }
+    if (hiddenTimeoutRef.current) { clearTimeout(hiddenTimeoutRef.current); hiddenTimeoutRef.current = null; }
+  };
+
   useEffect(() => {
     if (!enabled || !resultId) return;
     if (startedRef.current) return;
     startedRef.current = true;
+    finalizedRef.current = false;
 
     bufferRef.current = [];
     chunkIndexRef.current = 0;
@@ -117,8 +127,6 @@ export function useRrwebRecorder({ resultId, enabled, maxDurationSec }: Options)
     pendingUploadsRef.current = [];
 
     console.log("[rrweb] starting recorder for resultId:", resultId, "record type:", typeof rrwebRecord);
-    // Sentinel/preflight удалён — проверка storage теперь делается ДО старта теста
-    // через checkRecordingStorage() в src/lib/checkRecordingStorage.ts.
 
     let stop: (() => void) | undefined;
     try {
@@ -148,9 +156,37 @@ export function useRrwebRecorder({ resultId, enabled, maxDurationSec }: Options)
       void flush();
     }, FLUSH_INTERVAL_MS);
 
+    // Жёсткий лимит длительности записи. Страхует от «забыл закрыть вкладку».
+    const maxMs = (maxDurationSec ?? DEFAULT_MAX_DURATION_SEC) * 1000;
+    maxDurationTimeoutRef.current = setTimeout(() => {
+      if (finalizedRef.current) return;
+      console.warn(`[rrweb] max duration reached (${maxMs}ms) → auto-finalize`);
+      void finalize();
+    }, maxMs);
+
+    const armHiddenTimer = () => {
+      if (hiddenTimeoutRef.current) clearTimeout(hiddenTimeoutRef.current);
+      hiddenTimeoutRef.current = setTimeout(() => {
+        if (finalizedRef.current) return;
+        console.warn(`[rrweb] tab hidden > ${HIDDEN_AUTO_FINALIZE_MS}ms → auto-finalize`);
+        void finalize();
+      }, HIDDEN_AUTO_FINALIZE_MS);
+    };
+    const cancelHiddenTimer = () => {
+      if (hiddenTimeoutRef.current) {
+        clearTimeout(hiddenTimeoutRef.current);
+        hiddenTimeoutRef.current = null;
+      }
+    };
+
     const onBeforeUnload = () => { void flush(); };
     const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") void flush();
+      if (document.visibilityState === "hidden") {
+        void flush();
+        armHiddenTimer();
+      } else {
+        cancelHiddenTimer();
+      }
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     document.addEventListener("visibilitychange", onVisibilityChange);
@@ -158,19 +194,21 @@ export function useRrwebRecorder({ resultId, enabled, maxDurationSec }: Options)
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (firstFlushTimeoutRef.current) clearTimeout(firstFlushTimeoutRef.current);
-      try { stopFnRef.current?.(); } catch { /* ignore */ }
-      stopFnRef.current = null;
+      stopRecordingOnly();
       startedRef.current = false;
     };
-  }, [enabled, resultId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, resultId, maxDurationSec]);
 
   const finalize = async () => {
+    if (finalizedRef.current) {
+      console.log("[rrweb] finalize: already finalized, skipping");
+      return;
+    }
+    finalizedRef.current = true;
     console.log("[rrweb] finalize called, buffer size:", bufferRef.current.length);
-    // Stop recording first to flush any in-flight events from rrweb internals
-    try { stopFnRef.current?.(); } catch { /* ignore */ }
-    stopFnRef.current = null;
+    // Останавливаем запись и все таймеры — больше ничего писать/слать не нужно.
+    stopRecordingOnly();
     // Final flush of remaining buffer
     await flush();
     // Wait for ALL pending uploads to complete
@@ -180,7 +218,6 @@ export function useRrwebRecorder({ resultId, enabled, maxDurationSec }: Options)
     console.log(`[rrweb] finalize done. uploaded chunks: ${uploaded}`);
     if (uploaded === 0) {
       console.error("[rrweb] PRODUCED NO CHUNKS — recording was not saved");
-      // Алерт учителю в Telegram, чтобы знать о провале сразу
       try {
         await supabase.functions.invoke("notify-copy-attempt", {
           body: {
