@@ -48,16 +48,19 @@ async function encodeJson(obj: unknown): Promise<EncodedChunk> {
   };
 }
 
-export function useRrwebRecorder({ resultId, enabled }: Options) {
+export function useRrwebRecorder({ resultId, enabled, maxDurationSec }: Options) {
   const stopFnRef = useRef<(() => void) | null>(null);
   const bufferRef = useRef<RrwebEvent[]>([]);
   const chunkIndexRef = useRef(0);
   const uploadedChunksRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const firstFlushTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxDurationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hiddenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingUploadsRef = useRef<Promise<unknown>[]>([]);
   const resultIdRef = useRef<string | null>(null);
   const startedRef = useRef(false);
+  const finalizedRef = useRef(false);
 
   useEffect(() => {
     resultIdRef.current = resultId;
