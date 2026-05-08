@@ -168,6 +168,8 @@ const Index = () => {
   const { finalize: finalizeRecording } = useRrwebRecorder({
     resultId,
     enabled: screen === "test",
+    // 40 минут таймера + 5 минут буфер = 2700 сек жёсткого потолка записи.
+    maxDurationSec: 40 * 60 + 5 * 60,
   });
   const [loginStep, setLoginStep] = useState<LoginStep>("grade");
   const [studentName, setStudentName] = useState("");
@@ -1617,29 +1619,32 @@ const Index = () => {
     );
   }
 
-  // QUIZ SCREENS (before main test) — only for tests that have a quiz
-  if (screen === "test" && quizPhase === "intro") {
+  // QUIZ PHASE — полностью блокируем основной тестовый экран,
+  // пока ученик не закончил/не пропустил квиз.
+  if (screen === "test" && (quizPhase === "intro" || quizPhase === "running")) {
     const cfg = TESTS_WITH_QUIZ[quizKey(grade, subject, testId)];
-    if (cfg) {
-      return (
-        <>
-          <RecordingBadge />
+    if (!cfg) {
+      // Рассинхрон ключей TESTS_WITH_QUIZ ↔ (grade/subject/testId).
+      // Логируем и авто-чиним, чтобы тест не залип.
+      console.error(
+        "[quiz] cfg not found for",
+        quizKey(grade, subject, testId),
+        "but quizPhase=",
+        quizPhase,
+      );
+      setQuizPhase("done");
+      return null;
+    }
+    return (
+      <>
+        <RecordingBadge />
+        {quizPhase === "intro" ? (
           <QuizIntro
             questionsCount={cfg.questions.length}
             secondsPerQuestion={cfg.secondsPerQuestion}
             onStart={() => setQuizPhase("running")}
           />
-        </>
-      );
-    }
-  }
-
-  if (screen === "test" && quizPhase === "running") {
-    const cfg = TESTS_WITH_QUIZ[quizKey(grade, subject, testId)];
-    if (cfg) {
-      return (
-        <>
-          <RecordingBadge />
+        ) : (
           <Quiz
             questions={cfg.questions}
             secondsPerQuestion={cfg.secondsPerQuestion}
@@ -1652,9 +1657,9 @@ const Index = () => {
               });
             }}
           />
-        </>
-      );
-    }
+        )}
+      </>
+    );
   }
 
   // TEST SCREEN

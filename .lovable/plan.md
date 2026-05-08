@@ -1,15 +1,89 @@
-## Фиксы
+## Что чиним
 
-1. **`src/pages/Index.tsx`** — обернуть `doSubmit` в `useCallback` (или вызывать через ref), включить в deps useEffect автосабмита (строка 1052). Убирает риск stale closure при тайм-ауте.
-2. **`src/hooks/useRrwebRecorder.ts`** — удалить мёртвый `// eslint-disable-next-line react-hooks/exhaustive-deps` (строка 160).
-3. **`src/pages/Replay.tsx`** — заменить три `as any` + комментарии eslint-disable на узкие типы:
-   - `{ $destroy?: () => void }` для destroy
-   - `{ goto?: (n: number) => void }` для seek
-   - корректный тип events для конструктора rrwebPlayer
+### Баг 1 — на скрине: квиз-интро и письменная часть видны одновременно
+У Вани Шарло (6 класс, технология, `final-q4`) экран показывает карточку «Сейчас будет квиз» и сразу под ней — заголовок «Часть 2. Письменные задания», прогресс «1/6». Так не должно быть: на этапах `quizPhase === "intro"` и `"running"` письменная часть рендериться не должна.
 
-После правок — `vitest run` + `eslint` для верификации.
+Причина: в `src/pages/Index.tsx` ранний `return` для квиза вложен в `if (cfg)` (строки 1621–1658). Если по какой-то причине `cfg` не находится в `TESTS_WITH_QUIZ` (рассинхрон ключей `grade/subject/testId`, или попадание через сценарий live-сессии где testId — это UUID из БД), код проваливается дальше и рисует основной тестовый экран. При этом квиз-интро всё равно появляется потому, что параллельно где-то монтируется `QuizIntro` (или это остаточный layout от ленивого ребилда). Главное: текущая защита неполная.
+
+### Баг 2 — запись на 6+ часов с пустотой
+Уже разобран: вкладка остаётся открытой, `useRrwebRecorder` пишет крошечные heartbeat-чанки до сабмита. Решение — жёсткий лимит и автофинализ при долгом скрытии вкладки.
+
+---
+
+## Правки
+
+### 1) `src/pages/Index.tsx` — гарантированно блокировать тестовый body на время квиза
+
+Заменить блоки 1620–1658: вынести единую защиту перед рендером основного теста.
+
+```tsx
+// QUIZ PHASE — блокируем основной тестовый экран целиком
+if (screen === "test" && (quizPhase === "intro" || quizPhase === "running")) {
+  const cfg = TESTS_WITH_QUIZ[quizKey(grade, subject, testId)];
+  // Если cfg вдруг не нашёлся — всё равно НЕ рендерим письменную часть.
+  // Ставим заглушку и логируем: это сигнал, что ключ ушёл в рассинхрон.
+  if (!cfg) {
+    console.error("[quiz] cfg not found for", quizKey(grade, subject, testId), "but quizPhase=", quizPhase);
+    // авто-починка: пропускаем квиз, чтобы тест не залип
+    setQuizPhase("done");
+    return null;
+  }
+  return (
+    <>
+      <RecordingBadge />
+      {quizPhase === "intro" ? (
+        <QuizIntro
+          questionsCount={cfg.questions.length}
+          secondsPerQuestion={cfg.secondsPerQuestion}
+          onStart={() => setQuizPhase("running")}
+        />
+      ) : (
+        <Quiz
+          questions={cfg.questions}
+          secondsPerQuestion={cfg.secondsPerQuestion}
+          onFinish={handleQuizFinish}
+          storageKey={getQuizDraftKey(grade, subject, attempt, testId)}
+          onResumed={(fromIdx) => {
+            toast({
+              title: "Прогресс восстановлен",
+              description: `Продолжаем квиз с вопроса ${fromIdx + 1}`,
+            });
+          }}
+        />
+      )}
+    </>
+  );
+}
+```
+
+Это гарантирует: пока `quizPhase ∈ {intro, running}` — основной экран теста физически не доходит до return.
+
+### 2) `src/hooks/useRrwebRecorder.ts` — жёсткий лимит и автофинализ при скрытой вкладке
+
+Добавить два механизма:
+
+**a)** Параметр `maxDurationSec?: number` (по умолчанию `40 * 60 + 5 * 60 = 2700`). По истечении — `await finalize()`. Это страхует от «забыл закрыть вкладку».
+
+**b)** Таймер невидимости: при `visibilitychange → hidden` запускаем `setTimeout(5 * 60 * 1000)`, по нему — `finalize()` и больше не пишем. При возврате `visible` до срабатывания — таймер сбрасываем. После финализа повторный старт не делаем.
+
+После автофинализа — выставлять внутренний флаг `finalizedRef = true`, чтобы повторные `flush()` / `finalize()` не отправляли пустые запросы.
+
+Передавать `maxDurationSec` из `Index.tsx`: для текущих тестов это `40*60 + 300 = 2700`.
+
+### 3) `src/pages/Replay.tsx` — косметика (опционально)
+
+Не трогаем сейчас, чтобы не раздувать PR. Если после фикса №2 в новых записях всё равно встретятся длинные мёртвые интервалы — добавим скип >60 сек отдельно.
+
+---
+
+## Проверка
+
+1. `vitest run` — все 38 тестов зелёные.
+2. `tsc --noEmit` — clean.
+3. Ручной прогон: открыть 6 класс → технология → «Итоговая контрольная Q4». На экране — **только** карточка «Сейчас будет квиз». Жмём «Начать квиз» — появляется первый вопрос квиза, письменной части не видно. Дожимаем квиз — появляется письменная часть с прогресс-баром.
+4. Дев-тест автофинализа: можно временно понизить `maxDurationSec` до 30 сек, открыть тест, подождать — в логах увидеть `[rrweb] finalize called` без действий пользователя.
 
 ## Файлы
-- `src/pages/Index.tsx`
-- `src/hooks/useRrwebRecorder.ts`
-- `src/pages/Replay.tsx`
+
+- `src/pages/Index.tsx` — переписать блок 1620–1658, передать `maxDurationSec` в хук.
+- `src/hooks/useRrwebRecorder.ts` — добавить `maxDurationSec` и таймер невидимости.
