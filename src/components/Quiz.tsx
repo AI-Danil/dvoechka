@@ -218,6 +218,18 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
       timedOut,
     });
 
+    // Снапшот для серверного автосейва (родитель шлёт в student_drafts.quiz)
+    const snapPer = resultsRef.current;
+    const snapIdx = idxRef.current + 1; // следующий вопрос (или = total если конец)
+    const correctCountSoFar = snapPer.filter((r) => r.answer === r.correct).length;
+    onProgress?.({
+      idx: snapIdx,
+      answers: snapPer.map((r) => r.answer),
+      perQuestion: snapPer,
+      total: questions.length,
+    });
+    void correctCountSoFar; // зарезервировано: можно отдать наверх позже
+
     if (idxRef.current + 1 >= questions.length) {
       if (finishedRef.current) return;
       finishedRef.current = true;
