@@ -157,7 +157,9 @@ serve(async (req) => {
       body.type === "grade6technologyFinalQ4" ||
       body.type === "grade7technologyFinalQ4" ||
       body.type === "grade8technologyFinalQ4Theory" ||
-      body.type === "grade5technologyFinalQ4V2"
+      body.type === "grade5technologyFinalQ4V2" ||
+      body.type === "grade5technologyFinalQ4V3" ||
+      body.type === "grade9technologyFinalQ4"
     ) {
       answersData.answers = body.answers;
       answersData.quizResults = body.quizResults;
