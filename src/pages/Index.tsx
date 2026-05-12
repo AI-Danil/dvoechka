@@ -794,6 +794,26 @@ const Index = () => {
     }
   }, [buildServerPayload]);
 
+  // Триггер немедленного сейва квиза с throttle 800мс — чтобы каждый ответ
+  // улетал на сервер сразу, а не ждал 1.5-сек дебаунса письменной части.
+  const pushQuizProgress = useCallback(() => {
+    const now = Date.now();
+    const since = now - lastQuizPushRef.current;
+    const fire = () => {
+      lastQuizPushRef.current = Date.now();
+      void sendServerSave(false);
+    };
+    if (quizPushTimerRef.current) {
+      clearTimeout(quizPushTimerRef.current);
+      quizPushTimerRef.current = null;
+    }
+    if (since >= 800) {
+      fire();
+    } else {
+      quizPushTimerRef.current = setTimeout(fire, 800 - since);
+    }
+  }, [sendServerSave]);
+
   // Дебаунсер: триггерится теми же зависимостями, что и локальный persist
   useEffect(() => {
     if (screen !== "test" || !grade || !subject || !cleanName) return;
