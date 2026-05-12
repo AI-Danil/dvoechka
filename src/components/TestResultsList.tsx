@@ -9,7 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
-import { Eye, Film, FileText, RefreshCw, Paperclip } from "lucide-react";
+import { Eye, Film, FileText, RefreshCw, Paperclip, Sparkles, Loader2, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 interface Result {
   id: string;
@@ -24,7 +26,20 @@ interface Result {
   attachments: any;
   replay_url: string | null;
   test_type: string | null;
+  ai_grading: any | null;
+  ai_total_score: number | null;
+  ai_graded_at: string | null;
+  teacher_grade: number | null;
+  teacher_comment: string | null;
+  teacher_graded_at: string | null;
 }
+
+const MARKER_LABELS: Record<string, string> = {
+  off_curriculum: "🚩 не по программе",
+  ai_generated_style: "🤖 похоже на ИИ-текст",
+  copy_paste: "📋 копипаст",
+  empty: "∅ пусто",
+};
 
 interface Props {
   isAdmin?: boolean;
