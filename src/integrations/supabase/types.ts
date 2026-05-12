@@ -355,6 +355,9 @@ export type Database = {
       }
       test_results: {
         Row: {
+          ai_graded_at: string | null
+          ai_grading: Json | null
+          ai_total_score: number | null
           answers: Json
           attachments: Json | null
           attempt: number | null
@@ -365,10 +368,17 @@ export type Database = {
           replay_url: string | null
           student_name: string
           subject: string
+          teacher_comment: string | null
+          teacher_grade: number | null
+          teacher_graded_at: string | null
+          teacher_graded_by: string | null
           test_type: string | null
           time_spent: number | null
         }
         Insert: {
+          ai_graded_at?: string | null
+          ai_grading?: Json | null
+          ai_total_score?: number | null
           answers: Json
           attachments?: Json | null
           attempt?: number | null
@@ -379,10 +389,17 @@ export type Database = {
           replay_url?: string | null
           student_name: string
           subject: string
+          teacher_comment?: string | null
+          teacher_grade?: number | null
+          teacher_graded_at?: string | null
+          teacher_graded_by?: string | null
           test_type?: string | null
           time_spent?: number | null
         }
         Update: {
+          ai_graded_at?: string | null
+          ai_grading?: Json | null
+          ai_total_score?: number | null
           answers?: Json
           attachments?: Json | null
           attempt?: number | null
@@ -393,6 +410,10 @@ export type Database = {
           replay_url?: string | null
           student_name?: string
           subject?: string
+          teacher_comment?: string | null
+          teacher_grade?: number | null
+          teacher_graded_at?: string | null
+          teacher_graded_by?: string | null
           test_type?: string | null
           time_spent?: number | null
         }
@@ -554,6 +575,36 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      written_answer_keys: {
+        Row: {
+          created_at: string
+          expected: string
+          id: string
+          position: number
+          question_text: string | null
+          test_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expected: string
+          id?: string
+          position: number
+          question_text?: string | null
+          test_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expected?: string
+          id?: string
+          position?: number
+          question_text?: string | null
+          test_key?: string
+          updated_at?: string
         }
         Relationships: []
       }

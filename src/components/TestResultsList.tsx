@@ -9,7 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
-import { Eye, Film, FileText, RefreshCw, Paperclip } from "lucide-react";
+import { Eye, Film, FileText, RefreshCw, Paperclip, Sparkles, Loader2, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 interface Result {
   id: string;
@@ -24,7 +26,20 @@ interface Result {
   attachments: any;
   replay_url: string | null;
   test_type: string | null;
+  ai_grading: any | null;
+  ai_total_score: number | null;
+  ai_graded_at: string | null;
+  teacher_grade: number | null;
+  teacher_comment: string | null;
+  teacher_graded_at: string | null;
 }
+
+const MARKER_LABELS: Record<string, string> = {
+  off_curriculum: "🚩 не по программе",
+  ai_generated_style: "🤖 похоже на ИИ-текст",
+  copy_paste: "📋 копипаст",
+  empty: "∅ пусто",
+};
 
 interface Props {
   isAdmin?: boolean;
@@ -47,6 +62,7 @@ function formatCheatType(t: string): string {
 
 export default function TestResultsList({ isAdmin = false }: Props) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [rows, setRows] = useState<Result[]>([]);
   const [allowedSubjects, setAllowedSubjects] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,6 +70,16 @@ export default function TestResultsList({ isAdmin = false }: Props) {
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const [onlyCheats, setOnlyCheats] = useState(false);
   const [detail, setDetail] = useState<Result | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [teacherGradeInput, setTeacherGradeInput] = useState<string>("");
+  const [teacherCommentInput, setTeacherCommentInput] = useState<string>("");
+  const [savingGrade, setSavingGrade] = useState(false);
+
+  useEffect(() => {
+    if (!detail) return;
+    setTeacherGradeInput(detail.teacher_grade != null ? String(detail.teacher_grade) : "");
+    setTeacherCommentInput(detail.teacher_comment ?? "");
+  }, [detail]);
 
   const load = async () => {
     setLoading(true);
@@ -124,6 +150,66 @@ export default function TestResultsList({ isAdmin = false }: Props) {
   const attachments: Record<string, any> =
     detail?.attachments && typeof detail.attachments === "object" ? detail.attachments : {};
 
+  const aiItemsByPos: Record<number, any> = useMemo(() => {
+    const map: Record<number, any> = {};
+    const items = detail?.ai_grading?.items;
+    if (Array.isArray(items)) for (const it of items) map[Number(it.position)] = it;
+    return map;
+  }, [detail]);
+
+  const runAiGrade = async () => {
+    if (!detail) return;
+    setAiBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-grade-written", {
+        body: { result_id: detail.id },
+      });
+      if (error || (data as any)?.error) {
+        toast({
+          title: "Не удалось оценить",
+          description: (data as any)?.error ?? error?.message ?? "Ошибка",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "ИИ оценил работу", description: `Предварительная оценка: ${(data as any).ai_total_score}` });
+      await load();
+      const { data: fresh } = await supabase.from("test_results").select("*").eq("id", detail.id).maybeSingle();
+      if (fresh) setDetail(fresh as any);
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const saveTeacherGrade = async () => {
+    if (!detail) return;
+    const raw = teacherGradeInput.trim();
+    const num = raw === "" ? null : Number(raw.replace(",", "."));
+    if (num != null && (Number.isNaN(num) || num < 1 || num > 5)) {
+      toast({ title: "Оценка должна быть от 1 до 5", variant: "destructive" });
+      return;
+    }
+    setSavingGrade(true);
+    const { error } = await supabase
+      .from("test_results")
+      .update({
+        teacher_grade: num,
+        teacher_comment: teacherCommentInput || null,
+        teacher_graded_at: new Date().toISOString(),
+        teacher_graded_by: user?.id ?? null,
+      })
+      .eq("id", detail.id);
+    setSavingGrade(false);
+    if (error) {
+      toast({ title: "Не удалось сохранить", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Оценка сохранена" });
+    await load();
+    const { data: fresh } = await supabase.from("test_results").select("*").eq("id", detail.id).maybeSingle();
+    if (fresh) setDetail(fresh as any);
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -166,13 +252,14 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                 <TableHead>Поп.</TableHead>
                 <TableHead>Время, c</TableHead>
                 <TableHead>Наруш.</TableHead>
+                <TableHead>Оценка</TableHead>
                 <TableHead className="text-right">Действия</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">
                     Пока нет результатов
                   </TableCell>
                 </TableRow>
@@ -191,6 +278,15 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                     <TableCell>{r.time_spent ?? "—"}</TableCell>
                     <TableCell>
                       {cheats > 0 ? <Badge variant="destructive">{cheats}</Badge> : <span className="text-muted-foreground">0</span>}
+                    </TableCell>
+                    <TableCell>
+                      {r.teacher_grade != null ? (
+                        <Badge className="bg-emerald-600 hover:bg-emerald-600">{r.teacher_grade}</Badge>
+                      ) : r.ai_total_score != null ? (
+                        <Badge variant="outline" className="border-purple-400 text-purple-700">🤖 {r.ai_total_score}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button size="sm" variant="ghost" onClick={() => setDetail(r)} title="Подробнее">
@@ -225,6 +321,16 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                 )}
                 {detail.time_spent != null && (
                   <Badge variant="outline">⏱ {Math.floor(detail.time_spent / 60)}м {detail.time_spent % 60}с</Badge>
+                )}
+                {detail.ai_total_score != null && (
+                  <Badge variant="outline" className="border-purple-400 text-purple-700">
+                    🤖 ИИ: {detail.ai_total_score}
+                  </Badge>
+                )}
+                {detail.teacher_grade != null && (
+                  <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                    👨‍🏫 Учитель: {detail.teacher_grade}
+                  </Badge>
                 )}
                 <span className="text-xs text-muted-foreground">
                   {detail.created_at ? new Date(detail.created_at).toLocaleString("ru-RU") : ""}
@@ -268,14 +374,51 @@ export default function TestResultsList({ isAdmin = false }: Props) {
 
               {writtenItems.length > 0 && (
                 <div>
-                  <p className="font-semibold mb-2">✍ Развёрнутые ответы</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="font-semibold">✍ Развёрнутые ответы</p>
+                    <Button
+                      size="sm"
+                      variant={detail.ai_grading ? "outline" : "default"}
+                      onClick={runAiGrade}
+                      disabled={aiBusy}
+                    >
+                      {aiBusy ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4 mr-1" />
+                      )}
+                      {detail.ai_grading ? "Переоценить ИИ" : "Оценить через ИИ"}
+                    </Button>
+                  </div>
+                  {detail.ai_grading?.overall_comment && (
+                    <div className="mb-3 p-3 rounded border border-purple-200 bg-purple-50 text-xs">
+                      <p className="font-medium text-purple-900">🤖 Общее впечатление ИИ</p>
+                      <p className="mt-1">{detail.ai_grading.overall_comment}</p>
+                      {detail.ai_grading.originality_note && (
+                        <p className="mt-1 italic text-purple-800">
+                          Оригинальность: {detail.ai_grading.originality_note}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <div className="space-y-3">
                     {writtenItems.map((w: any, i: number) => {
                       const att = attachments[String(w.position)] ?? attachments[w.position];
+                      const ai = aiItemsByPos[Number(w.position)];
                       return (
                         <div key={i} className="rounded border p-3 bg-muted/30">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="font-medium">Задание №{w.position}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Задание №{w.position}</span>
+                              {ai && (
+                                <Badge
+                                  variant={ai.score === 2 ? "default" : ai.score === 1 ? "secondary" : "destructive"}
+                                  className="text-xs"
+                                >
+                                  ИИ: {ai.score}/2
+                                </Badge>
+                              )}
+                            </div>
                             {att?.url && (
                               <a
                                 href={att.url}
@@ -290,12 +433,66 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                           <pre className="whitespace-pre-wrap break-words text-sm font-sans">
 {w.user_answer || <span className="text-muted-foreground">— пусто —</span>}
                           </pre>
+                          {ai && (
+                            <div className="mt-2 pt-2 border-t border-dashed text-xs space-y-1">
+                              <p className="text-muted-foreground">
+                                <span className="font-medium text-purple-700">🤖 ИИ:</span> {ai.feedback}
+                              </p>
+                              {Array.isArray(ai.ai_markers) && ai.ai_markers.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {ai.ai_markers.map((m: string) => (
+                                    <Badge key={m} variant="outline" className="border-amber-400 text-amber-800 text-xs">
+                                      {MARKER_LABELS[m] ?? m}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
+                              {ai.ai_marker_note && (
+                                <p className="italic text-muted-foreground">{ai.ai_marker_note}</p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                   </div>
                 </div>
               )}
+
+              <div className="rounded border-2 border-emerald-300 p-4 bg-emerald-50/50 space-y-3">
+                <p className="font-semibold text-emerald-900">👨‍🏫 Финальная оценка учителя</p>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground">Оценка (1–5)</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={5}
+                      step={0.25}
+                      value={teacherGradeInput}
+                      onChange={(e) => setTeacherGradeInput(e.target.value)}
+                      className="w-24"
+                      placeholder="—"
+                    />
+                  </div>
+                  <Button onClick={saveTeacherGrade} disabled={savingGrade} className="bg-emerald-600 hover:bg-emerald-700">
+                    {savingGrade ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+                    Сохранить
+                  </Button>
+                  {detail.teacher_graded_at && (
+                    <span className="text-xs text-muted-foreground">
+                      сохранено: {new Date(detail.teacher_graded_at).toLocaleString("ru-RU")}
+                    </span>
+                  )}
+                </div>
+                <Textarea
+                  value={teacherCommentInput}
+                  onChange={(e) => setTeacherCommentInput(e.target.value)}
+                  placeholder="Комментарий учителя (необязательно)"
+                  rows={2}
+                />
+              </div>
+
 
               {Object.keys(attachments).length > 0 && writtenItems.length === 0 && (
                 <div>
