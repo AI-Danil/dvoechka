@@ -1,4 +1,4 @@
-# Triggered: 2026-05-12 — re-run after identity verification
+# Triggered: 2026-05-12 — fix base path for unique-domain pages
 # GitLab CI: build & deploy to GitLab Pages.
 # Sibling mirror to .github/workflows/deploy-pages.yml — same env defaults.
 
