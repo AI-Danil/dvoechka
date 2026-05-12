@@ -4,6 +4,7 @@ import { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork"
 import { PYTHON_HERO_QUIZ_QUESTIONS } from "@/components/tests/Grade8InformaticsPython";
 import { FINAL_Q4_QUIZ_QUESTIONS } from "@/components/tests/Grade8PhysicsFinalQ4";
 import { FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS } from "@/components/tests/Grade5TechnologyFinalQ4V2";
+import { FINAL_Q4_TECH5_V3_QUIZ_QUESTIONS } from "@/components/tests/Grade5TechnologyFinalQ4V3";
 import { FINAL_Q4_TECH6_QUIZ_QUESTIONS } from "@/components/tests/Grade6TechnologyFinalQ4";
 import { FINAL_Q4_TECH7_QUIZ_QUESTIONS } from "@/components/tests/Grade7TechnologyFinalQ4";
 import { FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS } from "@/components/tests/Grade8TechnologyFinalQ4Theory";
@@ -19,6 +20,7 @@ export const QUIZ_REGISTRY: Record<string, QuizQuestion[]> = {
   grade8informaticsPython: PYTHON_HERO_QUIZ_QUESTIONS,
   grade8physicsFinalQ4: FINAL_Q4_QUIZ_QUESTIONS,
   grade5technologyFinalQ4V2: FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS,
+  grade5technologyFinalQ4V3: FINAL_Q4_TECH5_V3_QUIZ_QUESTIONS,
   grade6technologyFinalQ4: FINAL_Q4_TECH6_QUIZ_QUESTIONS,
   grade7technologyFinalQ4: FINAL_Q4_TECH7_QUIZ_QUESTIONS,
   grade8technologyFinalQ4Theory: FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS,
