@@ -1288,6 +1288,13 @@ const Index = () => {
         answers: answers5techFinalQ4V2Ref.current,
         quizResults: quizResultsRef.current,
       };
+    } else if (g === "5" && s === "technology" && tid === "final-q4-v3") {
+      fileUrls = await uploadAttachments(attachments5techFinalQ4V3Ref.current);
+      answers = {
+        type: "grade5technologyFinalQ4V3",
+        answers: answers5techFinalQ4V3Ref.current,
+        quizResults: quizResultsRef.current,
+      };
     } else if (g === "8" && s === "technology" && tid === "final-q4-theory") {
       fileUrls = await uploadAttachments(attachments8techFinalQ4TheoryRef.current);
       answers = {
