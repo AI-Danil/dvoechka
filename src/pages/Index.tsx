@@ -797,7 +797,7 @@ const Index = () => {
     if (screen !== "test" || !grade || !subject || !cleanName) return;
     if (restoredKeyRef.current !== getDraftKey(grade, subject, attempt, testId)) return;
     if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
-    serverSaveTimerRef.current = setTimeout(() => sendServerSave(false), 5000);
+    serverSaveTimerRef.current = setTimeout(() => sendServerSave(false), 1500);
     return () => {
       if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
     };
