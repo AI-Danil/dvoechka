@@ -46,6 +46,7 @@ import Grade6TechnologyFinalQ4, { FINAL_Q4_TECH6_QUIZ_QUESTIONS } from "@/compon
 import Grade5TechnologyFinalQ4V2, { FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS } from "@/components/tests/Grade5TechnologyFinalQ4V2";
 import Grade5TechnologyFinalQ4V3, { FINAL_Q4_TECH5_V3_QUIZ_QUESTIONS } from "@/components/tests/Grade5TechnologyFinalQ4V3";
 import Grade8TechnologyFinalQ4Theory, { FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS } from "@/components/tests/Grade8TechnologyFinalQ4Theory";
+import Grade9TechnologyFinalQ4, { FINAL_Q4_TECH9_QUIZ_QUESTIONS } from "@/components/tests/Grade9TechnologyFinalQ4";
 import Grade7TechnologyFinalQ4, { FINAL_Q4_TECH7_QUIZ_QUESTIONS } from "@/components/tests/Grade7TechnologyFinalQ4";
 import Grade7Physics from "@/components/tests/Grade7Physics";
 import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork";
@@ -127,7 +128,10 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
       { id: "default", title: "Контрольная №1. Механика, волны, оптика" },
       { id: "atom", title: "Контрольная №2. Атом и атомное ядро (с квизом)" },
     ],
-    technology: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    technology: [
+      { id: "final-q4", title: "🌟 Итоговая контрольная за 4 четверть. ИКТ в современном обществе" },
+      { id: "default", title: "Итоговая контрольная (3 четверть)" },
+    ],
   },
 };
 
@@ -146,6 +150,7 @@ const TESTS_WITH_QUIZ: Record<string, QuizConfig> = {
   "5_technology_final-q4-v2": { questions: FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "5_technology_final-q4-v3": { questions: FINAL_Q4_TECH5_V3_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "8_technology_final-q4-theory": { questions: FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
+  "9_technology_final-q4": { questions: FINAL_Q4_TECH9_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
 };
 
 const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;
