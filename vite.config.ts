@@ -14,10 +14,7 @@ const projectBase = (() => {
     const repo = (process.env.GITHUB_REPOSITORY || "").split("/")[1];
     return repo ? `/${repo}/` : "/";
   }
-  if (process.env.GITLAB_PAGES === "true") {
-    const repo = process.env.CI_PROJECT_NAME || "";
-    return repo ? `/${repo}/` : "/";
-  }
+  // GitLab Pages: с unique domains сайт всегда в корне.
   return "/";
 })();
 
