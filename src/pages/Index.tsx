@@ -715,6 +715,8 @@ const Index = () => {
   // Дебаунс 5с после последнего изменения; flush через sendBeacon на закрытие вкладки.
   const serverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastServerPayloadRef = useRef<string>("");
+  const lastQuizPushRef = useRef<number>(0);
+  const quizPushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const buildServerPayload = useCallback(() => {
     const g = gradeRef.current;
@@ -792,12 +794,32 @@ const Index = () => {
     }
   }, [buildServerPayload]);
 
+  // Триггер немедленного сейва квиза с throttle 800мс — чтобы каждый ответ
+  // улетал на сервер сразу, а не ждал 1.5-сек дебаунса письменной части.
+  const pushQuizProgress = useCallback(() => {
+    const now = Date.now();
+    const since = now - lastQuizPushRef.current;
+    const fire = () => {
+      lastQuizPushRef.current = Date.now();
+      void sendServerSave(false);
+    };
+    if (quizPushTimerRef.current) {
+      clearTimeout(quizPushTimerRef.current);
+      quizPushTimerRef.current = null;
+    }
+    if (since >= 800) {
+      fire();
+    } else {
+      quizPushTimerRef.current = setTimeout(fire, 800 - since);
+    }
+  }, [sendServerSave]);
+
   // Дебаунсер: триггерится теми же зависимостями, что и локальный persist
   useEffect(() => {
     if (screen !== "test" || !grade || !subject || !cleanName) return;
     if (restoredKeyRef.current !== getDraftKey(grade, subject, attempt, testId)) return;
     if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
-    serverSaveTimerRef.current = setTimeout(() => sendServerSave(false), 5000);
+    serverSaveTimerRef.current = setTimeout(() => sendServerSave(false), 1500);
     return () => {
       if (serverSaveTimerRef.current) clearTimeout(serverSaveTimerRef.current);
     };
@@ -1730,6 +1752,7 @@ const Index = () => {
                 description: `Продолжаем квиз с вопроса ${fromIdx + 1}`,
               });
             }}
+            onProgress={pushQuizProgress}
           />
         )}
       </>

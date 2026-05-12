@@ -47,6 +47,13 @@ interface QuizProps {
   storageKey?: string;
   /** Колбэк при восстановлении прогресса (idx — с какого вопроса продолжаем, 0-based). */
   onResumed?: (fromIdx: number) => void;
+  /** Колбэк после каждого ответа — родитель сразу пушит снапшот на сервер. */
+  onProgress?: (snapshot: {
+    idx: number;
+    answers: number[];
+    perQuestion: QuizPerQuestionResult[];
+    total: number;
+  }) => void;
 }
 
 interface PersistedQuizState {
@@ -58,7 +65,7 @@ interface PersistedQuizState {
   savedAt: number;
 }
 
-const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed }: QuizProps) => {
+const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, onProgress }: QuizProps) => {
   const getSecondsFor = (i: number) => questions[i]?.seconds ?? secondsPerQuestion;
 
   // Восстановление: читаем синхронно при первом рендере, чтобы не было «мигания» с 1-го вопроса.
@@ -129,6 +136,13 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed }
     if (r.idx > 0) {
       onResumed?.(r.idx);
     }
+    // Сразу пушим восстановленный стейт на сервер
+    onProgress?.({
+      idx: r.idx,
+      answers: resultsRef.current.map((x) => x.answer),
+      perQuestion: resultsRef.current,
+      total: questions.length,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -210,6 +224,18 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed }
       timeSpent,
       timedOut,
     });
+
+    // Снапшот для серверного автосейва (родитель шлёт в student_drafts.quiz)
+    const snapPer = resultsRef.current;
+    const snapIdx = idxRef.current + 1; // следующий вопрос (или = total если конец)
+    const correctCountSoFar = snapPer.filter((r) => r.answer === r.correct).length;
+    onProgress?.({
+      idx: snapIdx,
+      answers: snapPer.map((r) => r.answer),
+      perQuestion: snapPer,
+      total: questions.length,
+    });
+    void correctCountSoFar; // зарезервировано: можно отдать наверх позже
 
     if (idxRef.current + 1 >= questions.length) {
       if (finishedRef.current) return;
