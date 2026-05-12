@@ -47,6 +47,13 @@ interface QuizProps {
   storageKey?: string;
   /** Колбэк при восстановлении прогресса (idx — с какого вопроса продолжаем, 0-based). */
   onResumed?: (fromIdx: number) => void;
+  /** Колбэк после каждого ответа — родитель сразу пушит снапшот на сервер. */
+  onProgress?: (snapshot: {
+    idx: number;
+    answers: number[];
+    perQuestion: QuizPerQuestionResult[];
+    total: number;
+  }) => void;
 }
 
 interface PersistedQuizState {
