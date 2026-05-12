@@ -704,6 +704,7 @@ const Index = () => {
       answers8physFinalQ4: answers8physFinalQ4Ref.current,
       answers6techFinalQ4: answers6techFinalQ4Ref.current,
       answers5techFinalQ4V2: answers5techFinalQ4V2Ref.current,
+      answers5techFinalQ4V3: answers5techFinalQ4V3Ref.current,
       answers8techFinalQ4Theory: answers8techFinalQ4TheoryRef.current,
       answers7techFinalQ4: answers7techFinalQ4Ref.current,
       answers9: answers9Ref.current,
