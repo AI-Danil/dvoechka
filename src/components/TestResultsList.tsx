@@ -577,43 +577,45 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                 </div>
               )}
 
-              {quizItems.length === 0 && writtenItems.length === 0 && buildLegacyView(detail.answers) && (
-                <LegacyAnswerView answers={detail.answers} />
+              {quizItems.length === 0 && writtenItems.length === 0 && buildLegacyView(detail.answers, { includeUnknownArrays: detail._kind === "draft" }) && (
+                <LegacyAnswerView answers={detail.answers} includeUnknownArrays={detail._kind === "draft"} />
               )}
 
-              <div className="rounded border-2 border-emerald-300 p-4 bg-emerald-50/50 space-y-3">
-                <p className="font-semibold text-emerald-900">👨‍🏫 Финальная оценка учителя</p>
-                <div className="flex flex-wrap items-end gap-3">
-                  <div>
-                    <label className="text-xs text-muted-foreground">Оценка (1–5)</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={5}
-                      step={0.25}
-                      value={teacherGradeInput}
-                      onChange={(e) => setTeacherGradeInput(e.target.value)}
-                      className="w-24"
-                      placeholder="—"
-                    />
+              {detail._kind !== "draft" && (
+                <div className="rounded border-2 border-emerald-300 p-4 bg-emerald-50/50 space-y-3">
+                  <p className="font-semibold text-emerald-900">👨‍🏫 Финальная оценка учителя</p>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Оценка (1–5)</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={5}
+                        step={0.25}
+                        value={teacherGradeInput}
+                        onChange={(e) => setTeacherGradeInput(e.target.value)}
+                        className="w-24"
+                        placeholder="—"
+                      />
+                    </div>
+                    <Button onClick={saveTeacherGrade} disabled={savingGrade} className="bg-emerald-600 hover:bg-emerald-700">
+                      {savingGrade ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+                      Сохранить
+                    </Button>
+                    {detail.teacher_graded_at && (
+                      <span className="text-xs text-muted-foreground">
+                        сохранено: {new Date(detail.teacher_graded_at).toLocaleString("ru-RU")}
+                      </span>
+                    )}
                   </div>
-                  <Button onClick={saveTeacherGrade} disabled={savingGrade} className="bg-emerald-600 hover:bg-emerald-700">
-                    {savingGrade ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
-                    Сохранить
-                  </Button>
-                  {detail.teacher_graded_at && (
-                    <span className="text-xs text-muted-foreground">
-                      сохранено: {new Date(detail.teacher_graded_at).toLocaleString("ru-RU")}
-                    </span>
-                  )}
+                  <Textarea
+                    value={teacherCommentInput}
+                    onChange={(e) => setTeacherCommentInput(e.target.value)}
+                    placeholder="Комментарий учителя (необязательно)"
+                    rows={2}
+                  />
                 </div>
-                <Textarea
-                  value={teacherCommentInput}
-                  onChange={(e) => setTeacherCommentInput(e.target.value)}
-                  placeholder="Комментарий учителя (необязательно)"
-                  rows={2}
-                />
-              </div>
+              )}
 
 
               {Object.keys(attachments).length > 0 && writtenItems.length === 0 && (
