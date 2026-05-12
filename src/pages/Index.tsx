@@ -1603,6 +1603,7 @@ const Index = () => {
     const featuredId =
       grade === "7" && subject === "technology" ? "final-q4" :
       grade === "8" && subject === "technology" ? "final-q4-theory" :
+      grade === "9" && subject === "technology" ? "final-q4" :
       null;
     const tests = featuredId
       ? [...rawTests].sort((a, b) =>
