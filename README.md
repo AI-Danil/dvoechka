@@ -11,7 +11,7 @@
 
 - **Frontend:** React 18, TypeScript (strict), Vite 5, Tailwind CSS, shadcn/ui, React Router, TanStack Query.
 - **Backend:** Supabase — Postgres + Auth + Storage + Edge Functions (Deno).
-- **Хостинг:** мульти-зеркало (Lovable, Netlify, Cloudflare Pages, GitHub Pages) на одной БД.
+- **Хостинг:** мульти-зеркало (Lovable, Netlify, Cloudflare Pages, GitHub Pages, GitLab Pages) на одной БД.
 - **Уведомления:** Telegram Bot API через edge-функцию.
 
 ## Быстрый старт
