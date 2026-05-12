@@ -22,7 +22,7 @@ const projectBase = (() => {
 })();
 
 export default defineConfig(({ mode }) => ({
-  base: mode === "production" ? ghPagesBase : "/",
+  base: mode === "production" ? projectBase : "/",
   server: {
     host: "::",
     port: 8080,
