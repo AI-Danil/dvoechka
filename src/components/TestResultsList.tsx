@@ -33,6 +33,8 @@ interface Result {
   teacher_grade: number | null;
   teacher_comment: string | null;
   teacher_graded_at: string | null;
+  _kind?: "result" | "draft";
+  _draftUpdatedAt?: string;
 }
 
 const MARKER_LABELS: Record<string, string> = {
