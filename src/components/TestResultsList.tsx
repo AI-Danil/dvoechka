@@ -460,6 +460,10 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                 </div>
               )}
 
+              {quizItems.length === 0 && writtenItems.length === 0 && buildLegacyView(detail.answers) && (
+                <LegacyAnswerView answers={detail.answers} />
+              )}
+
               <div className="rounded border-2 border-emerald-300 p-4 bg-emerald-50/50 space-y-3">
                 <p className="font-semibold text-emerald-900">👨‍🏫 Финальная оценка учителя</p>
                 <div className="flex flex-wrap items-end gap-3">
