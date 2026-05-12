@@ -10,6 +10,7 @@
 | Netlify          | `https://dvoechka.netlify.app`            | Основной для учеников       |
 | Cloudflare Pages | `https://<project>.pages.dev`             | Запасной (лучше из РФ)      |
 | GitHub Pages     | `https://<user>.github.io/<repo>/`        | Запасной без VPN            |
+| GitLab Pages     | `https://<user>.gitlab.io/<repo>/`        | Запасной из РФ без VPN      |
 
 ## Переменные окружения
 
