@@ -318,6 +318,20 @@ export default function TestResultsList({ isAdmin = false }: Props) {
           >
             Только с нарушениями
           </Button>
+          <Button
+            variant={includeDrafts ? "default" : "outline"}
+            onClick={() => setIncludeDrafts((v) => !v)}
+            title="Показывать черновики незаконченных работ"
+          >
+            Черновики
+          </Button>
+          <Button
+            variant={onlyDrafts ? "default" : "outline"}
+            onClick={() => setOnlyDrafts((v) => !v)}
+            title="Только незаконченные (не сданные) работы"
+          >
+            Только черновики
+          </Button>
         </div>
 
         <div className="rounded-md border">
