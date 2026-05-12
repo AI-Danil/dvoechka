@@ -1752,6 +1752,7 @@ const Index = () => {
                 description: `Продолжаем квиз с вопроса ${fromIdx + 1}`,
               });
             }}
+            onProgress={pushQuizProgress}
           />
         )}
       </>
