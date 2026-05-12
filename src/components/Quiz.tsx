@@ -136,6 +136,13 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
     if (r.idx > 0) {
       onResumed?.(r.idx);
     }
+    // Сразу пушим восстановленный стейт на сервер
+    onProgress?.({
+      idx: r.idx,
+      answers: resultsRef.current.map((x) => x.answer),
+      perQuestion: resultsRef.current,
+      total: questions.length,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
