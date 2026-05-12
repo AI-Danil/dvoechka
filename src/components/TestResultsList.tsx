@@ -62,6 +62,7 @@ function formatCheatType(t: string): string {
 
 export default function TestResultsList({ isAdmin = false }: Props) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [rows, setRows] = useState<Result[]>([]);
   const [allowedSubjects, setAllowedSubjects] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,8 +70,27 @@ export default function TestResultsList({ isAdmin = false }: Props) {
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const [onlyCheats, setOnlyCheats] = useState(false);
   const [detail, setDetail] = useState<Result | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [teacherGradeInput, setTeacherGradeInput] = useState<string>("");
+  const [teacherCommentInput, setTeacherCommentInput] = useState<string>("");
+  const [savingGrade, setSavingGrade] = useState(false);
+
+  useEffect(() => {
+    if (!detail) return;
+    setTeacherGradeInput(detail.teacher_grade != null ? String(detail.teacher_grade) : "");
+    setTeacherCommentInput(detail.teacher_comment ?? "");
+  }, [detail]);
 
   const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("test_results")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    setRows((data ?? []) as any);
+    setLoading(false);
+  };
     setLoading(true);
     const { data } = await supabase
       .from("test_results")
