@@ -1,0 +1,32 @@
+name: Mirror to GitLab
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: gitlab-mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push mirror to GitLab
+        env:
+          GITLAB_MIRROR_TOKEN: ${{ secrets.GITLAB_MIRROR_TOKEN }}
+          GITLAB_REPO_URL: ${{ secrets.GITLAB_REPO_URL }}
+        run: |
+          if [ -z "$GITLAB_MIRROR_TOKEN" ] || [ -z "$GITLAB_REPO_URL" ]; then
+            echo "Missing GITLAB_MIRROR_TOKEN or GITLAB_REPO_URL secret."
+            exit 1
+          fi
+          # Inject token into URL: https://gitlab.com/u/repo.git -> https://oauth2:TOKEN@gitlab.com/u/repo.git
+          AUTH_URL="${GITLAB_REPO_URL/https:\/\//https://oauth2:${GITLAB_MIRROR_TOKEN}@}"
+          git remote add gitlab "$AUTH_URL"
+          git push gitlab --mirror

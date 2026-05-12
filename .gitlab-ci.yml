@@ -1,0 +1,23 @@
+# GitLab CI: build & deploy to GitLab Pages.
+# Sibling mirror to .github/workflows/deploy-pages.yml — same env defaults.
+
+image: oven/bun:1
+
+variables:
+  VITE_SUPABASE_URL: "https://gbpqlzjtcuhijtouwrvn.supabase.co"
+  VITE_SUPABASE_PUBLISHABLE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdicHFsemp0Y3VoaWp0b3V3cnZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDI5MDUsImV4cCI6MjA4OTE3ODkwNX0.mnKDomwOFmXejFqeL94qdUGsi4mxZ5NcuhACW53FcWQ"
+  VITE_SUPABASE_PROJECT_ID: "gbpqlzjtcuhijtouwrvn"
+  GITLAB_PAGES: "true"
+
+pages:
+  stage: deploy
+  script:
+    - bun install --no-frozen-lockfile
+    - bun run build
+    - rm -rf public
+    - mv dist public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'

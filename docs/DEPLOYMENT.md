@@ -10,6 +10,7 @@
 | Netlify          | `https://dvoechka.netlify.app`            | Основной для учеников       |
 | Cloudflare Pages | `https://<project>.pages.dev`             | Запасной (лучше из РФ)      |
 | GitHub Pages     | `https://<user>.github.io/<repo>/`        | Запасной без VPN            |
+| GitLab Pages     | `https://<user>.gitlab.io/<repo>/`        | Запасной из РФ без VPN      |
 
 ## Переменные окружения
 
@@ -82,6 +83,43 @@ Workflow `.github/workflows/deploy-pages.yml` уже настроен. Один 
 
 > Важно: ссылки на live-сессию идут через префикс репо:
 > `https://<user>.github.io/<repo>/live`. Без префикса GH Pages вернёт 404.
+
+## GitLab Pages (зеркало для РФ)
+
+GitLab.com доступен в РФ без VPN — это запасной канал, если GitHub
+блокируется у провайдера ученика.
+
+### Однократная настройка
+
+1. На [gitlab.com](https://gitlab.com) — зарегистрироваться (можно через
+   GitHub-аккаунт), создать **пустой публичный** проект `dvoechka`
+   (без README).
+2. **Settings → Access Tokens → Add new token**: name `github-mirror`,
+   role **Maintainer**, scope `write_repository`. Скопировать токен.
+3. На GitHub в репо `dvoechka` → **Settings → Secrets and variables →
+   Actions → New repository secret** добавить два секрета:
+   - `GITLAB_MIRROR_TOKEN` — токен из шага 2
+   - `GITLAB_REPO_URL` — `https://gitlab.com/<user>/dvoechka.git`
+4. Запустить workflow `Mirror to GitLab` (Actions → Run workflow) или
+   просто запушить пустой коммит — после первого зеркала на GitLab
+   появится код и сразу запустится pipeline `pages`.
+
+### Как это работает
+
+- `.github/workflows/mirror-to-gitlab.yml` — на каждый push в `main`
+  делает `git push --mirror` в GitLab. Lag ~10–20 секунд.
+- `.gitlab-ci.yml` — после получения коммита GitLab CI билдит проект
+  через `bun run build` (с `GITLAB_PAGES=true`) и публикует `dist/` как
+  GitLab Pages артефакт `public/`.
+- `vite.config.ts` подставляет `base="/<repo>/"` через
+  `CI_PROJECT_NAME`, аналогично GitHub Pages.
+
+URL получится `https://<user>.gitlab.io/dvoechka/`. SPA-фоллбек работает
+из коробки благодаря тому же `public/404.html`.
+
+> Env-переменные Supabase зашиты в `.gitlab-ci.yml` дефолтами (как и в
+> GitHub Actions). При желании можно переопределить в **Settings →
+> CI/CD → Variables** на GitLab без правки репо.
 
 ## Cloudflare Tunnel (опциональный локальный канал)
 
