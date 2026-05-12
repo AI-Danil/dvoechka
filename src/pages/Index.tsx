@@ -46,6 +46,7 @@ import Grade6TechnologyFinalQ4, { FINAL_Q4_TECH6_QUIZ_QUESTIONS } from "@/compon
 import Grade5TechnologyFinalQ4V2, { FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS } from "@/components/tests/Grade5TechnologyFinalQ4V2";
 import Grade5TechnologyFinalQ4V3, { FINAL_Q4_TECH5_V3_QUIZ_QUESTIONS } from "@/components/tests/Grade5TechnologyFinalQ4V3";
 import Grade8TechnologyFinalQ4Theory, { FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS } from "@/components/tests/Grade8TechnologyFinalQ4Theory";
+import Grade9TechnologyFinalQ4, { FINAL_Q4_TECH9_QUIZ_QUESTIONS } from "@/components/tests/Grade9TechnologyFinalQ4";
 import Grade7TechnologyFinalQ4, { FINAL_Q4_TECH7_QUIZ_QUESTIONS } from "@/components/tests/Grade7TechnologyFinalQ4";
 import Grade7Physics from "@/components/tests/Grade7Physics";
 import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork";
@@ -127,7 +128,10 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
       { id: "default", title: "Контрольная №1. Механика, волны, оптика" },
       { id: "atom", title: "Контрольная №2. Атом и атомное ядро (с квизом)" },
     ],
-    technology: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    technology: [
+      { id: "final-q4", title: "🌟 Итоговая контрольная за 4 четверть. ИКТ в современном обществе" },
+      { id: "default", title: "Итоговая контрольная (3 четверть)" },
+    ],
   },
 };
 
@@ -146,6 +150,7 @@ const TESTS_WITH_QUIZ: Record<string, QuizConfig> = {
   "5_technology_final-q4-v2": { questions: FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "5_technology_final-q4-v3": { questions: FINAL_Q4_TECH5_V3_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "8_technology_final-q4-theory": { questions: FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
+  "9_technology_final-q4": { questions: FINAL_Q4_TECH9_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
 };
 
 const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;
@@ -247,6 +252,10 @@ const Index = () => {
   const [answers8techFinalQ4Theory, setAnswers8techFinalQ4Theory] = useState<string[]>(Array(6).fill(""));
   const [attachments8techFinalQ4Theory, setAttachments8techFinalQ4Theory] = useState<Record<number, File | null>>({});
 
+  // Grade 9 technology FINAL Q4 answers (6 written tasks; 15-question quiz lives separately)
+  const [answers9techFinalQ4, setAnswers9techFinalQ4] = useState<string[]>(Array(6).fill(""));
+  const [attachments9techFinalQ4, setAttachments9techFinalQ4] = useState<Record<number, File | null>>({});
+
   // Grade 7 technology FINAL Q4 answers (4 practice + 8 theory = 12; 15-question quiz lives separately)
   const [answers7techFinalQ4, setAnswers7techFinalQ4] = useState<string[]>(Array(12).fill(""));
   const [attachments7techFinalQ4, setAttachments7techFinalQ4] = useState<Record<number, File | null>>({});
@@ -320,6 +329,8 @@ const Index = () => {
   const attachments5techFinalQ4V3Ref = useRef(attachments5techFinalQ4V3);
   const answers8techFinalQ4TheoryRef = useRef(answers8techFinalQ4Theory);
   const attachments8techFinalQ4TheoryRef = useRef(attachments8techFinalQ4Theory);
+  const answers9techFinalQ4Ref = useRef(answers9techFinalQ4);
+  const attachments9techFinalQ4Ref = useRef(attachments9techFinalQ4);
   const answers7techFinalQ4Ref = useRef(answers7techFinalQ4);
   const attachments7techFinalQ4Ref = useRef(attachments7techFinalQ4);
   const answers7physRef = useRef(answers7phys);
@@ -366,6 +377,8 @@ const Index = () => {
   useEffect(() => { attachments5techFinalQ4V3Ref.current = attachments5techFinalQ4V3; }, [attachments5techFinalQ4V3]);
   useEffect(() => { answers8techFinalQ4TheoryRef.current = answers8techFinalQ4Theory; }, [answers8techFinalQ4Theory]);
   useEffect(() => { attachments8techFinalQ4TheoryRef.current = attachments8techFinalQ4Theory; }, [attachments8techFinalQ4Theory]);
+  useEffect(() => { answers9techFinalQ4Ref.current = answers9techFinalQ4; }, [answers9techFinalQ4]);
+  useEffect(() => { attachments9techFinalQ4Ref.current = attachments9techFinalQ4; }, [attachments9techFinalQ4]);
   useEffect(() => { answers7techFinalQ4Ref.current = answers7techFinalQ4; }, [answers7techFinalQ4]);
   useEffect(() => { attachments7techFinalQ4Ref.current = attachments7techFinalQ4; }, [attachments7techFinalQ4]);
   useEffect(() => { answers7physRef.current = answers7phys; }, [answers7phys]);
@@ -452,6 +465,13 @@ const Index = () => {
           if (draft.answers9physAtom) { setAnswers9physAtom(draft.answers9physAtom); mark(draft.answers9physAtom); }
         } else if (grade === "9" && subject === "physics") {
           if (draft.answers9phys) { setAnswers9phys(draft.answers9phys); mark(draft.answers9phys); }
+        } else if (grade === "9" && subject === "technology" && testId === "final-q4") {
+          if (draft.answers9techFinalQ4) {
+            const restored = (draft.answers9techFinalQ4 as string[]).slice(0, 6);
+            while (restored.length < 6) restored.push("");
+            setAnswers9techFinalQ4(restored);
+            mark(draft.answers9techFinalQ4);
+          }
         } else if (grade === "9" && subject === "technology") {
           if (draft.answers9tech) { setAnswers9tech(draft.answers9tech); mark(draft.answers9tech); }
         } else if (grade === "9") {
@@ -554,6 +574,11 @@ const Index = () => {
           else if (grade === "8" && subject === "physics" && w.answers8phys) { setAnswers8phys(w.answers8phys); restored = true; }
           else if (grade === "9" && subject === "physics" && testId === "atom" && w.answers9physAtom) { setAnswers9physAtom(w.answers9physAtom); restored = true; }
           else if (grade === "9" && subject === "physics" && w.answers9phys) { setAnswers9phys(w.answers9phys); restored = true; }
+          else if (grade === "9" && subject === "technology" && testId === "final-q4" && w.answers9techFinalQ4) {
+            const arr = (w.answers9techFinalQ4 as string[]).slice(0, 6);
+            while (arr.length < 6) arr.push("");
+            setAnswers9techFinalQ4(arr); restored = true;
+          }
           else if (grade === "9" && subject === "technology" && w.answers9tech) { setAnswers9tech(w.answers9tech); restored = true; }
           else if (grade === "9" && w.answers9) { setAnswers9(w.answers9); restored = true; }
           else if (grade === "7" && subject === "physics" && testId === "work-power" && w.answers7physWork) {
@@ -619,6 +644,8 @@ const Index = () => {
       data = { answers9physAtom };
     } else if (grade === "9" && subject === "physics") {
       data = { answers9phys };
+    } else if (grade === "9" && subject === "technology" && testId === "final-q4") {
+      data = { answers9techFinalQ4 };
     } else if (grade === "9" && subject === "technology") {
       data = { answers9tech };
     } else if (grade === "9") {
@@ -639,7 +666,7 @@ const Index = () => {
     } catch {
       // quota / private mode — игнор
     }
-  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4, answers6techFinalQ4, answers5techFinalQ4V2, answers5techFinalQ4V3, answers8techFinalQ4Theory, answers7techFinalQ4, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [screen, grade, subject, testId, attempt, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4, answers6techFinalQ4, answers5techFinalQ4V2, answers5techFinalQ4V3, answers8techFinalQ4Theory, answers7techFinalQ4, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, answers9techFinalQ4, theory7, practice7, theory7tech, practice7tech]);
 
   // --- Autosave: страховочный flush на закрытие/сворачивание вкладки ---
   useEffect(() => {
@@ -663,6 +690,7 @@ const Index = () => {
         answers9phys: answers9physRef.current,
         answers9physAtom: answers9physAtomRef.current,
         answers9tech: answers9techRef.current,
+        answers9techFinalQ4: answers9techFinalQ4Ref.current,
         answers7phys: answers7physRef.current,
         answers7physWork: answers7physWorkRef.current,
         theory7: theory7Ref.current,
@@ -711,6 +739,7 @@ const Index = () => {
       answers9phys: answers9physRef.current,
       answers9physAtom: answers9physAtomRef.current,
       answers9tech: answers9techRef.current,
+      answers9techFinalQ4: answers9techFinalQ4Ref.current,
       answers7phys: answers7physRef.current,
       answers7physWork: answers7physWorkRef.current,
       theory7: theory7Ref.current,
@@ -775,7 +804,7 @@ const Index = () => {
   }, [screen, grade, subject, testId, attempt, cleanName, sendServerSave,
       blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4,
       answers6techFinalQ4, answers7techFinalQ4, answers8techFinalQ4Theory, answers9, answers9phys, answers9physAtom,
-      answers9tech, theory7, practice7, theory7tech, practice7tech, answers7phys, answers7physWork,
+      answers9tech, answers9techFinalQ4, theory7, practice7, theory7tech, practice7tech, answers7phys, answers7physWork,
       quizPhase, quizResults]);
 
   // Flush через beacon на закрытие/сворачивание
@@ -821,6 +850,8 @@ const Index = () => {
       return { answered: answers9physAtom.filter(Boolean).length, total: 6 };
     } else if (grade === "9" && subject === "physics") {
       return { answered: answers9phys.filter(Boolean).length, total: 14 };
+    } else if (grade === "9" && subject === "technology" && testId === "final-q4") {
+      return { answered: answers9techFinalQ4.filter(Boolean).length, total: 6 };
     } else if (grade === "9" && subject === "technology") {
       return { answered: answers9tech.filter(Boolean).length, total: 11 };
     } else if (grade === "9") {
@@ -839,7 +870,7 @@ const Index = () => {
       return { answered: tFilled + pFilled, total: 7 + 6 };
     }
     return { answered: 0, total: 1 };
-  }, [grade, subject, testId, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4, answers6techFinalQ4, answers5techFinalQ4V2, answers5techFinalQ4V3, answers8techFinalQ4Theory, answers7techFinalQ4, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, theory7, practice7, theory7tech, practice7tech]);
+  }, [grade, subject, testId, blitz8, tasks8, answers8infoPy, answers8phys, answers8physPower, answers8physFinalQ4, answers6techFinalQ4, answers5techFinalQ4V2, answers5techFinalQ4V3, answers8techFinalQ4Theory, answers7techFinalQ4, answers7phys, answers7physWork, answers9, answers9phys, answers9physAtom, answers9tech, answers9techFinalQ4, theory7, practice7, theory7tech, practice7tech]);
 
   const progressPercent = total > 0 ? Math.round((answered / total) * 100) : 0;
 
@@ -1315,6 +1346,13 @@ const Index = () => {
     } else if (g === "9" && s === "physics") {
       fileUrls = await uploadAttachments(attachments9physRef.current);
       answers = { type: "grade9physics", answers: answers9physRef.current };
+    } else if (g === "9" && s === "technology" && tid === "final-q4") {
+      fileUrls = await uploadAttachments(attachments9techFinalQ4Ref.current);
+      answers = {
+        type: "grade9technologyFinalQ4",
+        answers: answers9techFinalQ4Ref.current,
+        quizResults: quizResultsRef.current,
+      };
     } else if (g === "9" && s === "technology") {
       fileUrls = await uploadAttachments(attachments9techRef.current);
       answers = { type: "grade9technology", answers: answers9techRef.current };
@@ -1565,6 +1603,7 @@ const Index = () => {
     const featuredId =
       grade === "7" && subject === "technology" ? "final-q4" :
       grade === "8" && subject === "technology" ? "final-q4-theory" :
+      grade === "9" && subject === "technology" ? "final-q4" :
       null;
     const tests = featuredId
       ? [...rawTests].sort((a, b) =>
@@ -1996,7 +2035,22 @@ const Index = () => {
           />
         )}
 
-        {grade === "9" && subject === "technology" && (
+        {grade === "9" && subject === "technology" && testId === "final-q4" && (
+          <Grade9TechnologyFinalQ4
+            answers={answers9techFinalQ4}
+            attachments={attachments9techFinalQ4}
+            onAnswerChange={(i, v) => {
+              setAnswers9techFinalQ4((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments9techFinalQ4((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
+        {grade === "9" && subject === "technology" && testId !== "final-q4" && (
           <Grade9Technology
             answers={answers9tech}
             attachments={attachments9tech}

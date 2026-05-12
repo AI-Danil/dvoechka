@@ -12,6 +12,7 @@ const KNOWN_HARDCODED_TEST_TYPES = [
   "grade6technologyFinalQ4",
   "grade7technologyFinalQ4",
   "grade8technologyFinalQ4Theory",
+  "grade9technologyFinalQ4",
 ];
 
 describe("quizRegistry", () => {
