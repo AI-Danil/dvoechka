@@ -121,7 +121,7 @@ URL получится `https://<user>.gitlab.io/dvoechka/`. SPA-фоллбек 
 > GitHub Actions). При желании можно переопределить в **Settings →
 > CI/CD → Variables** на GitLab без правки репо.
 
-
+## Cloudflare Tunnel (опциональный локальный канал)
 
 Если нужно временно показать локальную сборку через публичный URL:
 
