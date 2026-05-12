@@ -1815,6 +1815,21 @@ const Index = () => {
           />
         )}
 
+        {grade === "5" && subject === "technology" && testId === "final-q4-v3" && (
+          <Grade5TechnologyFinalQ4V3
+            answers={answers5techFinalQ4V3}
+            attachments={attachments5techFinalQ4V3}
+            onAnswerChange={(i, v) => {
+              setAnswers5techFinalQ4V3((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+            onAttachmentChange={(i, file) => setAttachments5techFinalQ4V3((prev) => ({ ...prev, [i]: file }))}
+          />
+        )}
+
         {grade === "8" && subject === "technology" && testId === "final-q4-theory" && (
           <Grade8TechnologyFinalQ4Theory
             answers={answers8techFinalQ4Theory}
