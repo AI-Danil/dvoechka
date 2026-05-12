@@ -715,6 +715,8 @@ const Index = () => {
   // Дебаунс 5с после последнего изменения; flush через sendBeacon на закрытие вкладки.
   const serverSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastServerPayloadRef = useRef<string>("");
+  const lastQuizPushRef = useRef<number>(0);
+  const quizPushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const buildServerPayload = useCallback(() => {
     const g = gradeRef.current;
