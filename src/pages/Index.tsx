@@ -316,6 +316,8 @@ const Index = () => {
   const attachments6techFinalQ4Ref = useRef(attachments6techFinalQ4);
   const answers5techFinalQ4V2Ref = useRef(answers5techFinalQ4V2);
   const attachments5techFinalQ4V2Ref = useRef(attachments5techFinalQ4V2);
+  const answers5techFinalQ4V3Ref = useRef(answers5techFinalQ4V3);
+  const attachments5techFinalQ4V3Ref = useRef(attachments5techFinalQ4V3);
   const answers8techFinalQ4TheoryRef = useRef(answers8techFinalQ4Theory);
   const attachments8techFinalQ4TheoryRef = useRef(attachments8techFinalQ4Theory);
   const answers7techFinalQ4Ref = useRef(answers7techFinalQ4);
