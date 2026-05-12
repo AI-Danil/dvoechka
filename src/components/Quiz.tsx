@@ -65,7 +65,7 @@ interface PersistedQuizState {
   savedAt: number;
 }
 
-const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed }: QuizProps) => {
+const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, onProgress }: QuizProps) => {
   const getSecondsFor = (i: number) => questions[i]?.seconds ?? secondsPerQuestion;
 
   // Восстановление: читаем синхронно при первом рендере, чтобы не было «мигания» с 1-го вопроса.
