@@ -91,15 +91,6 @@ export default function TestResultsList({ isAdmin = false }: Props) {
     setRows((data ?? []) as any);
     setLoading(false);
   };
-    setLoading(true);
-    const { data } = await supabase
-      .from("test_results")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(500);
-    setRows((data ?? []) as any);
-    setLoading(false);
-  };
 
   useEffect(() => {
     void load();
