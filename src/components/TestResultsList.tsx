@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { Eye, Film, FileText, RefreshCw, Paperclip, Sparkles, Loader2, Save } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import LegacyAnswerView, { buildLegacyView } from "@/components/LegacyAnswerView";
 
 interface Result {
   id: string;
@@ -457,6 +458,10 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                     })}
                   </div>
                 </div>
+              )}
+
+              {quizItems.length === 0 && writtenItems.length === 0 && buildLegacyView(detail.answers) && (
+                <LegacyAnswerView answers={detail.answers} />
               )}
 
               <div className="rounded border-2 border-emerald-300 p-4 bg-emerald-50/50 space-y-3">
