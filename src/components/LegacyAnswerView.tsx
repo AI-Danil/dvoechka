@@ -105,8 +105,11 @@ export function buildLegacyView(
   return { sections, quiz };
 }
 
-export default function LegacyAnswerView({ answers }: { answers: any }) {
-  const view = buildLegacyView(answers);
+export default function LegacyAnswerView({
+  answers,
+  includeUnknownArrays = false,
+}: { answers: any; includeUnknownArrays?: boolean }) {
+  const view = buildLegacyView(answers, { includeUnknownArrays });
   if (!view) return null;
 
   return (
