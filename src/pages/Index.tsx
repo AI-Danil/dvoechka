@@ -144,6 +144,7 @@ const TESTS_WITH_QUIZ: Record<string, QuizConfig> = {
   "6_technology_final-q4": { questions: FINAL_Q4_TECH6_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "7_technology_final-q4": { questions: FINAL_Q4_TECH7_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "5_technology_final-q4-v2": { questions: FINAL_Q4_TECH5_V2_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
+  "5_technology_final-q4-v3": { questions: FINAL_Q4_TECH5_V3_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "8_technology_final-q4-theory": { questions: FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
 };
 
