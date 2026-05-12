@@ -207,9 +207,11 @@ export default function TestResultsList({ isAdmin = false }: Props) {
       if (search.trim() && !r.student_name.toLowerCase().includes(search.toLowerCase())) return false;
       const cheats = Array.isArray(r.cheat_log) ? r.cheat_log.length : 0;
       if (onlyCheats && cheats === 0) return false;
+      if (!includeDrafts && r._kind === "draft") return false;
+      if (onlyDrafts && r._kind !== "draft") return false;
       return true;
     });
-  }, [rows, allowedSubjects, subjectFilter, search, onlyCheats]);
+  }, [rows, allowedSubjects, subjectFilter, search, onlyCheats, includeDrafts, onlyDrafts]);
 
   // --- helpers for the detail dialog ---
   const detailBreakdown: any[] = useMemo(
