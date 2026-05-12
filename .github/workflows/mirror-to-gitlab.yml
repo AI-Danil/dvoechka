@@ -29,4 +29,7 @@ jobs:
           # Inject token into URL: https://gitlab.com/u/repo.git -> https://oauth2:TOKEN@gitlab.com/u/repo.git
           AUTH_URL="${GITLAB_REPO_URL/https:\/\//https://oauth2:${GITLAB_MIRROR_TOKEN}@}"
           git remote add gitlab "$AUTH_URL"
-          git push gitlab --mirror
+          # Push only real branches and tags. --mirror also pushes refs/remotes/origin/*
+          # which actions/checkout creates locally and GitLab rejects as "hidden refs".
+          git push --force gitlab "refs/heads/*:refs/heads/*"
+          git push --force gitlab "refs/tags/*:refs/tags/*" || true
