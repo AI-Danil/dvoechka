@@ -252,6 +252,7 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                 <TableHead>Поп.</TableHead>
                 <TableHead>Время, c</TableHead>
                 <TableHead>Наруш.</TableHead>
+                <TableHead>Оценка</TableHead>
                 <TableHead className="text-right">Действия</TableHead>
               </TableRow>
             </TableHeader>
