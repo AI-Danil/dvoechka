@@ -465,6 +465,13 @@ const Index = () => {
           if (draft.answers9physAtom) { setAnswers9physAtom(draft.answers9physAtom); mark(draft.answers9physAtom); }
         } else if (grade === "9" && subject === "physics") {
           if (draft.answers9phys) { setAnswers9phys(draft.answers9phys); mark(draft.answers9phys); }
+        } else if (grade === "9" && subject === "technology" && testId === "final-q4") {
+          if (draft.answers9techFinalQ4) {
+            const restored = (draft.answers9techFinalQ4 as string[]).slice(0, 6);
+            while (restored.length < 6) restored.push("");
+            setAnswers9techFinalQ4(restored);
+            mark(draft.answers9techFinalQ4);
+          }
         } else if (grade === "9" && subject === "technology") {
           if (draft.answers9tech) { setAnswers9tech(draft.answers9tech); mark(draft.answers9tech); }
         } else if (grade === "9") {
@@ -567,6 +574,11 @@ const Index = () => {
           else if (grade === "8" && subject === "physics" && w.answers8phys) { setAnswers8phys(w.answers8phys); restored = true; }
           else if (grade === "9" && subject === "physics" && testId === "atom" && w.answers9physAtom) { setAnswers9physAtom(w.answers9physAtom); restored = true; }
           else if (grade === "9" && subject === "physics" && w.answers9phys) { setAnswers9phys(w.answers9phys); restored = true; }
+          else if (grade === "9" && subject === "technology" && testId === "final-q4" && w.answers9techFinalQ4) {
+            const arr = (w.answers9techFinalQ4 as string[]).slice(0, 6);
+            while (arr.length < 6) arr.push("");
+            setAnswers9techFinalQ4(arr); restored = true;
+          }
           else if (grade === "9" && subject === "technology" && w.answers9tech) { setAnswers9tech(w.answers9tech); restored = true; }
           else if (grade === "9" && w.answers9) { setAnswers9(w.answers9); restored = true; }
           else if (grade === "7" && subject === "physics" && testId === "work-power" && w.answers7physWork) {
@@ -632,6 +644,8 @@ const Index = () => {
       data = { answers9physAtom };
     } else if (grade === "9" && subject === "physics") {
       data = { answers9phys };
+    } else if (grade === "9" && subject === "technology" && testId === "final-q4") {
+      data = { answers9techFinalQ4 };
     } else if (grade === "9" && subject === "technology") {
       data = { answers9tech };
     } else if (grade === "9") {
@@ -676,6 +690,7 @@ const Index = () => {
         answers9phys: answers9physRef.current,
         answers9physAtom: answers9physAtomRef.current,
         answers9tech: answers9techRef.current,
+        answers9techFinalQ4: answers9techFinalQ4Ref.current,
         answers7phys: answers7physRef.current,
         answers7physWork: answers7physWorkRef.current,
         theory7: theory7Ref.current,
@@ -724,6 +739,7 @@ const Index = () => {
       answers9phys: answers9physRef.current,
       answers9physAtom: answers9physAtomRef.current,
       answers9tech: answers9techRef.current,
+      answers9techFinalQ4: answers9techFinalQ4Ref.current,
       answers7phys: answers7physRef.current,
       answers7physWork: answers7physWorkRef.current,
       theory7: theory7Ref.current,
@@ -834,6 +850,8 @@ const Index = () => {
       return { answered: answers9physAtom.filter(Boolean).length, total: 6 };
     } else if (grade === "9" && subject === "physics") {
       return { answered: answers9phys.filter(Boolean).length, total: 14 };
+    } else if (grade === "9" && subject === "technology" && testId === "final-q4") {
+      return { answered: answers9techFinalQ4.filter(Boolean).length, total: 6 };
     } else if (grade === "9" && subject === "technology") {
       return { answered: answers9tech.filter(Boolean).length, total: 11 };
     } else if (grade === "9") {
@@ -1328,6 +1346,13 @@ const Index = () => {
     } else if (g === "9" && s === "physics") {
       fileUrls = await uploadAttachments(attachments9physRef.current);
       answers = { type: "grade9physics", answers: answers9physRef.current };
+    } else if (g === "9" && s === "technology" && tid === "final-q4") {
+      fileUrls = await uploadAttachments(attachments9techFinalQ4Ref.current);
+      answers = {
+        type: "grade9technologyFinalQ4",
+        answers: answers9techFinalQ4Ref.current,
+        quizResults: quizResultsRef.current,
+      };
     } else if (g === "9" && s === "technology") {
       fileUrls = await uploadAttachments(attachments9techRef.current);
       answers = { type: "grade9technology", answers: answers9techRef.current };
