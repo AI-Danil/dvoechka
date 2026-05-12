@@ -809,6 +809,8 @@ const Index = () => {
       return { answered: answers6techFinalQ4.filter(Boolean).length, total: 6 };
     } else if (grade === "5" && subject === "technology" && testId === "final-q4-v2") {
       return { answered: answers5techFinalQ4V2.filter(Boolean).length, total: 4 };
+    } else if (grade === "5" && subject === "technology" && testId === "final-q4-v3") {
+      return { answered: answers5techFinalQ4V3.filter(Boolean).length, total: 4 };
     } else if (grade === "7" && subject === "technology" && testId === "final-q4") {
       return { answered: answers7techFinalQ4.filter(Boolean).length, total: 12 };
     } else if (grade === "8" && subject === "technology" && testId === "final-q4-theory") {
