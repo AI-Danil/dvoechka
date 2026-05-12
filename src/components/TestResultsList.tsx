@@ -312,6 +312,16 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                 {detail.time_spent != null && (
                   <Badge variant="outline">⏱ {Math.floor(detail.time_spent / 60)}м {detail.time_spent % 60}с</Badge>
                 )}
+                {detail.ai_total_score != null && (
+                  <Badge variant="outline" className="border-purple-400 text-purple-700">
+                    🤖 ИИ: {detail.ai_total_score}
+                  </Badge>
+                )}
+                {detail.teacher_grade != null && (
+                  <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                    👨‍🏫 Учитель: {detail.teacher_grade}
+                  </Badge>
+                )}
                 <span className="text-xs text-muted-foreground">
                   {detail.created_at ? new Date(detail.created_at).toLocaleString("ru-RU") : ""}
                   {" · "}тип: {detail.test_type ?? "—"}
