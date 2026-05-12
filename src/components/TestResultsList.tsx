@@ -88,12 +88,84 @@ export default function TestResultsList({ isAdmin = false }: Props) {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("test_results")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(500);
-    setRows((data ?? []) as any);
+    const [resultsRes, draftsRes] = await Promise.all([
+      supabase
+        .from("test_results")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(500),
+      supabase
+        .from("student_drafts")
+        .select("*")
+        .order("updated_at", { ascending: false })
+        .limit(500),
+    ]);
+
+    const results: Result[] = ((resultsRes.data ?? []) as any[]).map((r) => ({
+      ...r,
+      _kind: "result" as const,
+    }));
+
+    // Дедуп: если у ученика на тот же test_id (или subject+grade+attempt) уже есть результат — черновик прячем.
+    const submittedKeys = new Set(
+      results.map((r) =>
+        [
+          r.student_name?.toLowerCase().trim(),
+          r.subject,
+          String(r.grade),
+          String(r.attempt ?? 1),
+        ].join("|"),
+      ),
+    );
+
+    const drafts: Result[] = ((draftsRes.data ?? []) as any[])
+      .map((d) => {
+        const writtenObj = d.written && typeof d.written === "object" ? d.written : {};
+        const quizObj = d.quiz && typeof d.quiz === "object" ? d.quiz : null;
+        const synthAnswers: Record<string, unknown> = { ...writtenObj };
+        if (quizObj && Array.isArray((quizObj as any).perQuestion)) {
+          synthAnswers.quizResults = { perQuestion: (quizObj as any).perQuestion };
+        }
+        return {
+          id: `draft:${d.id}`,
+          created_at: d.updated_at ?? d.created_at,
+          student_name: d.student_name,
+          subject: d.subject,
+          grade: Number(d.grade) || 0,
+          attempt: Number(d.attempt) || 1,
+          time_spent: null,
+          cheat_log: [],
+          answers: synthAnswers,
+          attachments: {},
+          replay_url: null,
+          test_type: d.test_id ?? null,
+          ai_grading: null,
+          ai_total_score: null,
+          ai_graded_at: null,
+          teacher_grade: null,
+          teacher_comment: null,
+          teacher_graded_at: null,
+          _kind: "draft" as const,
+          _draftUpdatedAt: d.updated_at,
+        } as Result;
+      })
+      .filter((d) => {
+        const key = [
+          d.student_name?.toLowerCase().trim(),
+          d.subject,
+          String(d.grade),
+          String(d.attempt ?? 1),
+        ].join("|");
+        return !submittedKeys.has(key);
+      });
+
+    const merged = [...results, ...drafts].sort((a, b) => {
+      const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return tb - ta;
+    });
+
+    setRows(merged);
     setLoading(false);
   };
 
