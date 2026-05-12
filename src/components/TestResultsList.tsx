@@ -421,6 +421,17 @@ export default function TestResultsList({ isAdmin = false }: Props) {
           </DialogHeader>
           {detail && (
             <div className="space-y-5 text-sm">
+              {detail._kind === "draft" && (
+                <div className="rounded border-2 border-amber-400 bg-amber-50 p-3 text-amber-900 text-sm">
+                  <p className="font-semibold">⚠ Это черновик — ученик не нажал «Сдать»</p>
+                  <p className="text-xs mt-1">
+                    Последнее автосохранение:{" "}
+                    {detail._draftUpdatedAt
+                      ? new Date(detail._draftUpdatedAt).toLocaleString("ru-RU")
+                      : "—"}
+                  </p>
+                </div>
+              )}
               <div className="flex flex-wrap gap-3 items-center">
                 <Badge variant="secondary">Класс: {detail.grade}</Badge>
                 {quizItems.length > 0 && (
