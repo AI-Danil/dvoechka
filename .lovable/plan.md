@@ -1,61 +1,62 @@
-## Цель
+## Что нашёл
 
-Показывать в "Результатах учеников" не только финальные сабмиты из `test_results`, но и черновики из `student_drafts` — даже если ученик не нажал "Сдать". Так ничего не потеряем, если кто-то закрыл вкладку.
+Нашёл причину. В логах `send-test-results`:
 
-## Что меняем
+```
+Rejected: empty answersData for type grade9technologyFinalQ4 — full body keys:
+[ studentName, grade, subject, attempt, testId, testTitle, resultId,
+  type, answers, quizResults, attachments, cheatLog, timeSpent ]
+```
 
-Только UI в `src/components/TestResultsList.tsx` (+ `LegacyAnswerView` уже умеет рендерить нужные форматы). Никаких изменений в логике сабмита, БД, edge-функциях.
+В `supabase/functions/send-test-results/index.ts` есть whitelist типов тестов, для которых функция собирает `answersData = { answers, quizResults }`. В этом списке есть:
+- `grade9physicsAtom`, `grade7physicsWork`, `grade8informaticsPython`
+- `grade8physicsFinalQ4`, `grade6technologyFinalQ4`, `grade7technologyFinalQ4`, `grade8technologyFinalQ4Theory`
+- `grade5technologyFinalQ4V2`
 
-## Поведение
+Но НЕТ:
+- `grade9technologyFinalQ4` ← это сдавали оба Дмитрия (9 кл технология итоговая Q4)
+- `grade5technologyFinalQ4V3` ← новый вариант 5 класса, сейчас тоже сабмитится из `Index.tsx:1347`
 
-1. **Загрузка.** Параллельно с `test_results` грузим `student_drafts` (последние 500, по `updated_at desc`). Объединяем в один список.
+Когда тип не попадает ни в одну ветку, `answersData` остаётся `{ type }`, срабатывает guard "empty answersData" и функция возвращает `400`. Ответы НЕ сохраняются в БД, в `test_results` ничего не появляется. У клиента при этом ничего не "переотправляется" — он показывает ошибку, но сам Дмитрий мог её не заметить (или закрыть вкладку), а черновик в `student_drafts` остался последним сохранённым (у Малинина — на 13/15 квиза). Второго Дмитрия в `student_drafts` за последние 6 часов нет вообще — значит он или решал с другого устройства/имени, или вкладка закрылась без save-draft. В любом случае корень — отказ функции.
 
-2. **Дедуп.** Если у того же ученика на тот же `test_id` уже есть запись в `test_results` — черновик не показываем (он уже стал финалкой). Ключ дедупа: `lower(student_name) + test_id + attempt`.
+## Что чиню
 
-3. **Маркер.** В таблице у строки-черновика:
-   - бейдж `Черновик` рядом с именем (жёлтый/secondary);
-   - дата = `updated_at`;
-   - "Время, c" — `—`;
-   - "Поп." — `attempt` из черновика;
-   - "Оценка" — `—`, кнопка "ИИ-оценка" скрыта (можно вернуться позже, когда решим).
+Один файл — `supabase/functions/send-test-results/index.ts`.
 
-4. **Фильтр.** Добавляем переключатель "Включая черновики" (по умолчанию ВКЛ — пользователь явно попросил видеть всё). Плюс отдельный "Только черновики" — удобно для разбора инцидентов.
+Добавляю `grade9technologyFinalQ4` и `grade5technologyFinalQ4V3` в ту же ветку, где уже лежат остальные `*FinalQ4*` тесты (`answersData.answers = body.answers; answersData.quizResults = body.quizResults;`).
 
-5. **Детальный диалог.** Для черновика открывается тот же `Dialog`, но:
-   - сверху плашка "Это черновик. Ученик не нажал 'Сдать'. Последнее обновление: {updated_at}";
-   - тело — `LegacyAnswerView` поверх `{ quiz, written }` из `student_drafts` (формат уже совместим: quiz = массив ответов с индексами, written = объект `{ [position]: text }`);
-   - блоки "ИИ-оценка", "Оценка учителем", вложения, replay — скрыты (черновик не доехал до сабмита, этих данных нет).
+```ts
+} else if (
+  body.type === "grade9physicsAtom" ||
+  body.type === "grade7physicsWork" ||
+  body.type === "grade8informaticsPython" ||
+  body.type === "grade8physicsFinalQ4" ||
+  body.type === "grade6technologyFinalQ4" ||
+  body.type === "grade7technologyFinalQ4" ||
+  body.type === "grade8technologyFinalQ4Theory" ||
+  body.type === "grade5technologyFinalQ4V2" ||
+  body.type === "grade5technologyFinalQ4V3" ||   // +
+  body.type === "grade9technologyFinalQ4"        // +
+) {
+  answersData.answers = body.answers;
+  answersData.quizResults = body.quizResults;
+}
+```
 
-## Технические детали
+После деплоя (автоматический) новые сабмиты будут проходить и записываться в `test_results`.
 
-- Тип `Result` расширяем union'ом `| DraftRow`. Добавляем поле `_kind: "result" | "draft"`.
-- `DraftRow` маппится из `student_drafts` так:
-  ```ts
-  {
-    _kind: "draft",
-    id: draft.id,
-    created_at: draft.updated_at,
-    student_name: draft.student_name,
-    subject: draft.subject,
-    grade: Number(draft.grade) || 0,   // в drafts grade = text
-    attempt: Number(draft.attempt) || 1,
-    answers: { quiz: draft.quiz, written: draft.written },
-    cheat_log: [],
-    attachments: {},
-    test_type: draft.test_id,           // для совместимости с LegacyAnswerView
-    // остальные поля null
-  }
-  ```
-- В `load()` делаем два запроса параллельно через `Promise.all`. RLS на `student_drafts` уже разрешает SELECT учителям/админам — менять не надо.
-- Фильтр по предметам учителя (`allowedSubjects`) применяем одинаково к обеим коллекциям.
+## Что НЕ делаю
 
-## Что НЕ делаем
-
-- Не трогаем submit-логику, не "промоутим" черновики автоматически в `test_results`.
-- Не добавляем оценивание черновиков (нет смысла, пока ученик не сдал).
-- Не меняем схему БД и RLS.
+- Не "промочу" черновик Малинина в `test_results` автоматически — это отдельное действие, могу сделать после фикса по отдельной просьбе (есть `quiz.perQuestion` на 13/15 + 3 письменных).
+- Не трогаю `start-attempt`, `grade-quiz-submission`, БД-схему — это легаси-флоу хардкод-тестов через `send-test-results`, его и фикшу.
+- Не меняю UI.
 
 ## Файлы
 
-- edit: `src/components/TestResultsList.tsx`
-- (возможно) edit: `src/components/LegacyAnswerView.tsx` — если formats `{quiz, written}` ещё не покрыты, добавить ветку. Проверю при имплементации.
+- edit: `supabase/functions/send-test-results/index.ts`
+
+## После фикса
+
+Скажи — могу:
+1. Вытащить черновик Малинина Дмитрия из `student_drafts` и руками положить в `test_results` (в "Результатах" появится как полноценный сабмит).
+2. Попросить второго Дмитрия пересдать (сейчас у него нет ни драфта, ни сабмита — данных просто нет).
