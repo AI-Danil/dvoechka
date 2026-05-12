@@ -1,22 +1,44 @@
-## Цель
-Запустить новый GitLab pipeline после прохождения identity verification, поскольку кнопки Retry на старом пайплайне нет.
+## Проблема
 
-## Что делаем
-В `.gitlab-ci.yml` добавляем строку-комментарий с текущей датой в самом верху файла:
+GitLab Pages с включённой фичей **Unique domains** сервит сайт по адресу `https://dvoechka-2dd881.gitlab.io/` в корне (без префикса проекта). А `vite.config.ts` сейчас при `GITLAB_PAGES=true` подставляет `base="/dvoechka/"`, поэтому все ассеты ловят 404 и срабатывает fallback "Страница не загрузилась".
 
-```yaml
-# Triggered: 2026-05-12 — re-run after identity verification
+## Решение
+
+Убрать префикс для GitLab Pages — оставить `base="/"`.
+
+### Файл: `vite.config.ts`
+
+В блоке вычисления `projectBase` удалить ветку для GitLab (либо явно вернуть `/`):
+
+```ts
+const projectBase = (() => {
+  if (process.env.GITHUB_PAGES === "true") {
+    const repo = (process.env.GITHUB_REPOSITORY || "").split("/")[1];
+    return repo ? `/${repo}/` : "/";
+  }
+  // GitLab Pages: с unique domains сайт всегда в корне.
+  return "/";
+})();
 ```
 
-## Что произойдёт дальше
-1. Lovable автоматически коммитит изменение в `main` на GitHub
-2. Срабатывает `.github/workflows/mirror-to-gitlab.yml` → пушит в GitLab
-3. GitLab видит новый коммит в `main` → запускает job `pages` из `.gitlab-ci.yml`
-4. Если verification прошла — job зеленеет, GitLab Pages деплоится
-5. Если опять красный — смотрим логи нового пайплайна (там будет понятнее, чем "yaml invalid")
+GitHub Pages логику не трогаем — там по-прежнему `/<repo>/`.
 
-## Файлы
-- `.gitlab-ci.yml` — +1 строка комментария
+### Файл: `.gitlab-ci.yml`
 
-## Если не сработает
-Альтернативный план B — снести `.gitlab-ci.yml` совсем (зеркало кода останется, GitLab Pages отключится, крестик пропадёт). У тебя уже есть GitHub Pages + Lovable hosting, GitLab Pages избыточен.
+Поменять триггер-комментарий в первой строке (или просто обновить дату), чтобы pipeline пересобрался:
+
+```yaml
+# Triggered: 2026-05-12 — fix base path for unique-domain pages
+```
+
+## Проверка после деплоя
+
+1. Подождать ~1 минуту, пока pipeline `pages` пройдёт.
+2. Открыть `https://dvoechka-2dd881.gitlab.io/` — должна загрузиться главная.
+3. Если всё ОК — обновить `docs/DEPLOYMENT.md` (URL колонку для GitLab) отдельной задачей.
+
+## Что НЕ ломаем
+
+- GitHub Pages (`/<repo>/`) — без изменений.
+- Lovable / Netlify / Cloudflare (`/`) — без изменений.
+- SPA-fallback через `public/404.html` — работает на любом base.
