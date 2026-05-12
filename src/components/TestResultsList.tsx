@@ -359,12 +359,22 @@ export default function TestResultsList({ isAdmin = false }: Props) {
               )}
               {filtered.map((r) => {
                 const cheats = Array.isArray(r.cheat_log) ? r.cheat_log.length : 0;
+                const isDraft = r._kind === "draft";
                 return (
-                  <TableRow key={r.id}>
+                  <TableRow key={r.id} className={isDraft ? "bg-amber-50/40" : undefined}>
                     <TableCell className="text-xs">
                       {r.created_at ? new Date(r.created_at).toLocaleString("ru-RU") : "—"}
                     </TableCell>
-                    <TableCell>{r.student_name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span>{r.student_name}</span>
+                        {isDraft && (
+                          <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px]">
+                            черновик
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{r.subject}</TableCell>
                     <TableCell><Badge variant="secondary">{r.grade}</Badge></TableCell>
                     <TableCell>{r.attempt ?? 1}</TableCell>
@@ -385,12 +395,16 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                       <Button size="sm" variant="ghost" onClick={() => setDetail(r)} title="Подробнее">
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="ghost" asChild title="Запись экрана">
-                        <Link to={`/replay/${r.id}`}><Film className="h-4 w-4" /></Link>
-                      </Button>
-                      <Button size="sm" variant="ghost" asChild title="Лог событий">
-                        <Link to={`/replay/${r.id}?tab=log`}><FileText className="h-4 w-4" /></Link>
-                      </Button>
+                      {!isDraft && (
+                        <>
+                          <Button size="sm" variant="ghost" asChild title="Запись экрана">
+                            <Link to={`/replay/${r.id}`}><Film className="h-4 w-4" /></Link>
+                          </Button>
+                          <Button size="sm" variant="ghost" asChild title="Лог событий">
+                            <Link to={`/replay/${r.id}?tab=log`}><FileText className="h-4 w-4" /></Link>
+                          </Button>
+                        </>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
