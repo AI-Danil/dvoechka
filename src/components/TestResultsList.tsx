@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { Eye, Film, FileText, RefreshCw, Paperclip, Sparkles, Loader2, Save } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import LegacyAnswerView, { buildLegacyView } from "@/components/LegacyAnswerView";
 
 interface Result {
   id: string;
