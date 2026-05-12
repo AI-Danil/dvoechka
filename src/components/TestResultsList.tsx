@@ -150,6 +150,66 @@ export default function TestResultsList({ isAdmin = false }: Props) {
   const attachments: Record<string, any> =
     detail?.attachments && typeof detail.attachments === "object" ? detail.attachments : {};
 
+  const aiItemsByPos: Record<number, any> = useMemo(() => {
+    const map: Record<number, any> = {};
+    const items = detail?.ai_grading?.items;
+    if (Array.isArray(items)) for (const it of items) map[Number(it.position)] = it;
+    return map;
+  }, [detail]);
+
+  const runAiGrade = async () => {
+    if (!detail) return;
+    setAiBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-grade-written", {
+        body: { result_id: detail.id },
+      });
+      if (error || (data as any)?.error) {
+        toast({
+          title: "Не удалось оценить",
+          description: (data as any)?.error ?? error?.message ?? "Ошибка",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({ title: "ИИ оценил работу", description: `Предварительная оценка: ${(data as any).ai_total_score}` });
+      await load();
+      const { data: fresh } = await supabase.from("test_results").select("*").eq("id", detail.id).maybeSingle();
+      if (fresh) setDetail(fresh as any);
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const saveTeacherGrade = async () => {
+    if (!detail) return;
+    const raw = teacherGradeInput.trim();
+    const num = raw === "" ? null : Number(raw.replace(",", "."));
+    if (num != null && (Number.isNaN(num) || num < 1 || num > 5)) {
+      toast({ title: "Оценка должна быть от 1 до 5", variant: "destructive" });
+      return;
+    }
+    setSavingGrade(true);
+    const { error } = await supabase
+      .from("test_results")
+      .update({
+        teacher_grade: num,
+        teacher_comment: teacherCommentInput || null,
+        teacher_graded_at: new Date().toISOString(),
+        teacher_graded_by: user?.id ?? null,
+      })
+      .eq("id", detail.id);
+    setSavingGrade(false);
+    if (error) {
+      toast({ title: "Не удалось сохранить", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Оценка сохранена" });
+    await load();
+    const { data: fresh } = await supabase.from("test_results").select("*").eq("id", detail.id).maybeSingle();
+    if (fresh) setDetail(fresh as any);
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
