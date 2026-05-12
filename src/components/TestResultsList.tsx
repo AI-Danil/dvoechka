@@ -33,6 +33,8 @@ interface Result {
   teacher_grade: number | null;
   teacher_comment: string | null;
   teacher_graded_at: string | null;
+  _kind?: "result" | "draft";
+  _draftUpdatedAt?: string;
 }
 
 const MARKER_LABELS: Record<string, string> = {
@@ -70,6 +72,8 @@ export default function TestResultsList({ isAdmin = false }: Props) {
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const [onlyCheats, setOnlyCheats] = useState(false);
+  const [includeDrafts, setIncludeDrafts] = useState(true);
+  const [onlyDrafts, setOnlyDrafts] = useState(false);
   const [detail, setDetail] = useState<Result | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [teacherGradeInput, setTeacherGradeInput] = useState<string>("");
@@ -84,12 +88,84 @@ export default function TestResultsList({ isAdmin = false }: Props) {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("test_results")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(500);
-    setRows((data ?? []) as any);
+    const [resultsRes, draftsRes] = await Promise.all([
+      supabase
+        .from("test_results")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(500),
+      supabase
+        .from("student_drafts")
+        .select("*")
+        .order("updated_at", { ascending: false })
+        .limit(500),
+    ]);
+
+    const results: Result[] = ((resultsRes.data ?? []) as any[]).map((r) => ({
+      ...r,
+      _kind: "result" as const,
+    }));
+
+    // Дедуп: если у ученика на тот же test_id (или subject+grade+attempt) уже есть результат — черновик прячем.
+    const submittedKeys = new Set(
+      results.map((r) =>
+        [
+          r.student_name?.toLowerCase().trim(),
+          r.subject,
+          String(r.grade),
+          String(r.attempt ?? 1),
+        ].join("|"),
+      ),
+    );
+
+    const drafts: Result[] = ((draftsRes.data ?? []) as any[])
+      .map((d) => {
+        const writtenObj = d.written && typeof d.written === "object" ? d.written : {};
+        const quizObj = d.quiz && typeof d.quiz === "object" ? d.quiz : null;
+        const synthAnswers: Record<string, unknown> = { ...writtenObj };
+        if (quizObj && Array.isArray((quizObj as any).perQuestion)) {
+          synthAnswers.quizResults = { perQuestion: (quizObj as any).perQuestion };
+        }
+        return {
+          id: `draft:${d.id}`,
+          created_at: d.updated_at ?? d.created_at,
+          student_name: d.student_name,
+          subject: d.subject,
+          grade: Number(d.grade) || 0,
+          attempt: Number(d.attempt) || 1,
+          time_spent: null,
+          cheat_log: [],
+          answers: synthAnswers,
+          attachments: {},
+          replay_url: null,
+          test_type: d.test_id ?? null,
+          ai_grading: null,
+          ai_total_score: null,
+          ai_graded_at: null,
+          teacher_grade: null,
+          teacher_comment: null,
+          teacher_graded_at: null,
+          _kind: "draft" as const,
+          _draftUpdatedAt: d.updated_at,
+        } as Result;
+      })
+      .filter((d) => {
+        const key = [
+          d.student_name?.toLowerCase().trim(),
+          d.subject,
+          String(d.grade),
+          String(d.attempt ?? 1),
+        ].join("|");
+        return !submittedKeys.has(key);
+      });
+
+    const merged = [...results, ...drafts].sort((a, b) => {
+      const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return tb - ta;
+    });
+
+    setRows(merged);
     setLoading(false);
   };
 
@@ -131,9 +207,11 @@ export default function TestResultsList({ isAdmin = false }: Props) {
       if (search.trim() && !r.student_name.toLowerCase().includes(search.toLowerCase())) return false;
       const cheats = Array.isArray(r.cheat_log) ? r.cheat_log.length : 0;
       if (onlyCheats && cheats === 0) return false;
+      if (!includeDrafts && r._kind === "draft") return false;
+      if (onlyDrafts && r._kind !== "draft") return false;
       return true;
     });
-  }, [rows, allowedSubjects, subjectFilter, search, onlyCheats]);
+  }, [rows, allowedSubjects, subjectFilter, search, onlyCheats, includeDrafts, onlyDrafts]);
 
   // --- helpers for the detail dialog ---
   const detailBreakdown: any[] = useMemo(
@@ -240,6 +318,20 @@ export default function TestResultsList({ isAdmin = false }: Props) {
           >
             Только с нарушениями
           </Button>
+          <Button
+            variant={includeDrafts ? "default" : "outline"}
+            onClick={() => setIncludeDrafts((v) => !v)}
+            title="Показывать черновики незаконченных работ"
+          >
+            Черновики
+          </Button>
+          <Button
+            variant={onlyDrafts ? "default" : "outline"}
+            onClick={() => setOnlyDrafts((v) => !v)}
+            title="Только незаконченные (не сданные) работы"
+          >
+            Только черновики
+          </Button>
         </div>
 
         <div className="rounded-md border">
@@ -267,12 +359,22 @@ export default function TestResultsList({ isAdmin = false }: Props) {
               )}
               {filtered.map((r) => {
                 const cheats = Array.isArray(r.cheat_log) ? r.cheat_log.length : 0;
+                const isDraft = r._kind === "draft";
                 return (
-                  <TableRow key={r.id}>
+                  <TableRow key={r.id} className={isDraft ? "bg-amber-50/40" : undefined}>
                     <TableCell className="text-xs">
                       {r.created_at ? new Date(r.created_at).toLocaleString("ru-RU") : "—"}
                     </TableCell>
-                    <TableCell>{r.student_name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span>{r.student_name}</span>
+                        {isDraft && (
+                          <Badge variant="outline" className="border-amber-500 text-amber-700 text-[10px]">
+                            черновик
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{r.subject}</TableCell>
                     <TableCell><Badge variant="secondary">{r.grade}</Badge></TableCell>
                     <TableCell>{r.attempt ?? 1}</TableCell>
@@ -293,12 +395,16 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                       <Button size="sm" variant="ghost" onClick={() => setDetail(r)} title="Подробнее">
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="ghost" asChild title="Запись экрана">
-                        <Link to={`/replay/${r.id}`}><Film className="h-4 w-4" /></Link>
-                      </Button>
-                      <Button size="sm" variant="ghost" asChild title="Лог событий">
-                        <Link to={`/replay/${r.id}?tab=log`}><FileText className="h-4 w-4" /></Link>
-                      </Button>
+                      {!isDraft && (
+                        <>
+                          <Button size="sm" variant="ghost" asChild title="Запись экрана">
+                            <Link to={`/replay/${r.id}`}><Film className="h-4 w-4" /></Link>
+                          </Button>
+                          <Button size="sm" variant="ghost" asChild title="Лог событий">
+                            <Link to={`/replay/${r.id}?tab=log`}><FileText className="h-4 w-4" /></Link>
+                          </Button>
+                        </>
+                      )}
                     </TableCell>
                   </TableRow>
                 );
@@ -315,6 +421,17 @@ export default function TestResultsList({ isAdmin = false }: Props) {
           </DialogHeader>
           {detail && (
             <div className="space-y-5 text-sm">
+              {detail._kind === "draft" && (
+                <div className="rounded border-2 border-amber-400 bg-amber-50 p-3 text-amber-900 text-sm">
+                  <p className="font-semibold">⚠ Это черновик — ученик не нажал «Сдать»</p>
+                  <p className="text-xs mt-1">
+                    Последнее автосохранение:{" "}
+                    {detail._draftUpdatedAt
+                      ? new Date(detail._draftUpdatedAt).toLocaleString("ru-RU")
+                      : "—"}
+                  </p>
+                </div>
+              )}
               <div className="flex flex-wrap gap-3 items-center">
                 <Badge variant="secondary">Класс: {detail.grade}</Badge>
                 {quizItems.length > 0 && (
@@ -460,43 +577,45 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                 </div>
               )}
 
-              {quizItems.length === 0 && writtenItems.length === 0 && buildLegacyView(detail.answers) && (
-                <LegacyAnswerView answers={detail.answers} />
+              {quizItems.length === 0 && writtenItems.length === 0 && buildLegacyView(detail.answers, { includeUnknownArrays: detail._kind === "draft" }) && (
+                <LegacyAnswerView answers={detail.answers} includeUnknownArrays={detail._kind === "draft"} />
               )}
 
-              <div className="rounded border-2 border-emerald-300 p-4 bg-emerald-50/50 space-y-3">
-                <p className="font-semibold text-emerald-900">👨‍🏫 Финальная оценка учителя</p>
-                <div className="flex flex-wrap items-end gap-3">
-                  <div>
-                    <label className="text-xs text-muted-foreground">Оценка (1–5)</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={5}
-                      step={0.25}
-                      value={teacherGradeInput}
-                      onChange={(e) => setTeacherGradeInput(e.target.value)}
-                      className="w-24"
-                      placeholder="—"
-                    />
+              {detail._kind !== "draft" && (
+                <div className="rounded border-2 border-emerald-300 p-4 bg-emerald-50/50 space-y-3">
+                  <p className="font-semibold text-emerald-900">👨‍🏫 Финальная оценка учителя</p>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Оценка (1–5)</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={5}
+                        step={0.25}
+                        value={teacherGradeInput}
+                        onChange={(e) => setTeacherGradeInput(e.target.value)}
+                        className="w-24"
+                        placeholder="—"
+                      />
+                    </div>
+                    <Button onClick={saveTeacherGrade} disabled={savingGrade} className="bg-emerald-600 hover:bg-emerald-700">
+                      {savingGrade ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+                      Сохранить
+                    </Button>
+                    {detail.teacher_graded_at && (
+                      <span className="text-xs text-muted-foreground">
+                        сохранено: {new Date(detail.teacher_graded_at).toLocaleString("ru-RU")}
+                      </span>
+                    )}
                   </div>
-                  <Button onClick={saveTeacherGrade} disabled={savingGrade} className="bg-emerald-600 hover:bg-emerald-700">
-                    {savingGrade ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
-                    Сохранить
-                  </Button>
-                  {detail.teacher_graded_at && (
-                    <span className="text-xs text-muted-foreground">
-                      сохранено: {new Date(detail.teacher_graded_at).toLocaleString("ru-RU")}
-                    </span>
-                  )}
+                  <Textarea
+                    value={teacherCommentInput}
+                    onChange={(e) => setTeacherCommentInput(e.target.value)}
+                    placeholder="Комментарий учителя (необязательно)"
+                    rows={2}
+                  />
                 </div>
-                <Textarea
-                  value={teacherCommentInput}
-                  onChange={(e) => setTeacherCommentInput(e.target.value)}
-                  placeholder="Комментарий учителя (необязательно)"
-                  rows={2}
-                />
-              </div>
+              )}
 
 
               {Object.keys(attachments).length > 0 && writtenItems.length === 0 && (

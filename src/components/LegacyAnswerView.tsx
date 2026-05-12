@@ -16,7 +16,43 @@ import { Badge } from "@/components/ui/badge";
 type Section = { title: string; items: { label: string; value: string }[] };
 type QuizRow = { idx: number; answer: number | null; correct: number | null; timedOut?: boolean };
 
-export function buildLegacyView(answers: any): {
+const KNOWN_KEYS = new Set([
+  "theory", "practice", "answers", "written", "quizResults", "breakdown",
+]);
+
+const HUMAN_LABELS: Record<string, string> = {
+  blitz8: "Блиц (8 кл)",
+  tasks8: "Задачи (8 кл)",
+  theory7: "Теория (7 кл)",
+  practice7: "Практика (7 кл)",
+  theory7tech: "Теория, технология (7 кл)",
+  practice7tech: "Практика, технология (7 кл)",
+  answers7phys: "Физика (7 кл)",
+  answers7physWork: "Физика, работа (7 кл)",
+  answers8infoPy: "Python (8 кл)",
+  answers8phys: "Физика (8 кл)",
+  answers8physPower: "Физика, мощность (8 кл)",
+  answers8physFinalQ4: "Физика, итоговая Q4 (8 кл)",
+  answers8techFinalQ4Theory: "Технология, теория Q4 (8 кл)",
+  answers6techFinalQ4: "Технология Q4 (6 кл)",
+  answers5techFinalQ4V2: "Технология Q4 v2 (5 кл)",
+  answers5techFinalQ4V3: "Технология Q4 v3 (5 кл)",
+  answers7techFinalQ4: "Технология Q4 (7 кл)",
+  answers9: "Информатика (9 кл)",
+  answers9phys: "Физика (9 кл)",
+  answers9physAtom: "Физика, атом (9 кл)",
+  answers9tech: "Технология (9 кл)",
+  answers9techFinalQ4: "Технология Q4 (9 кл)",
+};
+
+function humanLabel(key: string): string {
+  return HUMAN_LABELS[key] ?? key;
+}
+
+export function buildLegacyView(
+  answers: any,
+  opts: { includeUnknownArrays?: boolean } = {},
+): {
   sections: Section[];
   quiz: QuizRow[] | null;
 } | null {
@@ -25,6 +61,7 @@ export function buildLegacyView(answers: any): {
   const sections: Section[] = [];
   const pushArray = (title: string, arr: unknown, prefix: string) => {
     if (!Array.isArray(arr) || arr.length === 0) return;
+    if (arr.every((v) => v == null || (typeof v === "string" && v.trim() === ""))) return;
     sections.push({
       title,
       items: arr.map((v, i) => ({
@@ -36,13 +73,21 @@ export function buildLegacyView(answers: any): {
 
   pushArray("📚 Теоретические вопросы", answers.theory, "Вопрос");
   pushArray("🧮 Практические задачи", answers.practice, "Задача");
-  // у некоторых тестов письменные ответы лежат в `answers.answers` или `answers.written`
   if (!answers.theory && !answers.practice) {
     pushArray("✍ Развёрнутые ответы", answers.answers, "Задание");
     pushArray("✍ Развёрнутые ответы", answers.written, "Задание");
   } else {
-    // если есть theory/practice — возможно ещё `answers.answers` это что-то отдельное
     pushArray("✍ Дополнительные ответы", answers.written, "Задание");
+  }
+
+  // Для черновиков: ответы разложены по разным ключам (theory7, answers9tech и т.п.).
+  if (opts.includeUnknownArrays) {
+    for (const [key, val] of Object.entries(answers)) {
+      if (KNOWN_KEYS.has(key)) continue;
+      if (Array.isArray(val)) {
+        pushArray(`✍ ${humanLabel(key)}`, val, "Ответ");
+      }
+    }
   }
 
   let quiz: QuizRow[] | null = null;
@@ -60,8 +105,11 @@ export function buildLegacyView(answers: any): {
   return { sections, quiz };
 }
 
-export default function LegacyAnswerView({ answers }: { answers: any }) {
-  const view = buildLegacyView(answers);
+export default function LegacyAnswerView({
+  answers,
+  includeUnknownArrays = false,
+}: { answers: any; includeUnknownArrays?: boolean }) {
+  const view = buildLegacyView(answers, { includeUnknownArrays });
   if (!view) return null;
 
   return (
