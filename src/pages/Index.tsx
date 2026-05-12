@@ -536,6 +536,11 @@ const Index = () => {
             while (arr.length < 4) arr.push("");
             setAnswers5techFinalQ4V2(arr); restored = true;
           }
+          else if (grade === "5" && subject === "technology" && testId === "final-q4-v3" && w.answers5techFinalQ4V3) {
+            const arr = (w.answers5techFinalQ4V3 as string[]).slice(0, 4);
+            while (arr.length < 4) arr.push("");
+            setAnswers5techFinalQ4V3(arr); restored = true;
+          }
           else if (grade === "8" && subject === "technology" && testId === "final-q4-theory" && w.answers8techFinalQ4Theory) {
             const arr = (w.answers8techFinalQ4Theory as string[]).slice(0, 6);
             while (arr.length < 6) arr.push("");
