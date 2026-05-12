@@ -88,7 +88,7 @@ interface TestEntry {
 const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
   "5": {
     technology: [
-      { id: "final-q4-v2", title: "🌟 Итоговая контрольная за 4 четверть (Вариант 2)" },
+      { id: "final-q4-v3", title: "🌟 Итоговая контрольная за 4 четверть (Вариант 3)" },
     ],
   },
   "6": {
