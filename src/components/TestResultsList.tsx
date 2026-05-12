@@ -259,7 +259,7 @@ export default function TestResultsList({ isAdmin = false }: Props) {
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">
                     Пока нет результатов
                   </TableCell>
                 </TableRow>
@@ -278,6 +278,15 @@ export default function TestResultsList({ isAdmin = false }: Props) {
                     <TableCell>{r.time_spent ?? "—"}</TableCell>
                     <TableCell>
                       {cheats > 0 ? <Badge variant="destructive">{cheats}</Badge> : <span className="text-muted-foreground">0</span>}
+                    </TableCell>
+                    <TableCell>
+                      {r.teacher_grade != null ? (
+                        <Badge className="bg-emerald-600 hover:bg-emerald-600">{r.teacher_grade}</Badge>
+                      ) : r.ai_total_score != null ? (
+                        <Badge variant="outline" className="border-purple-400 text-purple-700">🤖 {r.ai_total_score}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button size="sm" variant="ghost" onClick={() => setDetail(r)} title="Подробнее">
