@@ -5,13 +5,20 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
-// GitHub Pages project sites live under /<repo>/. The deploy workflow sets
-// GITHUB_PAGES=true and provides GITHUB_REPOSITORY=<owner>/<repo>.
+// GitHub Pages and GitLab Pages project sites live under /<repo>/.
+// - GitHub Actions: GITHUB_PAGES=true + GITHUB_REPOSITORY=<owner>/<repo>
+// - GitLab CI: GITLAB_PAGES=true + CI_PROJECT_NAME=<repo>
 // All other hosts (Lovable, Netlify, Cloudflare) keep base="/".
-const ghPagesBase = (() => {
-  if (process.env.GITHUB_PAGES !== "true") return "/";
-  const repo = (process.env.GITHUB_REPOSITORY || "").split("/")[1];
-  return repo ? `/${repo}/` : "/";
+const projectBase = (() => {
+  if (process.env.GITHUB_PAGES === "true") {
+    const repo = (process.env.GITHUB_REPOSITORY || "").split("/")[1];
+    return repo ? `/${repo}/` : "/";
+  }
+  if (process.env.GITLAB_PAGES === "true") {
+    const repo = process.env.CI_PROJECT_NAME || "";
+    return repo ? `/${repo}/` : "/";
+  }
+  return "/";
 })();
 
 export default defineConfig(({ mode }) => ({
