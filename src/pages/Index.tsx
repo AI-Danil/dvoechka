@@ -1940,6 +1940,15 @@ const Index = () => {
           />
         )}
 
+        {grade === "7" && subject === "informatics" && testId === "final-q4-quiz" && (
+          <Card className="shadow-lg">
+            <CardContent className="py-12 text-center space-y-3">
+              <p className="text-lg font-semibold">⏳ Отправляем результаты…</p>
+              <p className="text-sm text-muted-foreground">Не закрывайте вкладку. Письменной части в этом тесте нет — результат уйдёт сразу после квиза.</p>
+            </CardContent>
+          </Card>
+        )}
+
         {grade === "7" && subject === "technology" && testId === "final-q4" && (
           <Grade7TechnologyFinalQ4
             answers={answers7techFinalQ4}
