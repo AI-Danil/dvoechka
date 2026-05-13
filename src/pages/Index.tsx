@@ -50,6 +50,8 @@ import Grade9TechnologyFinalQ4, { FINAL_Q4_TECH9_QUIZ_QUESTIONS } from "@/compon
 import Grade7TechnologyFinalQ4, { FINAL_Q4_TECH7_QUIZ_QUESTIONS } from "@/components/tests/Grade7TechnologyFinalQ4";
 import { FINAL_Q4_INF7_QUIZ_QUESTIONS } from "@/components/tests/Grade7InformaticsFinalQ4Quiz";
 import { FINAL_Q4_INF6_QUIZ_QUESTIONS } from "@/components/tests/Grade6TechnologyFinalQ4Quiz";
+import { FINAL_Q4_PHYS9_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsFinalQ4Quiz";
+import Grade9PhysicsFinalQ4Written, { type PhysQ4Answer } from "@/components/tests/Grade9PhysicsFinalQ4Written";
 import Grade7Physics from "@/components/tests/Grade7Physics";
 import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork";
 import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
