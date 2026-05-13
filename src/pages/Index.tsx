@@ -1252,7 +1252,12 @@ const Index = () => {
 
   const handleQuizFinish = (results: QuizResults) => {
     setQuizResults(results);
+    quizResultsRef.current = results;
     setQuizPhase("done");
+    // Квиз-only тесты: сразу авто-сабмитим, без письменной части.
+    if (gradeRef.current === "7" && subjectRef.current === "informatics" && testIdRef.current === "final-q4-quiz") {
+      setTimeout(() => doSubmitRef.current?.(), 0);
+    }
   };
 
   const uploadAttachments = async (files: Record<string | number, File | null>): Promise<Record<string, string>> => {
@@ -1396,6 +1401,13 @@ const Index = () => {
     } else if (g === "7" && s === "physics") {
       fileUrls = await uploadAttachments(attachments7physRef.current);
       answers = { type: "grade7physics", answers: answers7physRef.current };
+    } else if (g === "7" && s === "informatics" && tid === "final-q4-quiz") {
+      // Квиз-only: нет письменной части, нет вложений.
+      answers = {
+        type: "grade7informaticsFinalQ4Quiz",
+        answers: [],
+        quizResults: quizResultsRef.current,
+      };
     } else if (g === "7" && s === "technology" && tid === "final-q4") {
       fileUrls = await uploadAttachments(attachments7techFinalQ4Ref.current);
       answers = {
