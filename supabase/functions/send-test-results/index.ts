@@ -648,6 +648,112 @@ serve(async (req) => {
         const hasFile = attachmentMap[String(i)];
         message += `Задание ${16 + i}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
       }
+    } else if (body.type === "grade7informaticsFinalQ4Quiz") {
+      const quiz = body.quizResults as
+        | {
+            correct: number;
+            total: number;
+            perQuestion: Array<{
+              answer: number | string;
+              correct?: number;
+              kind?: "mc" | "text";
+              expected?: string;
+              gradingHint?: string;
+              q?: string;
+              block?: number;
+              timeSpent: number;
+              timedOut: boolean;
+            }>;
+          }
+        | null
+        | undefined;
+
+      if (!quiz) {
+        message += `\n⚠️ Квиз не получен.\n`;
+      } else {
+        // AI-проверка текстовых ответов (блоки 3+4)
+        const textItems = quiz.perQuestion
+          .map((r, i) => ({ r, i }))
+          .filter(({ r }) => r.kind === "text");
+        let aiResults: Array<{ position: number; correct: boolean; partial: boolean; score: number; reason: string }> = [];
+        if (textItems.length > 0) {
+          try {
+            const aiUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/grade-quiz-text-batch`;
+            const r = await fetch(aiUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+              },
+              body: JSON.stringify({
+                items: textItems.map(({ r, i }) => ({
+                  position: i + 1,
+                  question: r.q ?? "",
+                  expected: r.expected ?? "",
+                  given: typeof r.answer === "string" ? r.answer : "",
+                  hint: r.gradingHint,
+                })),
+              }),
+            });
+            const j = await r.json();
+            if (j?.ok && Array.isArray(j.results)) aiResults = j.results;
+          } catch (e) {
+            console.error("grade-quiz-text-batch failed:", e);
+          }
+        }
+        const aiByPos = new Map(aiResults.map((x) => [x.position, x]));
+
+        // Итоговый балл
+        let mcCorrect = 0, mcTotal = 0, textScore = 0, textTotal = 0;
+        const blocks: Record<number, { c: number; t: number }> = { 1: { c: 0, t: 0 }, 2: { c: 0, t: 0 }, 3: { c: 0, t: 0 }, 4: { c: 0, t: 0 } };
+        quiz.perQuestion.forEach((r, i) => {
+          const block = r.block ?? 1;
+          blocks[block] = blocks[block] ?? { c: 0, t: 0 };
+          blocks[block].t += 1;
+          if (r.kind === "text") {
+            textTotal += 1;
+            const ai = aiByPos.get(i + 1);
+            const sc = ai?.score ?? 0;
+            textScore += sc;
+            if (sc >= 1) blocks[block].c += 1;
+            else if (sc > 0) blocks[block].c += sc;
+          } else {
+            mcTotal += 1;
+            if (typeof r.answer === "number" && r.answer === r.correct) {
+              mcCorrect += 1;
+              blocks[block].c += 1;
+            }
+          }
+        });
+        const totalScore = mcCorrect + textScore;
+        const totalMax = mcTotal + textTotal;
+        const pct = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+
+        message += `\n🎯 КВИЗ Информатика 7 (45 вопросов)\n`;
+        message += `Итого: ${totalScore.toFixed(1)}/${totalMax} (${pct}%)\n`;
+        message += `MC (блоки 1+2): ${mcCorrect}/${mcTotal}\n`;
+        message += `Открытые (AI, блоки 3+4): ${textScore.toFixed(1)}/${textTotal}\n`;
+        for (const [b, st] of Object.entries(blocks)) {
+          if (st.t > 0) message += `  Блок ${b}: ${st.c.toFixed(1)}/${st.t}\n`;
+        }
+
+        message += `\n📋 Подробно:\n`;
+        const optLabel = (n: number) => (n < 0 ? "—" : ["А", "Б", "В", "Г"][n] ?? "?");
+        quiz.perQuestion.forEach((r, i) => {
+          if (r.kind === "text") {
+            const ai = aiByPos.get(i + 1);
+            const mark = ai?.correct ? (ai.partial ? "🟡" : "✅") : "❌";
+            const given = (typeof r.answer === "string" ? r.answer : "").slice(0, 200) || "(пусто)";
+            message += `${i + 1}) [TXT] ${mark} ${ai ? `${ai.score}` : "?"} — ответ: ${given}\n`;
+            if (ai?.reason) message += `   AI: ${ai.reason}\n`;
+            if (r.expected) message += `   Эталон: ${r.expected}\n`;
+          } else {
+            const ok = typeof r.answer === "number" && r.answer === r.correct;
+            const mark = ok ? "✅" : r.timedOut ? "⏰" : "❌";
+            message += `${i + 1}) [MC] ${mark} ответ ${optLabel(r.answer as number)} (правильный ${optLabel(r.correct ?? -1)})\n`;
+          }
+        });
+      }
     } else {
       const blitz = body.blitz as string[];
       const tasks = body.tasks as Record<string, string>;
