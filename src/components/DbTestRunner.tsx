@@ -360,7 +360,7 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
     results.answers.forEach((a, i) => {
       // i — индекс в массиве quizQuestions; нам нужен position исходного вопроса
       const original = quizQuestions[i];
-      if (original) ans[original.position] = a;
+      if (original) ans[original.position] = typeof a === "number" ? a : -1;
     });
 
     if (test.kind === "hybrid" && writtenQuestions.length > 0) {
