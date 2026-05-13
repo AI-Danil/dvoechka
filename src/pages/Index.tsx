@@ -48,6 +48,7 @@ import Grade5TechnologyFinalQ4V3, { FINAL_Q4_TECH5_V3_QUIZ_QUESTIONS } from "@/c
 import Grade8TechnologyFinalQ4Theory, { FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS } from "@/components/tests/Grade8TechnologyFinalQ4Theory";
 import Grade9TechnologyFinalQ4, { FINAL_Q4_TECH9_QUIZ_QUESTIONS } from "@/components/tests/Grade9TechnologyFinalQ4";
 import Grade7TechnologyFinalQ4, { FINAL_Q4_TECH7_QUIZ_QUESTIONS } from "@/components/tests/Grade7TechnologyFinalQ4";
+import { FINAL_Q4_INF7_QUIZ_QUESTIONS } from "@/components/tests/Grade7InformaticsFinalQ4Quiz";
 import Grade7Physics from "@/components/tests/Grade7Physics";
 import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork";
 import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
@@ -98,7 +99,10 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
     ],
   },
   "7": {
-    informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    informatics: [
+      { id: "final-q4-quiz", title: "🌟 Итоговая годовая контрольная за 4 четверть (квиз, 45 вопросов)" },
+      { id: "default", title: "Итоговая контрольная (3 четверть)" },
+    ],
     physics: [
       { id: "default", title: "Контрольная №1. Давление, Архимедова сила" },
       { id: "work-power", title: "Контрольная №2. Механическая работа и Мощность" },
