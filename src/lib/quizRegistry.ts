@@ -11,6 +11,7 @@ import { FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS } from "@/components/tests/Grade8T
 import { FINAL_Q4_TECH9_QUIZ_QUESTIONS } from "@/components/tests/Grade9TechnologyFinalQ4";
 import { FINAL_Q4_INF7_QUIZ_QUESTIONS } from "@/components/tests/Grade7InformaticsFinalQ4Quiz";
 import { FINAL_Q4_INF6_QUIZ_QUESTIONS } from "@/components/tests/Grade6TechnologyFinalQ4Quiz";
+import { FINAL_Q4_PHYS9_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsFinalQ4Quiz";
 
 // test_type строки, которые сохраняются в БД при сабмите квизов.
 // Сопоставляем их с массивом вопросов.
