@@ -30,6 +30,8 @@ export interface QuizQuestionMc {
   correct: number; // 0..3
   seconds?: number;
   block?: number;
+  /** Если true — добавляется кнопка «Не знаю / пропустить». Запишется answer=-2. */
+  allowSkip?: boolean;
 }
 
 export interface QuizQuestionText {
