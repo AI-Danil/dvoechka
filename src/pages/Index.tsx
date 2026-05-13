@@ -1640,6 +1640,7 @@ const Index = () => {
     const rawTests = TESTS_CATALOG[grade]?.[subject] || [];
     // Подсветка актуальной итоговой работы (неоновая кнопка)
     const featuredId =
+      grade === "7" && subject === "informatics" ? "final-q4-quiz" :
       grade === "7" && subject === "technology" ? "final-q4" :
       grade === "8" && subject === "technology" ? "final-q4-theory" :
       grade === "9" && subject === "technology" ? "final-q4" :
