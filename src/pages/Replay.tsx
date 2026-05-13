@@ -485,14 +485,14 @@ function ReplayInner() {
                                         <span className="italic text-muted-foreground">пропущен</span>
                                       ) : (
                                         <span className="font-medium">
-                                          {labels[pq.answer]}){q?.options?.[pq.answer] ? ` ${q.options[pq.answer]}` : ""}
+                                          {labels[pq.answer]}){(q as { options?: string[] })?.options?.[pq.answer] ? ` ${(q as { options: string[] }).options[pq.answer]}` : ""}
                                         </span>
                                       )}
                                     </div>
                                     <div>
                                       <span className="text-muted-foreground">Правильный: </span>
                                       <span className="font-medium">
-                                        {labels[pq.correct]}){q?.options?.[pq.correct] ? ` ${q.options[pq.correct]}` : ""}
+                                        {labels[pq.correct]}){(q as { options?: string[] })?.options?.[pq.correct] ? ` ${(q as { options: string[] }).options[pq.correct]}` : ""}
                                       </span>
                                     </div>
                                   </div>
