@@ -394,19 +394,33 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
               </p>
             </>
           ) : (
-            (q as QuizQuestionMc).options.map((opt, i) => (
-              <Button
-                key={i}
-                variant="outline"
-                size="lg"
-                className="w-full justify-start text-left h-auto py-3 whitespace-normal"
-                style={{ userSelect: "none" }}
-                onClick={() => recordAndAdvance(i, false)}
-              >
-                <span className="font-bold mr-3">{labels[i]})</span>
-                <span className="flex-1">{opt}</span>
-              </Button>
-            ))
+            <>
+              {(q as QuizQuestionMc).options.map((opt, i) => (
+                <Button
+                  key={i}
+                  variant="outline"
+                  size="lg"
+                  className="w-full justify-start text-left h-auto py-3 whitespace-normal"
+                  style={{ userSelect: "none" }}
+                  onClick={() => recordAndAdvance(i, false)}
+                >
+                  <span className="font-bold mr-3">{labels[i]})</span>
+                  <span className="flex-1">{opt}</span>
+                </Button>
+              ))}
+              {(q as QuizQuestionMc).allowSkip && (
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="w-full justify-center text-muted-foreground hover:text-foreground border border-dashed mt-2"
+                  style={{ userSelect: "none" }}
+                  onClick={() => recordAndAdvance(-2, false)}
+                  title="За пропуск баллы не вычитаются"
+                >
+                  🤷 Не знаю / пропустить (без штрафа)
+                </Button>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
