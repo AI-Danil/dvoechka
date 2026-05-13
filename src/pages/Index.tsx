@@ -155,6 +155,7 @@ const TESTS_WITH_QUIZ: Record<string, QuizConfig> = {
   "5_technology_final-q4-v3": { questions: FINAL_Q4_TECH5_V3_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "8_technology_final-q4-theory": { questions: FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "9_technology_final-q4": { questions: FINAL_Q4_TECH9_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
+  "7_informatics_final-q4-quiz": { questions: FINAL_Q4_INF7_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
 };
 
 const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;
