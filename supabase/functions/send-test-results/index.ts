@@ -730,7 +730,8 @@ serve(async (req) => {
         const totalMax = mcTotal + textTotal;
         const pct = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
 
-        message += `\n🎯 КВИЗ Информатика 7 (45 вопросов)\n`;
+        const quizLabel = body.type === "grade6technologyFinalQ4Quiz" ? "Технология 6 (45 вопросов)" : "Информатика 7 (45 вопросов)";
+        message += `\n🎯 КВИЗ ${quizLabel}\n`;
         message += `Итого: ${totalScore.toFixed(1)}/${totalMax} (${pct}%)\n`;
         message += `MC (блоки 1+2): ${mcCorrect}/${mcTotal}\n`;
         message += `Открытые (AI, блоки 3+4): ${textScore.toFixed(1)}/${textTotal}\n`;
