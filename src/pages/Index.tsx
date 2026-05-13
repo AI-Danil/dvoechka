@@ -50,6 +50,8 @@ import Grade9TechnologyFinalQ4, { FINAL_Q4_TECH9_QUIZ_QUESTIONS } from "@/compon
 import Grade7TechnologyFinalQ4, { FINAL_Q4_TECH7_QUIZ_QUESTIONS } from "@/components/tests/Grade7TechnologyFinalQ4";
 import { FINAL_Q4_INF7_QUIZ_QUESTIONS } from "@/components/tests/Grade7InformaticsFinalQ4Quiz";
 import { FINAL_Q4_INF6_QUIZ_QUESTIONS } from "@/components/tests/Grade6TechnologyFinalQ4Quiz";
+import { FINAL_Q4_PHYS9_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsFinalQ4Quiz";
+import Grade9PhysicsFinalQ4Written, { type PhysQ4Answer } from "@/components/tests/Grade9PhysicsFinalQ4Written";
 import Grade7Physics from "@/components/tests/Grade7Physics";
 import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork";
 import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
@@ -131,8 +133,9 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
   "9": {
     informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
     physics: [
-      { id: "default", title: "Контрольная №1. Механика, волны, оптика" },
+      { id: "final-q4-quiz", title: "🌟 Итоговая годовая контрольная за 4 четверть. Атом и атомное ядро (квиз + 6 задач, штрафная шкала)" },
       { id: "atom", title: "Контрольная №2. Атом и атомное ядро (с квизом)" },
+      { id: "default", title: "Контрольная №1. Механика, волны, оптика" },
     ],
     technology: [
       { id: "final-q4", title: "🌟 Итоговая контрольная за 4 четверть. ИКТ в современном обществе" },
@@ -159,6 +162,7 @@ const TESTS_WITH_QUIZ: Record<string, QuizConfig> = {
   "9_technology_final-q4": { questions: FINAL_Q4_TECH9_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "7_informatics_final-q4-quiz": { questions: FINAL_Q4_INF7_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "6_technology_final-q4-quiz": { questions: FINAL_Q4_INF6_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
+  "9_physics_final-q4-quiz": { questions: FINAL_Q4_PHYS9_QUIZ_QUESTIONS, secondsPerQuestion: 75 },
 };
 
 const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;

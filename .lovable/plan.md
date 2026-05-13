@@ -1,101 +1,81 @@
-## Что делаем
+## Решения по уточнениям
 
-Новый тест **«Информатика 7 класс. Итоговая Q4 (квиз, 45 вопросов)»** — 30 MC + 15 текстовых полей с проверкой нейросетью. Существующий «Технология 7 класс Q4» **не трогаем**.
+1. **Штраф** = 0.5 от баллов вопроса за неверный ответ. «Не знаю» / пустой = 0.
+2. **Приглушение** — везде, во всех классах и предметах: визуально выделяется только featured (последний добавленный) тест в каждой секции, остальные становятся «архивом» (`opacity-60`, бейдж «Архив»).
+3. **Расчётные задачи** — автоматическая AI-проверка через Lovable AI (как у 6-тех / 7-инф), с поддержкой пропуска без штрафа.
 
-## Решения по развилкам
+## Часть 1. Квиз `Grade9PhysicsFinalQ4Quiz` (15 вопросов)
 
-1. **Старый Grade7TechnologyFinalQ4 не меняю** — добавляю отдельный новый тип `grade7informaticsFinalQ4Quiz`, отдельный пункт в меню. Старые сабмиты остаются валидными.
-2. **AI-проверка блока 3+4 — батчем при сабмите** (1 запрос к Lovable AI Gateway со всеми текстовыми ответами): быстрее, дешевле, не блокирует ученика. Если AI упал — сохраняем «неоценено», балл = 0, в админке через существующий `ai-grade-written` можно перепроверить руками.
-3. **Текстовое поле — внутри Quiz.tsx** через расширение типа `QuizQuestion` (новый kind `"text"`), без отдельной обёртки. Автосохранение/таймер/восстановление работают для обоих типов автоматически.
+Файл: `src/components/tests/Grade9PhysicsFinalQ4Quiz.tsx`
 
-## Гарантии (проверено в коде сейчас)
+- Каждый вопрос: 4 содержательных варианта + **5-й «Не знаю / пропустить»** (маркер `isSkip: true`).
+- Тайминги per-question:
+  - Q1, Q3, Q6, Q12 — 60 сек (короткие фактологические)
+  - Q2, Q9, Q10, Q11, Q14 — 75 сек (средние)
+  - Q4, Q5, Q7, Q8, Q13, Q15 — 90 сек (расчёт/анализ)
+- Никаких ответов и пояснений ученику не показывается (как у других квизов).
 
-| Что | Где | Статус |
-|-----|-----|--------|
-| Автосохранение ответов в localStorage на каждый ответ/тик | `Quiz.tsx` строки 149–207, `persist()` | ✓ работает |
-| Flush на `pagehide`/`visibilitychange`/`beforeunload` | `Quiz.tsx` строка 200–207 | ✓ работает |
-| Восстановление прогресса при перезагрузке | `Quiz.tsx` строка 75–101 | ✓ работает |
-| Серверный черновик в `student_drafts.quiz` | `save-draft` edge function | ✓ работает |
-| Запись экрана rrweb → bucket `rrweb-sessions` | `src/hooks/useRrwebRecorder.ts` | ✓ работает |
-| Зеркало GitHub → GitLab | `.github/workflows/mirror-to-gitlab.yml` | ✓ настроено |
-| GitLab CI | `.gitlab-ci.yml` | ✓ настроено |
-| GitHub Pages deploy | `.github/workflows/deploy-pages.yml` | ✓ настроено |
-| Telegram отчёт | `send-test-results` через connector-gateway | ✓ работает |
+## Часть 2. Расчётные задачи `Grade9PhysicsFinalQ4Written` (6 задач, по одной на экран)
 
-Новый квиз идёт по тем же путям — отдельной работы по «починить зеркала / автосейв» делать не надо, только убедиться что новый тип в whitelists.
+Файл: `src/components/tests/Grade9PhysicsFinalQ4Written.tsx`
 
-## Структура квиза
+- Шаговый рендер: 1 задача на экран, textarea + чекбокс «Не знаю / пропустить (без штрафа)».
+- Кнопки «Назад» / «Далее», на последнем экране — «Завершить».
+- Состояние `{ q1..q6: { text: string, skipped: boolean } }` хранится в `Index.tsx`.
+- Каждое поле автосохраняется в localStorage (мгновенно) и в `student_drafts` через `save-draft` (debounce 5 сек) — как у всех других тестов.
+- Подпись в шапке: «За правильный — баллы. За неверный — штраф ½. За "Не знаю" — 0 (без штрафа).»
 
-| Блок | Вопросы | Тип | Время |
-|------|---------|-----|-------|
-| 1. База | 1–10 | 8 MC + 2 текст | 30 сек |
-| 2. Сложные | 11–20 | 7 MC + 3 текст | 60–90 сек |
-| 3. Открытые | 21–35 | 15 текст (AI) | 45–120 сек |
-| 4. Задачи | 36–45 | 1 MC + 9 текст (AI) | 45–120 сек |
+## Новая система оценивания
 
-Итого 45 вопросов, ~36 минут — укладывается в 40-минутный урок.
+`src/lib/gradingPenalty.ts` (+ `.test.ts`):
 
-## Что меняем в коде
-
-### 1. `src/components/Quiz.tsx` — расширение модели вопроса
-```ts
-export type QuizQuestion =
-  | { kind?: "mc"; q: string; options: [string,string,string,string]; correct: number; seconds?: number; block?: number }
-  | { kind: "text"; q: string; expected: string; gradingHint?: string; seconds?: number; block?: number };
+```text
+gradeQuizWithPenalty(questions, answers, { penalty: 0.5 })
+  правильный   → +points
+  «не знаю»    → 0
+  неправильный → -points * 0.5
+итог = max(0, sum) / maxPoints → процент → 2/3/4/5
 ```
-- Для `kind: "text"` рендерим `<Textarea>` вместо четырёх кнопок.
-- Кнопка «Ответить» становится активной при непустом тексте; по таймауту — пустой ответ.
-- В `QuizResults.answers` для текстовых вопросов вместо `number` пишем `string` (тип расширяем до `(number | string)[]`).
-- **Автосейв и persist работают без изменений** — текстовое значение тоже сериализуется.
 
-### 2. Новый файл `src/components/tests/Grade7InformaticsFinalQ4Quiz.tsx`
-Только экспорт `FINAL_Q4_INF7_QUIZ_QUESTIONS: QuizQuestion[]` со всеми 45 вопросами из твоего сообщения. Никакого UI — рендерится через существующий `<Quiz>`.
+Дубликат для Deno: `supabase/functions/_shared/gradingPenalty.ts` (импортируется из `send-test-results`).
 
-### 3. `src/pages/Index.tsx`
-- Импорт нового списка.
-- В `TEST_DEFS` добавить запись `"7_informatics_final-q4_quiz"` с `secondsPerQuestion: 60`.
-- Добавить пункт в меню 7 класса: «Информатика — Итоговая Q4 (квиз, 45 вопросов)».
-- При сабмите тип = `grade7informaticsFinalQ4Quiz`, в `answers` кладём плоский массив `[{ position, kind, q, given, expected?, correctIdx? }]` — удобно и для админки, и для AI.
+Для расчётных задач:
+- AI-грейдинг через `grade-quiz-text-batch` (расширим whitelist).
+- В системный промпт грейдера добавляем правило: если ответ помечен `skipped: true` или явно содержит «не знаю / не понимаю / пропускаю» — ставим 0 без штрафа.
+- Для верных ответов AI ставит полный балл, для частично верных — пропорциональный, для неверных непустых — отрицательный (× 0.5).
+- Задача №4 (ловушка): эталон в `gradingHint` явно говорит «правильно: задача нерешаема, недостаточно данных».
 
-### 4. Новая edge-функция `supabase/functions/grade-quiz-text-batch/index.ts`
-Вход:
-```json
-{ "items": [{ "position": 4, "question": "...", "expected": "Слайд", "given": "слаид", "hint": "..." }] }
-```
-Выход:
-```json
-{ "results": [{ "position": 4, "correct": true, "partial": false, "score": 1.0, "reason": "опечатка, по смыслу совпадает" }] }
-```
-- Lovable AI Gateway, `google/gemini-3-flash-preview`, structured output через **tool calling** (надёжнее JSON-mode).
-- Системный промпт: «Ты учитель информатики 7 класса. Засчитывай ответы по смыслу, игнорируй опечатки/синонимы/перестановку слов/регистр. partial=true если идея верна, но не полна. Будь снисходителен к формулировкам».
-- CORS, обработка 429/402, валидация zod, лог ошибок.
+## Интеграция (`src/pages/Index.tsx`)
 
-### 5. `supabase/functions/send-test-results/index.ts`
-- Добавить `grade7informaticsFinalQ4Quiz` в whitelist на сохранение `answers` (без этого ответы не запишутся в БД — баг, который мы уже видели на 5 классе).
-- Перед формированием Telegram-отчёта: если тип = новый квиз → внутренний fetch к `grade-quiz-text-batch` для всех `kind: "text"`. Обогатить `answers` полями `aiCorrect`, `aiScore`, `aiReason`.
-- Посчитать итоговый балл (MC: correct?1:0, text: `score`).
-- Записать в `test_results.ai_grading` и `test_results.ai_total_score`.
-- В Telegram-отчёт добавить разбивку: блок1 X/10, блок2 Y/10, блок3 Z/15, блок4 W/10, итого N/45 (M%). Перечислить вопросы блока 3+4 со статусом ✓/✗ и кратким AI-комментом.
+- Регистрация в `TESTS_CATALOG` для (9, Физика): новый id `final-q4-quiz`.
+- `featuredId = "final-q4-quiz"` для (9, Физика).
+- `TESTS_WITH_QUIZ` пополнить.
+- Ветка submit: hybrid (квиз + 6 задач) → `send-test-results` с флагом `gradingMode: "penalty"`.
+- Универсальное визуальное правило для **всех** карточек тестов: featured → акцентный border + бейдж «Актуальный»; остальные → `opacity-60 grayscale-[0.2]` + бейдж «Архив».
 
-### 6. `src/components/LegacyAnswerView.tsx` — админка
-Добавить ветку для `grade7informaticsFinalQ4Quiz`: отрисовать каждый вопрос блоками, для текстовых — показать «Ответ ученика», «Эталон», AI-вердикт (✓/✗ + reason). Кнопка «Перепроверить AI» (вызов существующего `ai-grade-written`) остаётся.
+## Реестры и edge
 
-## Чего НЕ делаем
+1. `src/lib/quizRegistry.ts` + `.test.ts` — добавить `grade9physicsFinalQ4Quiz`.
+2. `supabase/functions/send-test-results/index.ts`:
+   - whitelist `grade9physicsFinalQ4Quiz`;
+   - применить `gradingPenalty` к квизу;
+   - вызвать AI-батч для 6 задач с инструкцией про «не знаю»;
+   - Telegram: «Физика 9 (15 вопросов + 6 задач, штрафная шкала)», по каждому вопросу — `+1 / 0 / −0.5`.
+3. `supabase/functions/grade-quiz-text-batch/index.ts` — добавить новый тест в whitelist + system-prompt про пропуск.
 
-- Не показываем ученику «верно/неверно» по ходу квиза (это контрольная, не тренажёр).
-- Не делаем live-вызов AI после каждого текстового ответа (15 запросов × 30 учеников = риск 429).
-- Не создаём новых таблиц БД — используем `test_results.ai_grading` (jsonb).
-- Не трогаем существующий «Технология 7 класс Q4».
-- Не правим mirror-to-gitlab / .gitlab-ci / deploy-pages — они уже работают, новый код пойдёт через них автоматически.
+## Что НЕ трогаем
 
-## Файлы
+- БД-миграции не нужны (всё через `test_results.answers` jsonb).
+- Античит, rrweb, валидация ФИО, live-сессии, зеркала, draft — работают автоматически.
+- Существующая логика подсчёта остальных тестов не меняется (penalty активируется только по флагу `gradingMode`).
 
-**Новые:**
-- `src/components/tests/Grade7InformaticsFinalQ4Quiz.tsx`
+## Затрагиваемые файлы
+
+- `src/components/tests/Grade9PhysicsFinalQ4Quiz.tsx` (new)
+- `src/components/tests/Grade9PhysicsFinalQ4Written.tsx` (new)
+- `src/lib/gradingPenalty.ts` (new) + `.test.ts` (new)
+- `src/lib/quizRegistry.ts`, `src/lib/quizRegistry.test.ts`
+- `src/pages/Index.tsx` (catalog + featured + ветка submit + универсальное приглушение архивных карточек)
+- `supabase/functions/_shared/gradingPenalty.ts` (new)
+- `supabase/functions/send-test-results/index.ts`
 - `supabase/functions/grade-quiz-text-batch/index.ts`
-
-**Меняем:**
-- `src/components/Quiz.tsx` — поддержка `kind: "text"`
-- `src/pages/Index.tsx` — пункт меню + рендер + сабмит
-- `supabase/functions/send-test-results/index.ts` — whitelist + вызов AI-батча + расширенный TG-отчёт
-- `src/components/LegacyAnswerView.tsx` — рендер нового формата
