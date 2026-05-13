@@ -160,7 +160,8 @@ serve(async (req) => {
       body.type === "grade5technologyFinalQ4V2" ||
       body.type === "grade5technologyFinalQ4V3" ||
       body.type === "grade9technologyFinalQ4" ||
-      body.type === "grade7informaticsFinalQ4Quiz"
+      body.type === "grade7informaticsFinalQ4Quiz" ||
+      body.type === "grade6technologyFinalQ4Quiz"
     ) {
       answersData.answers = body.answers;
       answersData.quizResults = body.quizResults;
@@ -648,7 +649,7 @@ serve(async (req) => {
         const hasFile = attachmentMap[String(i)];
         message += `Задание ${16 + i}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
       }
-    } else if (body.type === "grade7informaticsFinalQ4Quiz") {
+    } else if (body.type === "grade7informaticsFinalQ4Quiz" || body.type === "grade6technologyFinalQ4Quiz") {
       const quiz = body.quizResults as
         | {
             correct: number;
