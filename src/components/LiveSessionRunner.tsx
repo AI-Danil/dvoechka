@@ -303,7 +303,7 @@ export default function LiveSessionRunner({
     const ans: Record<number, number> = {};
     results.answers.forEach((a, i) => {
       const original = quizQuestions[i];
-      if (original) ans[original.position] = a;
+      if (original) ans[original.position] = typeof a === "number" ? a : -1;
     });
     if (testKind === "hybrid" && writtenQuestions.length > 0) {
       setQuizPrefilled(ans);

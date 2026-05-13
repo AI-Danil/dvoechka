@@ -13,6 +13,7 @@ const KNOWN_HARDCODED_TEST_TYPES = [
   "grade7technologyFinalQ4",
   "grade8technologyFinalQ4Theory",
   "grade9technologyFinalQ4",
+  "grade7informaticsFinalQ4Quiz",
 ];
 
 describe("quizRegistry", () => {
@@ -37,10 +38,14 @@ describe("quizRegistry", () => {
       expect(qs.length, `${type} has 0 questions`).toBeGreaterThan(0);
       for (const q of qs) {
         expect(typeof q.q).toBe("string");
-        expect(Array.isArray(q.options)).toBe(true);
-        expect(q.options.length).toBe(4);
-        expect(q.correct).toBeGreaterThanOrEqual(0);
-        expect(q.correct).toBeLessThan(4);
+        if (q.kind === "text") {
+          expect(typeof q.expected).toBe("string");
+        } else {
+          expect(Array.isArray(q.options)).toBe(true);
+          expect(q.options.length).toBe(4);
+          expect(q.correct).toBeGreaterThanOrEqual(0);
+          expect(q.correct).toBeLessThan(4);
+        }
       }
     }
   });

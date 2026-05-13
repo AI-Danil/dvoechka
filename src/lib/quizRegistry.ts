@@ -9,6 +9,7 @@ import { FINAL_Q4_TECH6_QUIZ_QUESTIONS } from "@/components/tests/Grade6Technolo
 import { FINAL_Q4_TECH7_QUIZ_QUESTIONS } from "@/components/tests/Grade7TechnologyFinalQ4";
 import { FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS } from "@/components/tests/Grade8TechnologyFinalQ4Theory";
 import { FINAL_Q4_TECH9_QUIZ_QUESTIONS } from "@/components/tests/Grade9TechnologyFinalQ4";
+import { FINAL_Q4_INF7_QUIZ_QUESTIONS } from "@/components/tests/Grade7InformaticsFinalQ4Quiz";
 
 // test_type строки, которые сохраняются в БД при сабмите квизов.
 // Сопоставляем их с массивом вопросов.
@@ -26,6 +27,7 @@ export const QUIZ_REGISTRY: Record<string, QuizQuestion[]> = {
   grade7technologyFinalQ4: FINAL_Q4_TECH7_QUIZ_QUESTIONS,
   grade8technologyFinalQ4Theory: FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS,
   grade9technologyFinalQ4: FINAL_Q4_TECH9_QUIZ_QUESTIONS,
+  grade7informaticsFinalQ4Quiz: FINAL_Q4_INF7_QUIZ_QUESTIONS,
 };
 
 export function getQuizQuestionsForTestType(testType?: string | null): QuizQuestion[] | null {
