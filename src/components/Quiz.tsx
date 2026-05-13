@@ -2,6 +2,10 @@
  * Универсальный квиз: один вопрос на экране, поквопросный таймер, авто-переход
  * по истечению времени или клику. Возврата к предыдущим вопросам нет.
  *
+ * Поддерживает два типа вопросов:
+ *   - kind: "mc"  (по умолчанию) — 4 варианта ответа, ответ = индекс 0..3
+ *   - kind: "text" — свободный текстовый ввод, ответ = строка
+ *
  * Автосохранение в localStorage:
  *   - на каждый ответ;
  *   - каждый тик таймера (1с);
@@ -17,23 +21,52 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 
-export interface QuizQuestion {
+export interface QuizQuestionMc {
+  kind?: "mc";
   q: string;
   options: [string, string, string, string];
   correct: number; // 0..3
-  seconds?: number; // опциональное индивидуальное время на этот вопрос
+  seconds?: number;
+  block?: number;
 }
 
+export interface QuizQuestionText {
+  kind: "text";
+  q: string;
+  expected: string;
+  /** Подсказка для AI-проверки (засчитывать также: …). */
+  gradingHint?: string;
+  seconds?: number;
+  block?: number;
+}
+
+export type QuizQuestion = QuizQuestionMc | QuizQuestionText;
+
+export type QuizAnswer = number | string;
+
 export interface QuizPerQuestionResult {
-  answer: number; // -1 if no answer
-  correct: number;
+  /** Для MC — индекс варианта (0..3) или -1 если не отвечено. Для text — строка. */
+  answer: QuizAnswer;
+  /** Для MC — индекс правильного варианта. Для text — undefined (проверяет AI на сервере). */
+  correct?: number;
+  /** Тип вопроса — нужен админке и серверу для AI-grading. */
+  kind: "mc" | "text";
+  /** Эталон для текстового вопроса (для отчёта/AI). */
+  expected?: string;
+  /** Подсказка для AI-проверки. */
+  gradingHint?: string;
+  /** Текст вопроса — нужен админке и AI. */
+  q?: string;
+  /** Номер блока (1..4) для группировки в отчёте. */
+  block?: number;
   timeSpent: number; // seconds
   timedOut: boolean;
 }
 
 export interface QuizResults {
-  answers: number[];
+  answers: QuizAnswer[];
   correct: number;
   total: number;
   perQuestion: QuizPerQuestionResult[];
@@ -50,25 +83,29 @@ interface QuizProps {
   /** Колбэк после каждого ответа — родитель сразу пушит снапшот на сервер. */
   onProgress?: (snapshot: {
     idx: number;
-    answers: number[];
+    answers: QuizAnswer[];
     perQuestion: QuizPerQuestionResult[];
     total: number;
   }) => void;
 }
 
 interface PersistedQuizState {
-  v: 1;
+  v: 2;
   total: number;
   idx: number;
   perQuestion: QuizPerQuestionResult[];
   secondsLeft: number;
+  /** Черновик текущего текстового ответа (если ученик начал печатать, но не нажал «Ответить»). */
+  draftText?: string;
   savedAt: number;
 }
+
+const isText = (q: QuizQuestion): q is QuizQuestionText => q.kind === "text";
 
 const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, onProgress }: QuizProps) => {
   const getSecondsFor = (i: number) => questions[i]?.seconds ?? secondsPerQuestion;
 
-  // Восстановление: читаем синхронно при первом рендере, чтобы не было «мигания» с 1-го вопроса.
+  // Восстановление: читаем синхронно при первом рендере, чтобы не было «мигания».
   const restoredRef = useRef<PersistedQuizState | null>(null);
   if (restoredRef.current === null && storageKey) {
     try {
@@ -77,14 +114,13 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
         const parsed = JSON.parse(raw) as PersistedQuizState;
         if (
           parsed &&
-          parsed.v === 1 &&
+          (parsed.v === 2 || (parsed as unknown as { v: number }).v === 1) &&
           parsed.total === questions.length &&
           Array.isArray(parsed.perQuestion) &&
           typeof parsed.idx === "number"
         ) {
           restoredRef.current = parsed;
         } else {
-          // схема не совпала — чистим, чтобы не мешало
           localStorage.removeItem(storageKey);
         }
       }
@@ -100,29 +136,32 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
     const elapsed = Math.floor((Date.now() - r.savedAt) / 1000);
     return Math.max(1, r.secondsLeft - Math.max(0, elapsed));
   })();
+  const initialDraftText = restoredRef.current?.draftText ?? "";
 
   const [idx, setIdx] = useState(initialIdx);
   const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
+  const [draftText, setDraftText] = useState(initialDraftText);
   const resultsRef = useRef<QuizPerQuestionResult[]>(restoredRef.current?.perQuestion ?? []);
   const startedAtRef = useRef<number>(Date.now());
   const finishedRef = useRef(false);
   const idxRef = useRef(idx);
   const secondsLeftRef = useRef(secondsLeft);
+  const draftTextRef = useRef(draftText);
   const isFirstQuestionEffect = useRef(true);
 
   useEffect(() => { idxRef.current = idx; }, [idx]);
   useEffect(() => { secondsLeftRef.current = secondsLeft; }, [secondsLeft]);
+  useEffect(() => { draftTextRef.current = draftText; }, [draftText]);
 
   // Уведомление о восстановлении + ранний финиш, если все вопросы уже отвечены
   useEffect(() => {
     const r = restoredRef.current;
     if (!r) return;
     if (r.idx >= questions.length) {
-      // все вопросы уже отвечены — финишируем сразу
       if (!finishedRef.current) {
         finishedRef.current = true;
         const per = resultsRef.current;
-        const correctCount = per.filter((rr, i) => rr.answer === questions[i]?.correct).length;
+        const correctCount = countCorrect(per);
         if (storageKey) { try { localStorage.removeItem(storageKey); } catch { /* ignore */ } }
         onFinish({
           answers: per.map((rr) => rr.answer),
@@ -136,7 +175,6 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
     if (r.idx > 0) {
       onResumed?.(r.idx);
     }
-    // Сразу пушим восстановленный стейт на сервер
     onProgress?.({
       idx: r.idx,
       answers: resultsRef.current.map((x) => x.answer),
@@ -150,11 +188,12 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
     if (!storageKey) return;
     try {
       const data: PersistedQuizState = {
-        v: 1,
+        v: 2,
         total: questions.length,
         idx: idxRef.current,
         perQuestion: resultsRef.current,
         secondsLeft: secondsLeftRef.current,
+        draftText: draftTextRef.current,
         savedAt: Date.now(),
         ...overrides,
       };
@@ -173,6 +212,8 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
     }
     setSecondsLeft(getSecondsFor(idx));
     startedAtRef.current = Date.now();
+    setDraftText("");
+    draftTextRef.current = "";
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
@@ -181,7 +222,13 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
     const t = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
-          recordAndAdvance(-1, true);
+          // Таймаут: для MC — answer = -1; для text — текущий черновик (если есть) или ""
+          const cur = questions[idxRef.current];
+          if (cur && isText(cur)) {
+            recordAndAdvance(draftTextRef.current ?? "", true);
+          } else {
+            recordAndAdvance(-1, true);
+          }
           return getSecondsFor(idx);
         }
         const next = prev - 1;
@@ -210,7 +257,10 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
 
-  const recordAndAdvance = (answer: number, timedOut: boolean) => {
+  const countCorrect = (per: QuizPerQuestionResult[]): number =>
+    per.filter((r) => r.kind === "mc" && typeof r.answer === "number" && r.answer === r.correct).length;
+
+  const recordAndAdvance = (answer: QuizAnswer, timedOut: boolean) => {
     const q = questions[idxRef.current];
     if (!q) return;
     const qSeconds = getSecondsFor(idxRef.current);
@@ -218,35 +268,51 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
       qSeconds,
       Math.round((Date.now() - startedAtRef.current) / 1000)
     );
-    resultsRef.current.push({
-      answer,
-      correct: q.correct,
-      timeSpent,
-      timedOut,
-    });
 
-    // Снапшот для серверного автосейва (родитель шлёт в student_drafts.quiz)
+    const result: QuizPerQuestionResult = isText(q)
+      ? {
+          answer: typeof answer === "string" ? answer : "",
+          kind: "text",
+          expected: q.expected,
+          gradingHint: q.gradingHint,
+          q: q.q,
+          block: q.block,
+          timeSpent,
+          timedOut,
+        }
+      : {
+          answer: typeof answer === "number" ? answer : -1,
+          correct: q.correct,
+          kind: "mc",
+          q: q.q,
+          block: q.block,
+          timeSpent,
+          timedOut,
+        };
+
+    resultsRef.current.push(result);
+
+    // Снапшот для серверного автосейва
     const snapPer = resultsRef.current;
-    const snapIdx = idxRef.current + 1; // следующий вопрос (или = total если конец)
-    const correctCountSoFar = snapPer.filter((r) => r.answer === r.correct).length;
+    const snapIdx = idxRef.current + 1;
     onProgress?.({
       idx: snapIdx,
       answers: snapPer.map((r) => r.answer),
       perQuestion: snapPer,
       total: questions.length,
     });
-    void correctCountSoFar; // зарезервировано: можно отдать наверх позже
+
+    // Сбрасываем черновик текста
+    draftTextRef.current = "";
 
     if (idxRef.current + 1 >= questions.length) {
       if (finishedRef.current) return;
       finishedRef.current = true;
       const per = resultsRef.current;
-      const correctCount = per.filter((r) => r.answer === r.correct).length;
-      // фиксируем финальное состояние и чистим черновик
+      const correctCount = countCorrect(per);
       if (storageKey) {
         try {
-          // сначала запишем idx=total на случай, если onFinish упадёт — при возврате сразу финишнем
-          persist({ idx: questions.length, secondsLeft: 0 });
+          persist({ idx: questions.length, secondsLeft: 0, draftText: "" });
           localStorage.removeItem(storageKey);
         } catch { /* ignore */ }
       }
@@ -261,9 +327,16 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
       idxRef.current = nextIdx;
       const nextSeconds = getSecondsFor(nextIdx);
       secondsLeftRef.current = nextSeconds;
-      persist({ idx: nextIdx, secondsLeft: nextSeconds });
+      persist({ idx: nextIdx, secondsLeft: nextSeconds, draftText: "" });
       setIdx(nextIdx);
     }
+  };
+
+  const onTextChange = (v: string) => {
+    setDraftText(v);
+    draftTextRef.current = v;
+    // Сохраняем черновик, чтобы при перезагрузке страницы текст не потерялся.
+    persist({ draftText: v });
   };
 
   const q = questions[idx];
@@ -272,6 +345,7 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
   const currentTotal = getSecondsFor(idx);
   const percent = Math.round((secondsLeft / currentTotal) * 100);
   const labels = ["А", "Б", "В", "Г"];
+  const text = isText(q);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -295,19 +369,43 @@ const Quiz = ({ questions, secondsPerQuestion, onFinish, storageKey, onResumed, 
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {q.options.map((opt, i) => (
-            <Button
-              key={i}
-              variant="outline"
-              size="lg"
-              className="w-full justify-start text-left h-auto py-3 whitespace-normal"
-              style={{ userSelect: "none" }}
-              onClick={() => recordAndAdvance(i, false)}
-            >
-              <span className="font-bold mr-3">{labels[i]})</span>
-              <span className="flex-1">{opt}</span>
-            </Button>
-          ))}
+          {text ? (
+            <>
+              <Textarea
+                value={draftText}
+                onChange={(e) => onTextChange(e.target.value)}
+                placeholder="Введите свой ответ…"
+                rows={4}
+                className="resize-none"
+                autoFocus
+              />
+              <Button
+                onClick={() => recordAndAdvance(draftText.trim(), false)}
+                disabled={draftText.trim().length === 0}
+                size="lg"
+                className="w-full"
+              >
+                Ответить →
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Ответ проверит нейросеть — она засчитывает синонимы, опечатки и разные формулировки.
+              </p>
+            </>
+          ) : (
+            (q as QuizQuestionMc).options.map((opt, i) => (
+              <Button
+                key={i}
+                variant="outline"
+                size="lg"
+                className="w-full justify-start text-left h-auto py-3 whitespace-normal"
+                style={{ userSelect: "none" }}
+                onClick={() => recordAndAdvance(i, false)}
+              >
+                <span className="font-bold mr-3">{labels[i]})</span>
+                <span className="flex-1">{opt}</span>
+              </Button>
+            ))
+          )}
         </CardContent>
       </Card>
     </div>
