@@ -49,6 +49,7 @@ import Grade8TechnologyFinalQ4Theory, { FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS } f
 import Grade9TechnologyFinalQ4, { FINAL_Q4_TECH9_QUIZ_QUESTIONS } from "@/components/tests/Grade9TechnologyFinalQ4";
 import Grade7TechnologyFinalQ4, { FINAL_Q4_TECH7_QUIZ_QUESTIONS } from "@/components/tests/Grade7TechnologyFinalQ4";
 import { FINAL_Q4_INF7_QUIZ_QUESTIONS } from "@/components/tests/Grade7InformaticsFinalQ4Quiz";
+import { FINAL_Q4_INF6_QUIZ_QUESTIONS } from "@/components/tests/Grade6TechnologyFinalQ4Quiz";
 import Grade7Physics from "@/components/tests/Grade7Physics";
 import Grade7PhysicsWork, { WORK_POWER_QUIZ_QUESTIONS } from "@/components/tests/Grade7PhysicsWork";
 import Grade9PhysicsAtom, { ATOM_QUIZ_QUESTIONS } from "@/components/tests/Grade9PhysicsAtom";
@@ -95,6 +96,7 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
   },
   "6": {
     technology: [
+      { id: "final-q4-quiz", title: "🌟 Итоговая годовая контрольная за 4 четверть (квиз, 45 вопросов)" },
       { id: "final-q4", title: "Итоговая контрольная за 4 четверть (с квизом)" },
     ],
   },
@@ -156,6 +158,7 @@ const TESTS_WITH_QUIZ: Record<string, QuizConfig> = {
   "8_technology_final-q4-theory": { questions: FINAL_Q4_TECH8_THEORY_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "9_technology_final-q4": { questions: FINAL_Q4_TECH9_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
   "7_informatics_final-q4-quiz": { questions: FINAL_Q4_INF7_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
+  "6_technology_final-q4-quiz": { questions: FINAL_Q4_INF6_QUIZ_QUESTIONS, secondsPerQuestion: 60 },
 };
 
 const quizKey = (g: string, s: string, t: string) => `${g}_${s}_${t}`;
@@ -1255,7 +1258,11 @@ const Index = () => {
     quizResultsRef.current = results;
     setQuizPhase("done");
     // Квиз-only тесты: сразу авто-сабмитим, без письменной части.
-    if (gradeRef.current === "7" && subjectRef.current === "informatics" && testIdRef.current === "final-q4-quiz") {
+    const _g = gradeRef.current, _s = subjectRef.current, _t = testIdRef.current;
+    const isQuizOnly =
+      (_g === "7" && _s === "informatics" && _t === "final-q4-quiz") ||
+      (_g === "6" && _s === "technology" && _t === "final-q4-quiz");
+    if (isQuizOnly) {
       setTimeout(() => doSubmitRef.current?.(), 0);
     }
   };
@@ -1405,6 +1412,13 @@ const Index = () => {
       // Квиз-only: нет письменной части, нет вложений.
       answers = {
         type: "grade7informaticsFinalQ4Quiz",
+        answers: [],
+        quizResults: quizResultsRef.current,
+      };
+    } else if (g === "6" && s === "technology" && tid === "final-q4-quiz") {
+      // Квиз-only: нет письменной части, нет вложений.
+      answers = {
+        type: "grade6technologyFinalQ4Quiz",
         answers: [],
         quizResults: quizResultsRef.current,
       };
@@ -1641,6 +1655,7 @@ const Index = () => {
     // Подсветка актуальной итоговой работы (неоновая кнопка)
     const featuredId =
       grade === "7" && subject === "informatics" ? "final-q4-quiz" :
+      grade === "6" && subject === "technology" ? "final-q4-quiz" :
       grade === "7" && subject === "technology" ? "final-q4" :
       grade === "8" && subject === "technology" ? "final-q4-theory" :
       grade === "9" && subject === "technology" ? "final-q4" :
@@ -1878,6 +1893,15 @@ const Index = () => {
             }}
             onAttachmentChange={(i, file) => setAttachments6techFinalQ4((prev) => ({ ...prev, [i]: file }))}
           />
+        )}
+
+        {grade === "6" && subject === "technology" && testId === "final-q4-quiz" && (
+          <Card className="shadow-lg">
+            <CardContent className="py-12 text-center space-y-3">
+              <p className="text-lg font-semibold">⏳ Отправляем результаты…</p>
+              <p className="text-sm text-muted-foreground">Не закрывайте вкладку. Письменной части в этом тесте нет — результат уйдёт сразу после квиза.</p>
+            </CardContent>
+          </Card>
         )}
 
         {grade === "5" && subject === "technology" && testId === "final-q4-v2" && (
