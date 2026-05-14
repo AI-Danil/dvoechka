@@ -42,6 +42,7 @@ type Phase = "intake" | "rules" | "intro" | "quiz" | "written" | "submitting" | 
 export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<DbTestQuestion[] | null>(null);
+  const [questionsError, setQuestionsError] = useState<string | null>(null);
   const [studentName, setStudentName] = useState("");
   const [phase, setPhase] = useState<Phase>("intake");
   const [writtenAnswers, setWrittenAnswers] = useState<Record<number, string>>({});
@@ -83,7 +84,19 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   // Вопросы загружаем только после создания попытки (через защищённый edge function).
   useEffect(() => {
     if (!attemptId) return;
-    loadTestQuestions(test.id, attemptId).then(setQuestions);
+    setQuestions(null);
+    setQuestionsError(null);
+    loadTestQuestions(test.id, attemptId)
+      .then((loadedQuestions) => {
+        if (loadedQuestions.length === 0) {
+          setQuestionsError("Вопросы теста не загрузились. Сообщите учителю или попробуйте вернуться назад и открыть тест снова.");
+          return;
+        }
+        setQuestions(loadedQuestions);
+      })
+      .catch(() => {
+        setQuestionsError("Не удалось загрузить вопросы теста. Проверьте интернет и попробуйте открыть тест снова.");
+      });
   }, [test.id, attemptId]);
 
   // === Сбор cheat events ===
@@ -386,21 +399,13 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   };
 
   // ============ RENDER ============
-  if (!questions) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Загрузка теста…</p>
-      </div>
-    );
-  }
-
   if (phase === "intake") {
     const blocksHint =
       test.kind === "hybrid"
-        ? `Смешанный тест: ${quizQuestions.length} быстрых + ${writtenQuestions.length} развёрнутых`
+        ? "Смешанный тест от учителя"
         : test.kind === "quiz"
-        ? `Квиз: ${questions.length} вопросов`
-        : `Самостоятельная: ${questions.length} задач`;
+        ? "Квиз от учителя"
+        : "Самостоятельная от учителя";
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -420,6 +425,32 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
             </p>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (questionsError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <Button variant="ghost" size="sm" onClick={onBack} className="self-start mb-2">
+              <ArrowLeft className="h-4 w-4 mr-1" /> Назад
+            </Button>
+            <CardTitle>Тест не загрузился</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground leading-relaxed">{questionsError}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!questions) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Загрузка теста…</p>
       </div>
     );
   }
