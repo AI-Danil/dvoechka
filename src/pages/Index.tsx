@@ -2131,7 +2131,20 @@ const Index = () => {
           />
         )}
 
-        {grade === "9" && subject === "physics" && testId !== "atom" && (
+        {grade === "9" && subject === "physics" && testId === "final-q4-quiz" && (
+          <Grade9PhysicsFinalQ4Written
+            answers={answers9physFinalQ4}
+            onAnswerChange={(i, v) => {
+              setAnswers9physFinalQ4((prev) => {
+                const next = [...prev];
+                next[i] = v;
+                return next;
+              });
+            }}
+          />
+        )}
+
+        {grade === "9" && subject === "physics" && testId !== "atom" && testId !== "final-q4-quiz" && (
           <Grade9Physics
             answers={answers9phys}
             attachments={attachments9phys}
