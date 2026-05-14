@@ -800,12 +800,14 @@ const Index = () => {
     };
   }, []);
 
-  const sendServerSave = useCallback(async (useBeacon = false) => {
+  const sendServerSave = useCallback(async (useBeacon = false, force = false) => {
     const payload = buildServerPayload();
     if (!payload) return;
     const body = JSON.stringify(payload);
-    // дедупликация: не шлём, если ничего не поменялось
-    if (body === lastServerPayloadRef.current) return;
+    // дедупликация: не шлём, если ничего не поменялось.
+    // force=true (heartbeat каждые 5с) обходит дедуп — нужно, чтобы
+    // строка-черновик создавалась даже когда ученик сидит и ничего не вводит.
+    if (!force && body === lastServerPayloadRef.current) return;
     lastServerPayloadRef.current = body;
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-draft`;
     try {
@@ -878,6 +880,16 @@ const Index = () => {
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [screen, grade, subject, cleanName, sendServerSave]);
+
+  // Heartbeat: принудительно шлём save-draft каждые 5 секунд, даже если
+  // ответы не менялись. Так в student_drafts появляется строка для каждого
+  // ученика, который зашёл в тест, — видно «начал, но ничего не ввёл».
+  useEffect(() => {
+    if (screen !== "test" || !grade || !subject || !cleanName) return;
+    if (restoredKeyRef.current !== getDraftKey(grade, subject, attempt, testId)) return;
+    const id = setInterval(() => { void sendServerSave(false, true); }, 5000);
+    return () => clearInterval(id);
+  }, [screen, grade, subject, testId, attempt, cleanName, sendServerSave]);
 
   // --- Progress ---
   const { answered, total } = useMemo(() => {
