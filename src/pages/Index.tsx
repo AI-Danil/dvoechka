@@ -1689,14 +1689,10 @@ const Index = () => {
 
     // test-pick
     const rawTests = TESTS_CATALOG[grade]?.[subject] || [];
-    // Подсветка актуальной итоговой работы (неоновая кнопка)
-    const featuredId =
-      grade === "7" && subject === "informatics" ? "final-q4-quiz" :
-      grade === "6" && subject === "technology" ? "final-q4-quiz" :
-      grade === "7" && subject === "technology" ? "final-q4" :
-      grade === "8" && subject === "technology" ? "final-q4-theory" :
-      grade === "9" && subject === "technology" ? "final-q4" :
-      null;
+    // Подсветка актуальной (последней добавленной) работы — везде, где есть ≥2 теста
+    // в каталоге или есть DB-тесты. Featured = первый элемент в TESTS_CATALOG[grade][subject].
+    const hasMultiple = rawTests.length + dbTests.length > 1;
+    const featuredId = hasMultiple ? (rawTests[0]?.id ?? null) : null;
     const tests = featuredId
       ? [...rawTests].sort((a, b) =>
           a.id === featuredId ? -1 : b.id === featuredId ? 1 : 0,
