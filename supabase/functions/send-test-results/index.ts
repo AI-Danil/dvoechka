@@ -650,6 +650,99 @@ serve(async (req) => {
         const hasFile = attachmentMap[String(i)];
         message += `Задание ${16 + i}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
       }
+    } else if (body.type === "grade9physicsFinalQ4") {
+      // Hybrid: 15-question MC quiz with skip + 6 written tasks with skip. Penalty grading.
+      const written = (body.answers as Array<{ text: string; skipped: boolean }>) ?? [];
+      const quiz = body.quizResults as
+        | { perQuestion: Array<{ answer: number; correct: number; timeSpent: number; timedOut: boolean }>; total: number }
+        | null
+        | undefined;
+
+      const PENALTY = 0.5;
+      let mcScore = 0, mcCorrect = 0, mcWrong = 0, mcSkipped = 0;
+      const optLabel = (n: number) => (n === -2 ? "🤷" : n < 0 ? "—" : ["А", "Б", "В", "Г"][n] ?? "?");
+      if (quiz) {
+        quiz.perQuestion.forEach((r) => {
+          if (r.answer === -2) { mcSkipped++; }
+          else if (r.answer === r.correct) { mcScore += 1; mcCorrect++; }
+          else { mcScore -= PENALTY; mcWrong++; }
+        });
+      }
+      const mcMax = quiz?.total ?? 0;
+
+      // AI-проверка письменной части (6 задач), с поддержкой skip
+      const TASK_DEFS = [
+        { title: "Задача 1. Радиоактивный распад иода-131", expected: "35 мг (распалось 40 − 5 = 35 мг)", hint: "Ответ — 35 мг. НЕ засчитывать 5 мг (это что осталось)." },
+        { title: "Задача 2. Эквивалентная доза", expected: "0,1 Зв (D=0,005 Гр; H=D·K=0,1 Зв)", hint: "Правильно 0,1 Зв = 100 мЗв." },
+        { title: "Задача 3. Серия α+α+β распадов Pu-244", expected: "²³⁶₉₁Pa (протактиний), A=236 Z=91", hint: "Полностью верно — A=236, Z=91, протактиний." },
+        { title: "Задача 4. Энергия связи ¹⁶O (ловушка)", expected: "Задача нерешаема — не указана масса ядра", hint: "Любой числовой ответ — НЕВЕРНО, признак списывания. Засчитать только указание на нехватку M_я." },
+        { title: "Задача 5. Реакция Резерфорда 1919", expected: "Протон ¹₁p (A=1, Z=1)", hint: "Полный ответ — A=1, Z=1, протон." },
+        { title: "Задача 6. Дефект массы вспышки на Солнце", expected: "20 граммов (= 0,02 кг)", hint: "Правильно 20 г. Ошибка в порядке — неверно." },
+      ];
+      const items = written.map((a, i) => ({
+        position: i + 1,
+        question: TASK_DEFS[i]?.title ?? `Задача ${i + 1}`,
+        expected: TASK_DEFS[i]?.expected ?? "",
+        given: a?.text ?? "",
+        hint: TASK_DEFS[i]?.hint,
+        skipped: !!a?.skipped,
+      }));
+      let aiResults: Array<{ position: number; correct: boolean; partial: boolean; score: number; reason: string }> = [];
+      try {
+        const aiUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/grade-quiz-text-batch`;
+        const r = await fetch(aiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+          body: JSON.stringify({ items }),
+        });
+        const j = await r.json();
+        if (j?.ok && Array.isArray(j.results)) aiResults = j.results;
+      } catch (e) { console.error("grade-quiz-text-batch (phys9) failed:", e); }
+      const aiByPos = new Map(aiResults.map((x) => [x.position, x]));
+
+      // Письменная часть: правильно +1, неверно -0.5, skip = 0
+      let wScore = 0, wCorrect = 0, wWrong = 0, wSkipped = 0;
+      items.forEach((it) => {
+        if (it.skipped || !it.given.trim()) { wSkipped++; return; }
+        const ai = aiByPos.get(it.position);
+        const sc = ai?.score ?? 0;
+        if (sc >= 1) { wScore += 1; wCorrect++; }
+        else if (sc > 0) { wScore += sc; wCorrect++; }
+        else { wScore -= PENALTY; wWrong++; }
+      });
+      const wMax = items.length;
+
+      const totalRaw = mcScore + wScore;
+      const totalScore = Math.max(0, totalRaw);
+      const totalMax = mcMax + wMax;
+      const pct = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+      const mark = pct >= 90 ? 5 : pct >= 70 ? 4 : pct >= 50 ? 3 : 2;
+
+      message += `\n🎯 Физика 9 — Итоговая Q4 (штрафная шкала, ½ за неверный, 0 за «не знаю»)\n`;
+      message += `Итого: ${totalScore.toFixed(1)}/${totalMax} (${pct}%) → оценка ${mark}\n`;
+      message += `Квиз: ${mcScore.toFixed(1)}/${mcMax} (✅${mcCorrect} ❌${mcWrong} 🤷${mcSkipped})\n`;
+      message += `Задачи (AI): ${wScore.toFixed(1)}/${wMax} (✅${wCorrect} ❌${wWrong} 🤷${wSkipped})\n`;
+
+      if (quiz) {
+        message += `\n📋 Квиз подробно:\n`;
+        quiz.perQuestion.forEach((r, i) => {
+          const mk = r.answer === -2 ? "🤷" : r.answer === r.correct ? "✅" : r.timedOut ? "⏰" : "❌";
+          message += `${i + 1}) ${mk} ${optLabel(r.answer)} (верный ${optLabel(r.correct)}) ⏱${r.timeSpent}с\n`;
+        });
+      }
+      message += `\n📝 Расчётные задачи:\n`;
+      items.forEach((it, i) => {
+        if (it.skipped) {
+          message += `${i + 1}) 🤷 пропущено (${it.question})\n`;
+          return;
+        }
+        const ai = aiByPos.get(it.position);
+        const mk = ai?.correct ? (ai.partial ? "🟡" : "✅") : "❌";
+        message += `${i + 1}) ${mk} ${ai ? ai.score.toFixed(1) : "?"} — ${it.question}\n`;
+        message += `   Ответ: ${(it.given || "(пусто)").slice(0, 400)}\n`;
+        if (ai?.reason) message += `   AI: ${ai.reason}\n`;
+        message += `   Эталон: ${it.expected}\n`;
+      });
     } else if (body.type === "grade7informaticsFinalQ4Quiz" || body.type === "grade6technologyFinalQ4Quiz") {
       const quiz = body.quizResults as
         | {
