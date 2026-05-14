@@ -673,6 +673,8 @@ const Index = () => {
       data = { answers8phys };
     } else if (grade === "9" && subject === "physics" && testId === "atom") {
       data = { answers9physAtom };
+    } else if (grade === "9" && subject === "physics" && testId === "final-q4-quiz") {
+      data = { answers9physFinalQ4 };
     } else if (grade === "9" && subject === "physics") {
       data = { answers9phys };
     } else if (grade === "9" && subject === "technology" && testId === "final-q4") {
