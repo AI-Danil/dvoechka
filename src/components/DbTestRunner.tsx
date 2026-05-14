@@ -399,21 +399,13 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   };
 
   // ============ RENDER ============
-  if (!questions) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Загрузка теста…</p>
-      </div>
-    );
-  }
-
   if (phase === "intake") {
     const blocksHint =
       test.kind === "hybrid"
-        ? `Смешанный тест: ${quizQuestions.length} быстрых + ${writtenQuestions.length} развёрнутых`
+        ? "Смешанный тест от учителя"
         : test.kind === "quiz"
-        ? `Квиз: ${questions.length} вопросов`
-        : `Самостоятельная: ${questions.length} задач`;
+        ? "Квиз от учителя"
+        : "Самостоятельная от учителя";
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
@@ -433,6 +425,32 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
             </p>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (questionsError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <Button variant="ghost" size="sm" onClick={onBack} className="self-start mb-2">
+              <ArrowLeft className="h-4 w-4 mr-1" /> Назад
+            </Button>
+            <CardTitle>Тест не загрузился</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground leading-relaxed">{questionsError}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!questions) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Загрузка теста…</p>
       </div>
     );
   }
