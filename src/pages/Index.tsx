@@ -405,6 +405,7 @@ const Index = () => {
   useEffect(() => { attachments7physWorkRef.current = attachments7physWork; }, [attachments7physWork]);
   useEffect(() => { answers9physAtomRef.current = answers9physAtom; }, [answers9physAtom]);
   useEffect(() => { attachments9physAtomRef.current = attachments9physAtom; }, [attachments9physAtom]);
+  useEffect(() => { answers9physFinalQ4Ref.current = answers9physFinalQ4; }, [answers9physFinalQ4]);
   useEffect(() => { quizResultsRef.current = quizResults; }, [quizResults]);
   useEffect(() => { gradeRef.current = grade; }, [grade]);
   useEffect(() => { subjectRef.current = subject; }, [subject]);
