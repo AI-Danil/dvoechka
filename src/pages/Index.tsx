@@ -284,6 +284,11 @@ const Index = () => {
   const [answers9physAtom, setAnswers9physAtom] = useState<string[]>(Array(6).fill(""));
   const [attachments9physAtom, setAttachments9physAtom] = useState<Record<number, File | null>>({});
 
+  // Grade 9 physics FINAL Q4 answers (6 written tasks; 15-question quiz lives separately)
+  const [answers9physFinalQ4, setAnswers9physFinalQ4] = useState<PhysQ4Answer[]>(
+    () => Array.from({ length: 6 }, () => ({ text: "", skipped: false })),
+  );
+
   // Quiz state
   const [quizPhase, setQuizPhase] = useState<QuizPhase | null>(null);
   const [quizResults, setQuizResults] = useState<QuizResults | null>(null);
