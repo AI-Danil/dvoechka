@@ -881,6 +881,16 @@ const Index = () => {
     };
   }, [screen, grade, subject, cleanName, sendServerSave]);
 
+  // Heartbeat: принудительно шлём save-draft каждые 5 секунд, даже если
+  // ответы не менялись. Так в student_drafts появляется строка для каждого
+  // ученика, который зашёл в тест, — видно «начал, но ничего не ввёл».
+  useEffect(() => {
+    if (screen !== "test" || !grade || !subject || !cleanName) return;
+    if (restoredKeyRef.current !== getDraftKey(grade, subject, attempt, testId)) return;
+    const id = setInterval(() => { void sendServerSave(false, true); }, 5000);
+    return () => clearInterval(id);
+  }, [screen, grade, subject, testId, attempt, cleanName, sendServerSave]);
+
   // --- Progress ---
   const { answered, total } = useMemo(() => {
     if (grade === "8" && subject === "informatics" && testId === "python-hero") {
