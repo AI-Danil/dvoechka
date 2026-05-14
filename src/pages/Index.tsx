@@ -1412,6 +1412,13 @@ const Index = () => {
         answers: answers9physAtomRef.current,
         quizResults: quizResultsRef.current,
       };
+    } else if (g === "9" && s === "physics" && tid === "final-q4-quiz") {
+      // Hybrid: 15-quiz + 6 written tasks with skip support, penalty grading.
+      answers = {
+        type: "grade9physicsFinalQ4",
+        answers: answers9physFinalQ4Ref.current,
+        quizResults: quizResultsRef.current,
+      };
     } else if (g === "9" && s === "physics") {
       fileUrls = await uploadAttachments(attachments9physRef.current);
       answers = { type: "grade9physics", answers: answers9physRef.current };
