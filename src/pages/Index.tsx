@@ -800,12 +800,14 @@ const Index = () => {
     };
   }, []);
 
-  const sendServerSave = useCallback(async (useBeacon = false) => {
+  const sendServerSave = useCallback(async (useBeacon = false, force = false) => {
     const payload = buildServerPayload();
     if (!payload) return;
     const body = JSON.stringify(payload);
-    // дедупликация: не шлём, если ничего не поменялось
-    if (body === lastServerPayloadRef.current) return;
+    // дедупликация: не шлём, если ничего не поменялось.
+    // force=true (heartbeat каждые 5с) обходит дедуп — нужно, чтобы
+    // строка-черновик создавалась даже когда ученик сидит и ничего не вводит.
+    if (!force && body === lastServerPayloadRef.current) return;
     lastServerPayloadRef.current = body;
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-draft`;
     try {
