@@ -42,6 +42,7 @@ type Phase = "intake" | "rules" | "intro" | "quiz" | "written" | "submitting" | 
 export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<DbTestQuestion[] | null>(null);
+  const [questionsError, setQuestionsError] = useState<string | null>(null);
   const [studentName, setStudentName] = useState("");
   const [phase, setPhase] = useState<Phase>("intake");
   const [writtenAnswers, setWrittenAnswers] = useState<Record<number, string>>({});
@@ -83,7 +84,19 @@ export default function DbTestRunner({ test, onBack, onSubmitted }: Props) {
   // Вопросы загружаем только после создания попытки (через защищённый edge function).
   useEffect(() => {
     if (!attemptId) return;
-    loadTestQuestions(test.id, attemptId).then(setQuestions);
+    setQuestions(null);
+    setQuestionsError(null);
+    loadTestQuestions(test.id, attemptId)
+      .then((loadedQuestions) => {
+        if (loadedQuestions.length === 0) {
+          setQuestionsError("Вопросы теста не загрузились. Сообщите учителю или попробуйте вернуться назад и открыть тест снова.");
+          return;
+        }
+        setQuestions(loadedQuestions);
+      })
+      .catch(() => {
+        setQuestionsError("Не удалось загрузить вопросы теста. Проверьте интернет и попробуйте открыть тест снова.");
+      });
   }, [test.id, attemptId]);
 
   // === Сбор cheat events ===
