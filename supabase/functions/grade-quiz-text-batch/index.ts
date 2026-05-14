@@ -63,6 +63,8 @@ interface InputItem {
   expected: string;
   given: string;
   hint?: string;
+  /** Если true — ученик явно пропустил задачу. Не штрафуем, score=0. */
+  skipped?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -78,6 +80,19 @@ Deno.serve(async (req) => {
   }
   const items = Array.isArray(body.items) ? body.items : [];
   if (items.length === 0) return json({ ok: true, results: [] });
+
+  // Авто-обработка skipped и пустых: score=0 без AI-вызова.
+  const autoResults: Array<{ position: number; correct: boolean; partial: boolean; score: number; reason: string }> = [];
+  const toGrade: InputItem[] = [];
+  for (const it of items) {
+    const isSkip = it.skipped || /^(не\s+знаю|не\s+понимаю|пропуск|пропускаю|—|-)$/i.test((it.given || "").trim());
+    if (isSkip || !(it.given || "").trim()) {
+      autoResults.push({ position: it.position, correct: false, partial: false, score: 0, reason: it.skipped ? "Ученик пропустил (без штрафа)." : "Пустой ответ." });
+    } else {
+      toGrade.push(it);
+    }
+  }
+  if (toGrade.length === 0) return json({ ok: true, results: autoResults });
 
   const userPrompt = `Проверь ответы ученика. Для каждого верни position, correct, partial, score (0/0.5/1) и краткий reason.\n\n` +
     items.map((it) => {
