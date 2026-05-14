@@ -482,6 +482,13 @@ const Index = () => {
           if (draft.answers8phys) { setAnswers8phys(draft.answers8phys); mark(draft.answers8phys); }
         } else if (grade === "9" && subject === "physics" && testId === "atom") {
           if (draft.answers9physAtom) { setAnswers9physAtom(draft.answers9physAtom); mark(draft.answers9physAtom); }
+        } else if (grade === "9" && subject === "physics" && testId === "final-q4-quiz") {
+          if (Array.isArray(draft.answers9physFinalQ4)) {
+            const restored = (draft.answers9physFinalQ4 as PhysQ4Answer[]).slice(0, 6);
+            while (restored.length < 6) restored.push({ text: "", skipped: false });
+            setAnswers9physFinalQ4(restored);
+            mark(draft.answers9physFinalQ4);
+          }
         } else if (grade === "9" && subject === "physics") {
           if (draft.answers9phys) { setAnswers9phys(draft.answers9phys); mark(draft.answers9phys); }
         } else if (grade === "9" && subject === "technology" && testId === "final-q4") {
