@@ -599,6 +599,11 @@ const Index = () => {
           }
           else if (grade === "8" && subject === "physics" && w.answers8phys) { setAnswers8phys(w.answers8phys); restored = true; }
           else if (grade === "9" && subject === "physics" && testId === "atom" && w.answers9physAtom) { setAnswers9physAtom(w.answers9physAtom); restored = true; }
+          else if (grade === "9" && subject === "physics" && testId === "final-q4-quiz" && Array.isArray(w.answers9physFinalQ4)) {
+            const arr = (w.answers9physFinalQ4 as PhysQ4Answer[]).slice(0, 6);
+            while (arr.length < 6) arr.push({ text: "", skipped: false });
+            setAnswers9physFinalQ4(arr); restored = true;
+          }
           else if (grade === "9" && subject === "physics" && w.answers9phys) { setAnswers9phys(w.answers9phys); restored = true; }
           else if (grade === "9" && subject === "technology" && testId === "final-q4" && w.answers9techFinalQ4) {
             const arr = (w.answers9techFinalQ4 as string[]).slice(0, 6);
