@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
   if (toGrade.length === 0) return json({ ok: true, results: autoResults });
 
   const userPrompt = `Проверь ответы ученика. Для каждого верни position, correct, partial, score (0/0.5/1) и краткий reason.\n\n` +
-    items.map((it) => {
+    toGrade.map((it) => {
       const lines = [
         `Вопрос #${it.position}: ${it.question}`,
         `Эталон: ${it.expected}`,
@@ -134,7 +134,8 @@ Deno.serve(async (req) => {
     const tc = data?.choices?.[0]?.message?.tool_calls?.[0];
     if (!tc) return json({ ok: false, error: "no_tool_call" }, 500);
     const args = JSON.parse(tc.function.arguments);
-    return json({ ok: true, results: args.results ?? [] });
+    const aiResults = Array.isArray(args.results) ? args.results : [];
+    return json({ ok: true, results: [...autoResults, ...aiResults] });
   } catch (e) {
     console.error("grade-quiz-text-batch error", e);
     return json({ ok: false, error: e instanceof Error ? e.message : "unknown" }, 500);
