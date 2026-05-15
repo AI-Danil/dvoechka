@@ -36,10 +36,11 @@ export async function loadPublishedTestsForGradeSubject(
 
   const { data, error } = await supabase
     .from("public_tests" as any)
-    .select("id, title, kind, time_per_question_sec, class_id, subject_id, class_name, class_year, subject_name")
+    .select("id, title, kind, time_per_question_sec, class_id, subject_id, class_name, class_year, subject_name, created_at")
     .eq("class_year", 2025)
     .eq("subject_name", subjectName)
-    .like("class_name", `${grade}%`);
+    .like("class_name", `${grade}%`)
+    .order("created_at", { ascending: false });
   if (error) {
     console.error("loadPublishedTests error", error);
     return [];
