@@ -105,7 +105,6 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
   "7": {
     informatics: [
       { id: "final-q4-quiz", title: "🌟 Итоговая годовая контрольная за 4 четверть (квиз, 45 вопросов)" },
-      { id: "default", title: "Итоговая контрольная (3 четверть)" },
     ],
     physics: [
       { id: "default", title: "Контрольная №1. Давление, Архимедова сила" },
@@ -113,16 +112,13 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
     ],
     technology: [
       { id: "final-q4", title: "🌟 Итоговая годовая контрольная за 4 четверть (с квизом)" },
-      { id: "default", title: "Итоговая контрольная (3 четверть)" },
     ],
   },
   "8": {
     informatics: [
-      { id: "default", title: "Итоговая контрольная (3 четверть)" },
       { id: "python-hero", title: "Самостоятельная №2. Python: Генератор героя", date: "20.04.2026" },
     ],
     physics: [
-      { id: "electricity", title: "Контрольная №1. Электричество (3 четверть)" },
       { id: "power-joule", title: "Контрольная №2. Работа и мощность тока. Закон Джоуля—Ленца" },
       { id: "final-q4", title: "Итоговая контрольная за 4 четверть (с квизом)" },
     ],
@@ -131,7 +127,7 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
     ],
   },
   "9": {
-    informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    informatics: [],
     physics: [
       { id: "final-q4-quiz", title: "🌟 Итоговая годовая контрольная за 4 четверть. Атом и атомное ядро (квиз + 6 задач, штрафная шкала)" },
       { id: "atom", title: "Контрольная №2. Атом и атомное ядро (с квизом)" },
@@ -139,7 +135,6 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
     ],
     technology: [
       { id: "final-q4", title: "🌟 Итоговая контрольная за 4 четверть. ИКТ в современном обществе" },
-      { id: "default", title: "Итоговая контрольная (3 четверть)" },
     ],
   },
 };
