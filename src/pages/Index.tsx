@@ -105,7 +105,6 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
   "7": {
     informatics: [
       { id: "final-q4-quiz", title: "🌟 Итоговая годовая контрольная за 4 четверть (квиз, 45 вопросов)" },
-      { id: "default", title: "Итоговая контрольная (3 четверть)" },
     ],
     physics: [
       { id: "default", title: "Контрольная №1. Давление, Архимедова сила" },
@@ -113,16 +112,13 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
     ],
     technology: [
       { id: "final-q4", title: "🌟 Итоговая годовая контрольная за 4 четверть (с квизом)" },
-      { id: "default", title: "Итоговая контрольная (3 четверть)" },
     ],
   },
   "8": {
     informatics: [
-      { id: "default", title: "Итоговая контрольная (3 четверть)" },
       { id: "python-hero", title: "Самостоятельная №2. Python: Генератор героя", date: "20.04.2026" },
     ],
     physics: [
-      { id: "electricity", title: "Контрольная №1. Электричество (3 четверть)" },
       { id: "power-joule", title: "Контрольная №2. Работа и мощность тока. Закон Джоуля—Ленца" },
       { id: "final-q4", title: "Итоговая контрольная за 4 четверть (с квизом)" },
     ],
@@ -131,7 +127,7 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
     ],
   },
   "9": {
-    informatics: [{ id: "default", title: "Итоговая контрольная (3 четверть)" }],
+    informatics: [],
     physics: [
       { id: "final-q4-quiz", title: "🌟 Итоговая годовая контрольная за 4 четверть. Атом и атомное ядро (квиз + 6 задач, штрафная шкала)" },
       { id: "atom", title: "Контрольная №2. Атом и атомное ядро (с квизом)" },
@@ -139,7 +135,6 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
     ],
     technology: [
       { id: "final-q4", title: "🌟 Итоговая контрольная за 4 четверть. ИКТ в современном обществе" },
-      { id: "default", title: "Итоговая контрольная (3 четверть)" },
     ],
   },
 };
@@ -1711,12 +1706,21 @@ const Index = () => {
         )
       : rawTests;
     const totalCount = tests.length + dbTests.length;
+    const Q4_CUTOFF = new Date("2026-04-06T00:00:00Z").getTime();
+    const hasFreshDb = dbTests.some(
+      (t) => t.created_at && new Date(t.created_at).getTime() >= Q4_CUTOFF,
+    );
     return cardWrap(
       <div className="grid grid-cols-1 gap-3">
         {totalCount === 0 ? (
           <p className="text-sm text-muted-foreground text-center">Работы пока не добавлены.</p>
         ) : (
           <>
+            {hasFreshDb && (
+              <div className="rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-primary text-center">
+                🔥 Сдавайте работы 4 четверти ↓
+              </div>
+            )}
             {tests.map((t) => {
               const isFeatured = featuredId && t.id === featuredId;
               const isDimmed = featuredId && t.id !== featuredId;
@@ -1751,22 +1755,41 @@ const Index = () => {
                 </Button>
               );
             })}
-            {dbTests.map((t) => (
-              <Button
-                key={t.id}
-                variant="outline"
-                size="lg"
-                className="h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start"
-                onClick={() => setActiveDbTest(t)}
-              >
-                <span className="flex flex-col items-start gap-1 w-full">
-                  <span>{t.title}</span>
-                  <span className="text-xs font-bold text-primary bg-primary/15 px-2 py-0.5 rounded">
-                    {t.kind === "quiz" ? "🎯 Квиз от учителя" : t.kind === "hybrid" ? "🧩 Смешанный тест от учителя" : "📝 Самостоятельная от учителя"}
+            {dbTests.map((t) => {
+              const isFresh = !!(t.created_at && new Date(t.created_at).getTime() >= Q4_CUTOFF);
+              return (
+                <Button
+                  key={t.id}
+                  variant="outline"
+                  size="lg"
+                  className={`h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start ${
+                    isFresh
+                      ? "ring-2 ring-primary border-primary shadow-[0_0_24px_hsl(var(--primary)/0.45)] hover:shadow-[0_0_32px_hsl(var(--primary)/0.65)]"
+                      : ""
+                  }`}
+                  onClick={() => setActiveDbTest(t)}
+                >
+                  <span className="flex flex-col items-start gap-1 w-full">
+                    <span>{t.title}</span>
+                    <span className="flex flex-wrap gap-1">
+                      {isFresh && (
+                        <span className="text-xs font-bold text-primary-foreground bg-primary px-2 py-0.5 rounded">
+                          🔥 Актуальное · 4 четверть
+                        </span>
+                      )}
+                      <span className="text-xs font-bold text-primary bg-primary/15 px-2 py-0.5 rounded">
+                        {t.kind === "quiz" ? "🎯 Квиз от учителя" : t.kind === "hybrid" ? "🧩 Смешанный тест от учителя" : "📝 Самостоятельная от учителя"}
+                      </span>
+                      {t.created_at && (
+                        <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                          📅 {new Date(t.created_at).toLocaleDateString("ru-RU")}
+                        </span>
+                      )}
+                    </span>
                   </span>
-                </span>
-              </Button>
-            ))}
+                </Button>
+              );
+            })}
           </>
         )}
       </div>,
