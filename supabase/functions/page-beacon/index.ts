@@ -56,6 +56,12 @@ serve(async (req) => {
     // Always return the pixel — never block the browser.
     const response = pixelResponse();
 
+    // Only notify Telegram for problem stages; штатные стадии не спамим.
+    const NOTIFY_STAGES = new Set(["js-timeout", "js-fail"]);
+    if (!NOTIFY_STAGES.has(stage)) {
+      return response;
+    }
+
     // Rate-limit: same ip+stage at most once per 5s.
     const key = `${ip}|${stage}`;
     const now = Date.now();
