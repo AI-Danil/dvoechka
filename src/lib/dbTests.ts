@@ -7,6 +7,7 @@ export interface DbTestSummary {
   time_per_question_sec: number;
   class_id: string;
   subject_id: string;
+  created_at?: string | null;
 }
 
 export interface DbTestQuestion {
