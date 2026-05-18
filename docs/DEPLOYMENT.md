@@ -1,14 +1,12 @@
 # Деплой
 
-Проект задеплоен одновременно на нескольких хостингах — все смотрят в одну
-БД (Supabase). Это позволяет обходить региональные блокировки: ученик
-открывает то зеркало, которое работает в его сети.
+Проект задеплоен на нескольких хостингах — все смотрят в одну БД (Supabase).
+Это позволяет обходить региональные блокировки: ученик открывает то
+зеркало, которое работает в его сети.
 
 | Зеркало          | URL                                       | Когда использовать          |
 | ---------------- | ----------------------------------------- | --------------------------- |
 | Lovable          | `https://dvoechka.lovable.app`            | Основной публикуемый URL    |
-| Netlify          | `https://dvoechka.netlify.app`            | Основной для учеников       |
-| Cloudflare Pages | `https://<project>.pages.dev`             | Запасной (лучше из РФ)      |
 | GitHub Pages     | `https://<user>.github.io/<repo>/`        | Запасной без VPN            |
 | GitLab Pages     | `https://<user>.gitlab.io/<repo>/`        | Запасной из РФ без VPN      |
 
@@ -23,49 +21,9 @@ VITE_SUPABASE_PUBLISHABLE_KEY=eyJ... (anon key)
 VITE_SUPABASE_PROJECT_ID=<project-ref>
 ```
 
-Уже лежат в `.env.production`. Хостинг подтянет автоматически, но в
-дашборде задавать всё равно надёжнее (можно ротировать без коммита).
-
-## Netlify
-
-`netlify.toml` уже сконфигурирован. Деплой:
-
-1. [app.netlify.com](https://app.netlify.com) → **Add new site → Import from Git** → выбрать репо.
-2. Build settings подхватываются автоматически.
-3. (Опционально) Site settings → Change site name.
-4. Деплоится при каждом push в `main`.
-
-При ошибке `lockfile is frozen` — install command в `netlify.toml` уже
-учитывает это (`bun install --no-frozen-lockfile && npm run build`).
-
-## Cloudflare Pages / Workers
-
-`wrangler.toml` уже сконфигурирован. Настраивается один раз через
-[dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages →
-Create → Connect to Git**.
-
-**Build settings (важно!):**
-
-- **Framework preset:** `None` ⚠️ (не `Vite` — авто-детект ломает деплой)
-- **Build command:** `bun run build`
-- **Deploy command:** `bun run deploy:cf`
-- **Build output directory:** `dist`
-
-`wrangler` лежит в devDependencies — глобально ставить не нужно.
-
-**Почему `Framework: None` и `--no-bundle`:** auto-детект Cloudflare
-требует Vite ≥ 6, у нас Vite 5.4 + `@vitejs/plugin-legacy` (для старых
-браузеров на школьных компьютерах). Апгрейд Vite сломает legacy-сборку.
-`--no-bundle` отключает попытку Cloudflare пересобрать проект и просто
-загружает готовый `dist/` как статику.
-
-SPA-фоллбек включён через `not_found_handling = "single-page-application"`
-в `wrangler.toml`.
-
-> ⚠️ **НЕ создавать `public/_redirects`!** Это файл Netlify. Cloudflare
-> Wrangler валидирует его и падает с ошибкой `Invalid _redirects
-> configuration`. Для Cloudflare SPA-fallback уже в `wrangler.toml`,
-> для Netlify — в `netlify.toml`.
+Уже лежат в `.env.production`. В GitHub Actions и GitLab CI дефолты
+прописаны прямо в workflow-файлах; при желании можно переопределить
+через секреты репозитория.
 
 ## GitHub Pages
 
@@ -109,40 +67,17 @@ GitLab.com доступен в РФ без VPN — это запасной ка�
 - `.github/workflows/mirror-to-gitlab.yml` — на каждый push в `main`
   делает `git push --mirror` в GitLab. Lag ~10–20 секунд.
 - `.gitlab-ci.yml` — после получения коммита GitLab CI билдит проект
-  через `bun run build` (с `GITLAB_PAGES=true`) и публикует `dist/` как
-  GitLab Pages артефакт `public/`.
-- `vite.config.ts` подставляет `base="/<repo>/"` через
-  `CI_PROJECT_NAME`, аналогично GitHub Pages.
+  через `bun run build` и публикует `dist/` как GitLab Pages артефакт
+  `public/`.
+- `vite.config.ts` ставит `base="/"` (GitLab unique-domain → сайт в
+  корне). SPA-фоллбек работает через `public/404.html`.
 
-URL получится `https://<user>.gitlab.io/dvoechka/`. SPA-фоллбек работает
-из коробки благодаря тому же `public/404.html`.
+## Сохранение данных и запись экрана
 
-> Env-переменные Supabase зашиты в `.gitlab-ci.yml` дефолтами (как и в
-> GitHub Actions). При желании можно переопределить в **Settings →
-> CI/CD → Variables** на GitLab без правки репо.
-
-## Cloudflare Tunnel (опциональный локальный канал)
-
-Если нужно временно показать локальную сборку через публичный URL:
-
-```sh
-brew install cloudflared
-
-# В первом терминале:
-npm run build
-npm run preview:host
-
-# Во втором:
-npm run tunnel
-# → URL вида https://random-words.trycloudflare.com
-```
-
-Туннель работает пока запущены оба процесса. URL новый при каждом запуске.
-
-> На сетях с DNS-фильтрацией (некоторые РФ-провайдеры, корпоративные Wi-Fi)
-> `cloudflared` падает с `connection refused`. Это не баг репозитория —
-> нужен мобильный хотспот, Cloudflare WARP или просто опубликованные
-> зеркала.
+Бэкенд один на все зеркала: и сохранение результатов, и upload файлов,
+и запись экрана (rrweb → Supabase Storage `recordings` bucket) идут
+напрямую в Supabase по `VITE_SUPABASE_URL`. От хостинга это не зависит
+— работает одинаково на Lovable, GitHub Pages и GitLab Pages.
 
 ## Edge-функции
 
@@ -152,14 +87,12 @@ npm run tunnel
 ## Миграции БД
 
 Миграции в `supabase/migrations/` применяются автоматически при apply.
-Новые миграции создаются через Lovable Cloud (UI) или через
-`supabase migration new` локально.
 
-## После деплоя — проверочный чеклист
+## После деплоя — чеклист
 
-- [ ] Открыть `/` — главная грузится.
+- [ ] Открыть главную на каждом зеркале — грузится.
 - [ ] Войти как учитель → создать тест → опубликовать.
-- [ ] Пройти тест анонимным учеником.
+- [ ] Пройти короткий тест анонимным учеником.
 - [ ] Получить отчёт в Telegram.
 - [ ] Открыть запись экрана из админки (signed URL).
-- [ ] `supabase--linter` → 0 warnings.
+- [ ] `supabase--linter` → 0 новых warnings.
