@@ -1717,6 +1717,24 @@ const Index = () => {
               </div>
             )}
             {tests.map((t) => {
+              if (t.id === "final-q4-stub") {
+                return (
+                  <Button
+                    key={t.id}
+                    variant="outline"
+                    size="lg"
+                    className="h-auto min-h-14 py-3 text-base text-left whitespace-normal justify-start opacity-60 cursor-not-allowed"
+                    disabled
+                  >
+                    <span className="flex flex-col items-start gap-1 w-full">
+                      <span>{t.title}</span>
+                      <span className="text-xs font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                        ⏳ Задание появится позже
+                      </span>
+                    </span>
+                  </Button>
+                );
+              }
               const isFeatured = featuredId && t.id === featuredId;
               const isDimmed = featuredId && t.id !== featuredId;
               return (
