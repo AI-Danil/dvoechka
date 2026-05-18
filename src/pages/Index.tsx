@@ -107,8 +107,8 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
       { id: "final-q4-quiz", title: "🌟 Итоговая годовая контрольная за 4 четверть (квиз, 45 вопросов)" },
     ],
     physics: [
-      { id: "default", title: "Контрольная №1. Давление, Архимедова сила" },
       { id: "work-power", title: "Контрольная №2. Механическая работа и Мощность" },
+      { id: "final-q4-stub", title: "🌟 Итоговая контрольная за 4 четверть (скоро)" },
     ],
     technology: [
       { id: "final-q4", title: "🌟 Итоговая годовая контрольная за 4 четверть (с квизом)" },
@@ -131,7 +131,6 @@ const TESTS_CATALOG: Record<string, Record<string, TestEntry[]>> = {
     physics: [
       { id: "final-q4-quiz", title: "🌟 Итоговая годовая контрольная за 4 четверть. Атом и атомное ядро (квиз + 6 задач, штрафная шкала)" },
       { id: "atom", title: "Контрольная №2. Атом и атомное ядро (с квизом)" },
-      { id: "default", title: "Контрольная №1. Механика, волны, оптика" },
     ],
     technology: [
       { id: "final-q4", title: "🌟 Итоговая контрольная за 4 четверть. ИКТ в современном обществе" },
@@ -295,10 +294,6 @@ const Index = () => {
 
   useEffect(() => {
     if (!grade || !subject) {
-      setDbTests([]);
-      return;
-    }
-    if (grade === "5") {
       setDbTests([]);
       return;
     }
