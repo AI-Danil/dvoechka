@@ -1,0 +1,1 @@
+UPDATE public.tests SET status = 'draft' WHERE id = '4596d3df-301a-4606-802d-c388472e8b10';
