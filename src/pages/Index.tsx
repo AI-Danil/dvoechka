@@ -178,6 +178,24 @@ function getSubmittedKey(grade: string, subject: string, name: string, attempt: 
   return `test_submitted_${grade}_${subject}_${testId}_${name.trim().toLowerCase()}_${attempt}`;
 }
 
+function normalizePhysQ4Answer(x: unknown): PhysQ4Answer {
+  if (x && typeof x === "object") {
+    const o = x as Record<string, unknown>;
+    return {
+      text: typeof o.text === "string" ? o.text : "",
+      skipped: !!o.skipped,
+    };
+  }
+  if (typeof x === "string") return { text: x, skipped: false };
+  return { text: "", skipped: false };
+}
+
+function normalizePhysQ4Array(raw: unknown, len = 6): PhysQ4Answer[] {
+  const arr = (Array.isArray(raw) ? raw : []).slice(0, len).map(normalizePhysQ4Answer);
+  while (arr.length < len) arr.push({ text: "", skipped: false });
+  return arr;
+}
+
 const Index = () => {
   const [screen, setScreen] = useState<Screen>("login");
   const [resultId, setResultId] = useState<string | null>(null);
