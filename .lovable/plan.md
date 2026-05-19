@@ -1,68 +1,74 @@
-## Цель
+# Fix: `TypeError: B.trim is not a function`
 
-Заменить заглушку `7_physics_final-q4-stub` на полноценную итоговую контрольную за 4 четверть по физике, 7 класс («Механическая работа и мощность. Простые механизмы. Энергия»). Структура — 1-в-1 как у 9 класса физики `final-q4-quiz`: квиз (10 вопросов со штрафами) + 6 расчётных задач с возможностью пропуска без штрафа.
+## Причина
+В `src/pages/Index.tsx` (строки 937 и 950) считаем прогресс по новым `PhysQ4Answer[]` так:
 
-## Новые файлы
-
-### `src/components/tests/Grade7PhysicsFinalQ4Quiz.tsx`
-
-Экспорт `FINAL_Q4_PHYS7_QUIZ_QUESTIONS: QuizQuestion[]` — 10 MC-вопросов из присланного материала. Все `kind: "mc"`, `block: 1`, `allowSkip: true`, `seconds: 45`. `correct` — индексы по ключам:
-
-1. → 3 (г) «Подъемный кран»
-2. → 1 (б) Мощность
-3. → 2 (в) Джоули
-4. → 2 (в) Подвижный блок
-5. → 1 (б) В 3 раза короче
-6. → 3 (г) Работе
-7. → 0 (а) Трение и вес деталей
-8. → 2 (в) Масса и высота
-9. → 1 (б) В 4 раза
-10. → 0 (а) Потенциальная → кинетическая
-
-### `src/components/tests/Grade7PhysicsFinalQ4Written.tsx`
-
-Полная копия структуры `Grade9PhysicsFinalQ4Written` (тот же `PhysQ4Answer` через re-export или локальный тип-алиас). Массив `PHYS7_FINAL_Q4_TASKS` из 6 задач (Кран 300 кДж, Вентилятор 60 Вт, Рычаг 15 см, Мяч 45 Дж, Наклонная плоскость 75 %, ЗСЭ 300 Дж) с полями `title`, `text`, `expected`, `gradingHint` для AI-грейдинга.
-
-## Изменения в `src/pages/Index.tsx`
-
-1. **Импорты** (после строки 56): добавить `Grade7PhysicsFinalQ4Quiz` и `Grade7PhysicsFinalQ4Written` (плюс `FINAL_Q4_PHYS7_QUIZ_QUESTIONS`).
-2. **`TESTS_CATALOG["7"].physics`** (стр. 109–112): убрать `final-q4-stub`, добавить `{ id: "final-q4-quiz", title: "🌟 Итоговая годовая контрольная за 4 четверть. Работа, мощность, энергия (квиз + 6 задач, штрафная шкала)" }` первым.
-3. **`TESTS_WITH_QUIZ`** (стр. 146–160): добавить `"7_physics_final-q4-quiz": { questions: FINAL_Q4_PHYS7_QUIZ_QUESTIONS, secondsPerQuestion: 45 }`.
-4. **State** (рядом со стр. 282): новый `answers7physFinalQ4: PhysQ4Answer[]` (длина 6) + ref.
-5. **Все блоки, где упомянут `9_physics_final-q4-quiz` / `answers9physFinalQ4`** (нашёл по `rg`: строки ~475, 592, 666, 910, 1295, 1417, 2178) — продублировать параллельные ветки для `grade === "7" && testId === "final-q4-quiz"` с `answers7physFinalQ4`. То же для localStorage-черновика, серверного `save-draft` / `load-draft` (ключ в JSON: `answers7physFinalQ4`), сабмита (`send-test-results` payload — массив текстов задач + флаги skipped), и финального рендера компонента.
-6. **Рендер списка тестов** (стр. 1720): удалить ветку `t.id === "final-q4-stub"` — больше не нужна.
-7. **Условие, какие тесты считаются «со штрафами»** (стр. 1295) — добавить `(_g === "7" && _s === "physics" && _t === "final-q4-quiz")`.
-8. **Рендер части 2 (стр. 2110)**: `grade === "7" && subject === "physics" && testId !== "work-power"` сейчас рендерит `Grade7Physics` по умолчанию — заменить на проверку `testId === "final-q4-quiz"` → новый компонент, иначе старая логика. Аналогично подгонять стр. 2095 (`work-power`).
-
-## Что не трогаем
-
-- DB-тесты, сохранение видео, зеркала GitHub/GitLab — без изменений.
-- Quiz.tsx и общая логика штрафной системы — уже поддерживает (используется 9 классом).
-- Никаких изменений в БД.
-
-## Технические детали
-
-```text
-Index.tsx касания (по блокам):
-  imports               +2 строки
-  TESTS_CATALOG         -1 / +1 запись (7 physics)
-  TESTS_WITH_QUIZ       +1 запись
-  state + ref           +2 хука
-  localStorage save     +1 ветка (≈ стр. 475)
-  localStorage load     +1 ветка (≈ стр. 592)
-  server save-draft     +1 ветка (≈ стр. 666)
-  server load-draft     +1 ветка (≈ стр. 910)
-  penalty-tests flag    +1 проверка (≈ стр. 1295)
-  send-test-results     +1 ветка (≈ стр. 1417)
-  список карточек       -1 ветка stub (стр. 1720)
-  рендер части 2        условие на testId (стр. 2095 / 2110)
+```ts
+answers9physFinalQ4.filter((a) => a.skipped || a.text.trim() !== "").length
+answers7physFinalQ4.filter((a) => a.skipped || a.text.trim() !== "").length
 ```
 
-Поля payload для отправки повторяют формат 9 класса (`answers9physFinalQ4`): массив `{ text, skipped }`. Для Telegram-отчёта используется существующий обработчик — переменное имя поля можно оставить общим `answersPhysFinalQ4` если так удобнее, но проще зеркалить.
+Если в `localStorage` / в серверном черновике (`load-draft`) лежит старая или повреждённая запись, где элемент массива — это `string`, `number`, `null` или объект без `text: string`, то `a.text.trim()` падает с `B.trim is not a function`. Это и есть текущая ошибка с продакшна (минифицированный `B` = `a.text`).
 
-## Файлы
+Это касается обоих классов (9 и 7 физика, итоговая Q4), потому что код симметричный.
 
-- `src/components/tests/Grade7PhysicsFinalQ4Quiz.tsx` (новый)
-- `src/components/tests/Grade7PhysicsFinalQ4Written.tsx` (новый)
-- `src/pages/Index.tsx` (правки в ~10 местах)
-- `.lovable/plan.md` — короткая заметка
+## Что делать
+
+Только фронт, без бэкенда и без изменения логики проверки.
+
+### 1. `src/pages/Index.tsx` — безопасное чтение `.text`
+Заменить в обоих местах (строки ~937 и ~950) проверку на безопасную:
+
+```ts
+const isFilled = (a: PhysQ4Answer | undefined) =>
+  !!a && (a.skipped || String(a.text ?? "").trim() !== "");
+const filled = answers9physFinalQ4.filter(isFilled).length;
+```
+
+Аналогично для `answers7physFinalQ4`.
+
+### 2. `src/pages/Index.tsx` — нормализация при восстановлении черновика
+В блоках `load-draft` (строки 609–613 и 627–631), где сейчас:
+
+```ts
+const arr = (w.answers9physFinalQ4 as PhysQ4Answer[]).slice(0, 6);
+while (arr.length < 6) arr.push({ text: "", skipped: false });
+```
+
+добавить `.map` с нормализацией каждого элемента к `{ text: string, skipped: boolean }`:
+
+```ts
+const normalize = (x: unknown): PhysQ4Answer => {
+  if (x && typeof x === "object") {
+    const o = x as Record<string, unknown>;
+    return {
+      text: typeof o.text === "string" ? o.text : "",
+      skipped: !!o.skipped,
+    };
+  }
+  if (typeof x === "string") return { text: x, skipped: false };
+  return { text: "", skipped: false };
+};
+const arr = (Array.isArray(w.answers9physFinalQ4) ? w.answers9physFinalQ4 : [])
+  .slice(0, 6)
+  .map(normalize);
+while (arr.length < 6) arr.push({ text: "", skipped: false });
+```
+
+Та же нормализация — для `answers7physFinalQ4`.
+
+### 3. Аналогично для `localStorage`-восстановления
+Найти места, где `answers9physFinalQ4` / `answers7physFinalQ4` читаются из `localStorage` payload (тот же файл, выше по тексту), и пропустить через ту же `normalize`. Если код переиспользует ту же ветку — достаточно одной правки.
+
+## Чего НЕ делаем
+- Не трогаем edge-функции (`send-test-results`, `save-draft`, `load-draft`).
+- Не меняем формат `PhysQ4Answer`.
+- Не чистим существующие черновики у учеников — нормализация при чтении сделает это автоматически.
+
+## Проверка
+1. Открыть `/` как ученик 7-го (физика → итоговая Q4) и 9-го класса — страница не должна падать.
+2. В DevTools положить в `localStorage` мусорный драфт вида `{"answers7physFinalQ4":["abc", 1, null]}` под нужным ключом — после перезагрузки страница рендерится, поле пустое или с восстановленным текстом, без `TypeError`.
+3. Нормальное заполнение и автосохранение продолжают работать.
+
+## Затронутые файлы
+- `src/pages/Index.tsx`
