@@ -959,7 +959,7 @@ const Index = () => {
     } else if (grade === "7" && subject === "physics" && testId === "work-power") {
       return { answered: answers7physWork.filter(Boolean).length, total: 6 };
     } else if (grade === "7" && subject === "physics" && testId === "final-q4-quiz") {
-      const filled = answers7physFinalQ4.filter((a) => a.skipped || a.text.trim() !== "").length;
+      const filled = answers7physFinalQ4.filter((a) => !!a && (a.skipped || String(a.text ?? "").trim() !== "")).length).length;
       return { answered: filled, total: 6 };
     } else if (grade === "7" && subject === "physics") {
       return { answered: answers7phys.filter(Boolean).length, total: 10 };
