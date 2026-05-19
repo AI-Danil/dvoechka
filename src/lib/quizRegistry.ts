@@ -32,8 +32,8 @@ export const QUIZ_REGISTRY: Record<string, QuizQuestion[]> = {
   grade9technologyFinalQ4: FINAL_Q4_TECH9_QUIZ_QUESTIONS,
   grade7informaticsFinalQ4Quiz: FINAL_Q4_INF7_QUIZ_QUESTIONS,
   grade6technologyFinalQ4Quiz: FINAL_Q4_INF6_QUIZ_QUESTIONS,
-  grade9physicsFinalQ4Quiz: FINAL_Q4_PHYS9_QUIZ_QUESTIONS,
-  grade7physicsFinalQ4Quiz: FINAL_Q4_PHYS7_QUIZ_QUESTIONS,
+  grade9physicsFinalQ4: FINAL_Q4_PHYS9_QUIZ_QUESTIONS,
+  grade7physicsFinalQ4: FINAL_Q4_PHYS7_QUIZ_QUESTIONS,
 };
 
 export function getQuizQuestionsForTestType(testType?: string | null): QuizQuestion[] | null {
