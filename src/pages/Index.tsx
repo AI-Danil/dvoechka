@@ -178,6 +178,24 @@ function getSubmittedKey(grade: string, subject: string, name: string, attempt: 
   return `test_submitted_${grade}_${subject}_${testId}_${name.trim().toLowerCase()}_${attempt}`;
 }
 
+function normalizePhysQ4Answer(x: unknown): PhysQ4Answer {
+  if (x && typeof x === "object") {
+    const o = x as Record<string, unknown>;
+    return {
+      text: typeof o.text === "string" ? o.text : "",
+      skipped: !!o.skipped,
+    };
+  }
+  if (typeof x === "string") return { text: x, skipped: false };
+  return { text: "", skipped: false };
+}
+
+function normalizePhysQ4Array(raw: unknown, len = 6): PhysQ4Answer[] {
+  const arr = (Array.isArray(raw) ? raw : []).slice(0, len).map(normalizePhysQ4Answer);
+  while (arr.length < len) arr.push({ text: "", skipped: false });
+  return arr;
+}
+
 const Index = () => {
   const [screen, setScreen] = useState<Screen>("login");
   const [resultId, setResultId] = useState<string | null>(null);
@@ -484,8 +502,7 @@ const Index = () => {
           if (draft.answers9physAtom) { setAnswers9physAtom(draft.answers9physAtom); mark(draft.answers9physAtom); }
         } else if (grade === "9" && subject === "physics" && testId === "final-q4-quiz") {
           if (Array.isArray(draft.answers9physFinalQ4)) {
-            const restored = (draft.answers9physFinalQ4 as PhysQ4Answer[]).slice(0, 6);
-            while (restored.length < 6) restored.push({ text: "", skipped: false });
+            const restored = normalizePhysQ4Array(draft.answers9physFinalQ4);
             setAnswers9physFinalQ4(restored);
             mark(draft.answers9physFinalQ4);
           }
@@ -511,8 +528,7 @@ const Index = () => {
           }
         } else if (grade === "7" && subject === "physics" && testId === "final-q4-quiz") {
           if (Array.isArray(draft.answers7physFinalQ4)) {
-            const restored = (draft.answers7physFinalQ4 as PhysQ4Answer[]).slice(0, 6);
-            while (restored.length < 6) restored.push({ text: "", skipped: false });
+            const restored = normalizePhysQ4Array(draft.answers7physFinalQ4);
             setAnswers7physFinalQ4(restored);
             mark(draft.answers7physFinalQ4);
           }
@@ -607,9 +623,7 @@ const Index = () => {
           else if (grade === "8" && subject === "physics" && w.answers8phys) { setAnswers8phys(w.answers8phys); restored = true; }
           else if (grade === "9" && subject === "physics" && testId === "atom" && w.answers9physAtom) { setAnswers9physAtom(w.answers9physAtom); restored = true; }
           else if (grade === "9" && subject === "physics" && testId === "final-q4-quiz" && Array.isArray(w.answers9physFinalQ4)) {
-            const arr = (w.answers9physFinalQ4 as PhysQ4Answer[]).slice(0, 6);
-            while (arr.length < 6) arr.push({ text: "", skipped: false });
-            setAnswers9physFinalQ4(arr); restored = true;
+            setAnswers9physFinalQ4(normalizePhysQ4Array(w.answers9physFinalQ4)); restored = true;
           }
           else if (grade === "9" && subject === "physics" && w.answers9phys) { setAnswers9phys(w.answers9phys); restored = true; }
           else if (grade === "9" && subject === "technology" && testId === "final-q4" && w.answers9techFinalQ4) {
@@ -625,9 +639,7 @@ const Index = () => {
             setAnswers7physWork(arr); restored = true;
           }
           else if (grade === "7" && subject === "physics" && testId === "final-q4-quiz" && Array.isArray(w.answers7physFinalQ4)) {
-            const arr = (w.answers7physFinalQ4 as PhysQ4Answer[]).slice(0, 6);
-            while (arr.length < 6) arr.push({ text: "", skipped: false });
-            setAnswers7physFinalQ4(arr); restored = true;
+            setAnswers7physFinalQ4(normalizePhysQ4Array(w.answers7physFinalQ4)); restored = true;
           }
           else if (grade === "7" && subject === "physics" && w.answers7phys) { setAnswers7phys(w.answers7phys); restored = true; }
           else if (grade === "7" && subject === "technology") {
@@ -934,7 +946,7 @@ const Index = () => {
     } else if (grade === "9" && subject === "physics" && testId === "atom") {
       return { answered: answers9physAtom.filter(Boolean).length, total: 6 };
     } else if (grade === "9" && subject === "physics" && testId === "final-q4-quiz") {
-      const filled = answers9physFinalQ4.filter((a) => a.skipped || a.text.trim() !== "").length;
+      const filled = answers9physFinalQ4.filter((a) => !!a && (a.skipped || String(a.text ?? "").trim() !== "")).length;
       return { answered: filled, total: 6 };
     } else if (grade === "9" && subject === "physics") {
       return { answered: answers9phys.filter(Boolean).length, total: 14 };
@@ -947,7 +959,7 @@ const Index = () => {
     } else if (grade === "7" && subject === "physics" && testId === "work-power") {
       return { answered: answers7physWork.filter(Boolean).length, total: 6 };
     } else if (grade === "7" && subject === "physics" && testId === "final-q4-quiz") {
-      const filled = answers7physFinalQ4.filter((a) => a.skipped || a.text.trim() !== "").length;
+      const filled = answers7physFinalQ4.filter((a) => !!a && (a.skipped || String(a.text ?? "").trim() !== "")).length;
       return { answered: filled, total: 6 };
     } else if (grade === "7" && subject === "physics") {
       return { answered: answers7phys.filter(Boolean).length, total: 10 };
