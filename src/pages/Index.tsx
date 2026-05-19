@@ -639,9 +639,7 @@ const Index = () => {
             setAnswers7physWork(arr); restored = true;
           }
           else if (grade === "7" && subject === "physics" && testId === "final-q4-quiz" && Array.isArray(w.answers7physFinalQ4)) {
-            const arr = (w.answers7physFinalQ4 as PhysQ4Answer[]).slice(0, 6);
-            while (arr.length < 6) arr.push({ text: "", skipped: false });
-            setAnswers7physFinalQ4(arr); restored = true;
+            setAnswers7physFinalQ4(normalizePhysQ4Array(w.answers7physFinalQ4)); restored = true;
           }
           else if (grade === "7" && subject === "physics" && w.answers7phys) { setAnswers7phys(w.answers7phys); restored = true; }
           else if (grade === "7" && subject === "technology") {
