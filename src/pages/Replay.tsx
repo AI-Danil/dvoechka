@@ -281,7 +281,19 @@ function ReplayInner() {
     ? (result!.answers as string[])
     : null;
 
-  const openTextAnswers: string[] = answersPayload?.answers ?? legacyAnswersArray ?? [];
+  const rawOpenTextAnswers: unknown[] = answersPayload?.answers ?? legacyAnswersArray ?? [];
+  // Поддержка двух форматов: string[] и { text, skipped }[] (физика 7/9 Q4)
+  const openTextAnswers: { text: string; skipped: boolean }[] = rawOpenTextAnswers.map((a) => {
+    if (typeof a === "string") return { text: a, skipped: false };
+    if (a && typeof a === "object") {
+      const o = a as Record<string, unknown>;
+      return {
+        text: typeof o.text === "string" ? o.text : "",
+        skipped: !!o.skipped,
+      };
+    }
+    return { text: "", skipped: false };
+  });
   const quizResults = answersPayload?.quizResults ?? null;
   const breakdown: BreakdownItem[] = Array.isArray(answersPayload?.breakdown)
     ? answersPayload!.breakdown!
@@ -520,14 +532,16 @@ function ReplayInner() {
                   {openTextAnswers.length > 0 && (
                     <div className="space-y-3">
                       <h3 className="font-semibold text-sm uppercase text-muted-foreground">
-                        Открытые ответы ({openTextAnswers.filter((a) => a?.trim()).length} из {openTextAnswers.length} заполнено)
+                        Открытые ответы ({openTextAnswers.filter((a) => a.text.trim() || a.skipped).length} из {openTextAnswers.length} заполнено)
                       </h3>
                       <ol className="space-y-3">
                         {openTextAnswers.map((a, i) => (
                           <li key={i} className="border border-border rounded-md p-3">
                             <div className="text-xs text-muted-foreground mb-1">Задание {i + 1}</div>
-                            {a?.trim() ? (
-                              <div className="text-sm whitespace-pre-wrap">{a}</div>
+                            {a.skipped ? (
+                              <div className="text-sm italic text-muted-foreground">🤷 пропущено</div>
+                            ) : a.text.trim() ? (
+                              <div className="text-sm whitespace-pre-wrap">{a.text}</div>
                             ) : (
                               <div className="text-sm italic text-muted-foreground">— пусто —</div>
                             )}
