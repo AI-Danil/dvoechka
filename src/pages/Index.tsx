@@ -946,7 +946,7 @@ const Index = () => {
     } else if (grade === "9" && subject === "physics" && testId === "atom") {
       return { answered: answers9physAtom.filter(Boolean).length, total: 6 };
     } else if (grade === "9" && subject === "physics" && testId === "final-q4-quiz") {
-      const filled = answers9physFinalQ4.filter((a) => a.skipped || a.text.trim() !== "").length;
+      const filled = answers9physFinalQ4.filter((a) => !!a && (a.skipped || String(a.text ?? "").trim() !== "")).length;
       return { answered: filled, total: 6 };
     } else if (grade === "9" && subject === "physics") {
       return { answered: answers9phys.filter(Boolean).length, total: 14 };
