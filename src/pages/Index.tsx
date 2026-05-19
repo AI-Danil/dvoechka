@@ -502,8 +502,7 @@ const Index = () => {
           if (draft.answers9physAtom) { setAnswers9physAtom(draft.answers9physAtom); mark(draft.answers9physAtom); }
         } else if (grade === "9" && subject === "physics" && testId === "final-q4-quiz") {
           if (Array.isArray(draft.answers9physFinalQ4)) {
-            const restored = (draft.answers9physFinalQ4 as PhysQ4Answer[]).slice(0, 6);
-            while (restored.length < 6) restored.push({ text: "", skipped: false });
+            const restored = normalizePhysQ4Array(draft.answers9physFinalQ4);
             setAnswers9physFinalQ4(restored);
             mark(draft.answers9physFinalQ4);
           }
