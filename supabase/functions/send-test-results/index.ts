@@ -162,7 +162,8 @@ serve(async (req) => {
       body.type === "grade9technologyFinalQ4" ||
       body.type === "grade7informaticsFinalQ4Quiz" ||
       body.type === "grade6technologyFinalQ4Quiz" ||
-      body.type === "grade9physicsFinalQ4"
+      body.type === "grade9physicsFinalQ4" ||
+      body.type === "grade7physicsFinalQ4"
     ) {
       answersData.answers = body.answers;
       answersData.quizResults = body.quizResults;
@@ -650,6 +651,97 @@ serve(async (req) => {
         const hasFile = attachmentMap[String(i)];
         message += `Задание ${16 + i}: ${ans[i] || "(пусто)"}${hasFile ? " 📎" : ""}\n\n`;
       }
+    } else if (body.type === "grade7physicsFinalQ4") {
+      // Hybrid: 10-question MC quiz with skip + 6 written tasks with skip. Penalty grading.
+      const written = (body.answers as Array<{ text: string; skipped: boolean }>) ?? [];
+      const quiz = body.quizResults as
+        | { perQuestion: Array<{ answer: number; correct: number; timeSpent: number; timedOut: boolean }>; total: number }
+        | null
+        | undefined;
+
+      const PENALTY = 0.5;
+      let mcScore = 0, mcCorrect = 0, mcWrong = 0, mcSkipped = 0;
+      const optLabel = (n: number) => (n === -2 ? "🤷" : n < 0 ? "—" : ["А", "Б", "В", "Г"][n] ?? "?");
+      if (quiz) {
+        quiz.perQuestion.forEach((r) => {
+          if (r.answer === -2) { mcSkipped++; }
+          else if (r.answer === r.correct) { mcScore += 1; mcCorrect++; }
+          else { mcScore -= PENALTY; mcWrong++; }
+        });
+      }
+      const mcMax = quiz?.total ?? 0;
+
+      const TASK_DEFS = [
+        { title: "Задача 1. Работа крана", expected: "300 000 Дж = 300 кДж (A = mgh = 2000·10·15)", hint: "Правильный ответ — 300 кДж. Засчитывать формулу A=mgh." },
+        { title: "Задача 2. Мощность вентилятора", expected: "60 Вт (N = A/t = 18000/300)", hint: "Главная проверка — перевод 5 мин → 300 с. Без перевода (3600 Вт) — неверно." },
+        { title: "Задача 3. Рычаг", expected: "15 см (по правилу рычага l₂ = F₁·l₁/F₂)", hint: "Правильный ответ — 15 см. Если перепутаны плечи (240 см) — неверно." },
+        { title: "Задача 4. Кинетическая энергия мяча", expected: "45 Дж (Eₖ = mv²/2 = 0,4·225/2)", hint: "Главная проверка — перевод 400 г → 0,4 кг. Без перевода (45 000 Дж) — неверно." },
+        { title: "Задача 5. КПД наклонной плоскости", expected: "75 % (A_п=900 Дж, A_з=1200 Дж)", hint: "Правильный ответ — 75 %. КПД больше 100 % невозможен." },
+        { title: "Задача 6. ЗСЭ при падении камня", expected: "300 Дж (E_полн=600 Дж, на 10 м E_п=300 Дж → Eₖ=300 Дж)", hint: "Правильный ответ — 300 Дж. Засчитывать через ЗСЭ или v²=2g·Δh." },
+      ];
+      const items = written.map((a, i) => ({
+        position: i + 1,
+        question: TASK_DEFS[i]?.title ?? `Задача ${i + 1}`,
+        expected: TASK_DEFS[i]?.expected ?? "",
+        given: a?.text ?? "",
+        hint: TASK_DEFS[i]?.hint,
+        skipped: !!a?.skipped,
+      }));
+      let aiResults: Array<{ position: number; correct: boolean; partial: boolean; score: number; reason: string }> = [];
+      try {
+        const aiUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/grade-quiz-text-batch`;
+        const r = await fetch(aiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+          body: JSON.stringify({ items }),
+        });
+        const j = await r.json();
+        if (j?.ok && Array.isArray(j.results)) aiResults = j.results;
+      } catch (e) { console.error("grade-quiz-text-batch (phys7) failed:", e); }
+      const aiByPos = new Map(aiResults.map((x) => [x.position, x]));
+
+      let wScore = 0, wCorrect = 0, wWrong = 0, wSkipped = 0;
+      items.forEach((it) => {
+        if (it.skipped || !it.given.trim()) { wSkipped++; return; }
+        const ai = aiByPos.get(it.position);
+        const sc = ai?.score ?? 0;
+        if (sc >= 1) { wScore += 1; wCorrect++; }
+        else if (sc > 0) { wScore += sc; wCorrect++; }
+        else { wScore -= PENALTY; wWrong++; }
+      });
+      const wMax = items.length;
+
+      const totalRaw = mcScore + wScore;
+      const totalScore = Math.max(0, totalRaw);
+      const totalMax = mcMax + wMax;
+      const pct = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0;
+      const mark = pct >= 90 ? 5 : pct >= 70 ? 4 : pct >= 50 ? 3 : 2;
+
+      message += `\n🎯 Физика 7 — Итоговая Q4 (штрафная шкала, ½ за неверный, 0 за «не знаю»)\n`;
+      message += `Итого: ${totalScore.toFixed(1)}/${totalMax} (${pct}%) → оценка ${mark}\n`;
+      message += `Квиз: ${mcScore.toFixed(1)}/${mcMax} (✅${mcCorrect} ❌${mcWrong} 🤷${mcSkipped})\n`;
+      message += `Задачи (AI): ${wScore.toFixed(1)}/${wMax} (✅${wCorrect} ❌${wWrong} 🤷${wSkipped})\n`;
+
+      if (quiz) {
+        message += `\n📋 Квиз подробно:\n`;
+        quiz.perQuestion.forEach((r, i) => {
+          const mk = r.answer === -2 ? "🤷" : r.answer === r.correct ? "✅" : r.timedOut ? "⏰" : "❌";
+          message += `${i + 1}) ${mk} ${optLabel(r.answer)} (верный ${optLabel(r.correct)}) ⏱${r.timeSpent}с\n`;
+        });
+      }
+      message += `\n📝 Расчётные задачи:\n`;
+      items.forEach((it, i) => {
+        if (it.skipped) {
+          message += `${i + 1}) 🤷 пропущено (${it.question})\n`;
+          return;
+        }
+        const ai = aiByPos.get(it.position);
+        const mk = ai?.correct ? (ai.partial ? "🟡" : "✅") : "❌";
+        message += `${i + 1}) ${mk} ${ai ? ai.score.toFixed(1) : "?"} — ${it.question}\n`;
+        message += `   Ответ: ${(it.given || "(пусто)").slice(0, 400)}\n`;
+        if (ai?.reason) message += `   AI: ${ai.reason}\n`;
+        message += `   Эталон: ${it.expected}\n`;
+      });
     } else if (body.type === "grade9physicsFinalQ4") {
       // Hybrid: 15-question MC quiz with skip + 6 written tasks with skip. Penalty grading.
       const written = (body.answers as Array<{ text: string; skipped: boolean }>) ?? [];
