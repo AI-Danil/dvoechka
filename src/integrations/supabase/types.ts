@@ -671,28 +671,7 @@ export type Database = {
       }
     }
     Functions: {
-      get_session_by_code: {
-        Args: { _code: string }
-        Returns: {
-          class_name: string
-          duration_sec: number
-          ends_at: string
-          id: string
-          started_at: string
-          status: string
-          subject_name: string
-          test_id: string
-          test_kind: Database["public"]["Enums"]["test_kind"]
-          test_title: string
-        }[]
-      }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
       app_role: "admin" | "teacher" | "student"
